@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html class="h-full bg-white">
+<head>
+    <title>WTF Balkonkraftwerk</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@3.7.4/dist/full.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+<style>
+    
+</style>
+</head>
+
+<body class="h-full">
+
+    <div class="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
+  
+  <div class="sm:mx-auto sm:w-full sm:max-w-sm">
+    <img class="mx-auto h-10 w-auto" src="https://wtf-eg.de/images/wtf_logo.svg?h=18c9a52a" alt="WTF Logo">
+    <h2 class="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">Nutzerkonto anlegen</h2>
+  </div>
+
+  <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+    
+    <form class="space-y-6" hx-post="/signup" hx-ext='json-enc'>
+      <div>
+        <input name="first_name" type="text" placeholder="Vorname" class="input input-bordered w-full max-w-xs" />
+      </div>
+      <div>
+        <input name="last_name" type="text" placeholder="Nachname" class="input input-bordered w-full max-w-xs" />
+      </div>
+      <div>
+        <input name="email" type="text" placeholder="Email" class="input input-bordered w-full max-w-xs" />
+      </div>
+      <div>
+        <input name="password" type="password" placeholder="Passwort" class="input input-bordered w-full max-w-xs" />
+      </div>
+      
+
+      <div>
+        <button class="btn btn-accent btn-wide">Registrieren <p class="htmx-indicator">...</p></button>
+      </div>
+    </form>
+    
+    </div>
+  </div>
+
+    <script src="https://unpkg.com/htmx.org@1.8.5"></script>
+    <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
+</body>
+</html>

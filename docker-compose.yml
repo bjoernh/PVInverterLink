@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  influxdb:
+    image: "influxdb:2.7-alpine"
+    ports:
+    - 8086:8086
+    volumes:
+      - ./influxdb/data:/var/lib/influxdb
+      - ./influxdb/config:/etc/influxdb
+      - ./influxdb/init:/docker-entrypoint-initdb.d
+    env_file: 
+    - influxdb.env

@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "solar-backend"
+version = "0.1.0"
+description = ""
+authors = ["Bjoern Hauffe <oss@64b.de>"]
+readme = "README.md"
+packages = [{include = "solar_backend"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.103.1"
+httpx = "^0.24.1"
+pytest = "^7.4.0"
+fastapi-users = {extras = ["sqlalchemy"], version = "^12.1.0"}
+asyncpg = "^0.28.0"
+uvicorn = "^0.23.2"
+aiosqlite = "^0.19.0"
+sqladmin = "^0.14.0"
+itsdangerous = "^2.1.2"
+sqlalchemy-utils = "^0.41.1"
+alembic = "^1.11.1"
+influxdb-client = {extras = ["async"], version = "^1.37.0"}
+pydantic-settings = "^2.0.2"
+structlog = "^23.1.0"
+rich = "^13.5.2"
+fastapi-htmx = "^0.2.2"
+pytailwindcss = "^0.2.0"
+python-multipart = "^0.0.6"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
