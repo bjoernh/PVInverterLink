@@ -63,11 +63,10 @@ async def on_startup():
     # Not needed after setup Alembic
     await create_db_and_tables()
 
-@app.get("/", response_class=HTMLResponse)
-@htmx("index", "index")
+@app.get("/signup", response_class=HTMLResponse)
+@htmx("signup", "signup")
 async def root_page(request: Request):
     return {}
-
 
 admin.add_view(UserAdmin)
 

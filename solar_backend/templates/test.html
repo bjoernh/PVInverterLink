@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html class="h-full bg-white">
 <head>
+    <meta charset="utf-8">
     <title>WTF Balkonkraftwerk</title>
     <link href="https://cdn.jsdelivr.net/npm/daisyui@3.7.4/dist/full.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.tailwindcss.com"></script>
@@ -20,7 +21,7 @@
 
   <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
     
-    <form class="space-y-6" hx-post="/signup" hx-ext='json-enc'>
+    <!-- <form class="space-y-6" hx-post="/signup" hx-ext='json-enc'>
       <div>
         <input name="first_name" type="text" placeholder="Vorname" class="input input-bordered w-full max-w-xs" />
       </div>
@@ -34,11 +35,13 @@
         <input name="password" type="password" placeholder="Passwort" class="input input-bordered w-full max-w-xs" />
       </div>
       
-
       <div>
         <button class="btn btn-accent btn-wide">Registrieren <p class="htmx-indicator">...</p></button>
       </div>
-    </form>
+    </form> -->
+
+    <h2>Bestätige deine Email-Adresse mit dem Link der auf dem Weg zu dir ist!</h2><br>
+    <button class="btn btn-accent btn-sm" hx-post="/auth/request-verify-token" hx-ext='json-enc' hx-vals='{"email": "mueller@gmail.com"}'>Nochmal schicken</button>
     
     </div>
   </div>

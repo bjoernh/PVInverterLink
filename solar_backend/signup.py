@@ -1,7 +1,8 @@
+from typing import Annotated
 import contextlib
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ValidationError
 import structlog
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi_htmx import htmx
 
@@ -29,8 +30,22 @@ async def create_user(first_name: str, last_name: str, email: str, password: str
                 logger.info(f"User created {user}")
 
 
-@router.post("/signup", response_class=HTMLResponse)
-@htmx("signup")
-async def signup(form: UserCreate, request: Request):
-    await create_user(form.first_name, form.last_name, form.email, form.password)
-    return {}
+
+@router.post("/v1/signup", response_class=HTMLResponse)
+@htmx("verify", "verify")
+async def signup(
+    first_name: Annotated[str, Form()],
+    last_name: Annotated[str, Form()],
+    email: Annotated[str, Form()],
+    password: Annotated[str, Form()],
+    request: Request):
+    result = True
+    try:
+        user = UserCreate(first_name=first_name, last_name=last_name, email=email, password=password)
+    except ValidationError as e:
+        return {"result": False, "error": str(e)}
+
+
+    #await create_user(*user)
+    #TODO: Send verify email
+    return {"result": result ,"email": email}

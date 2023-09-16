@@ -26,6 +26,7 @@ rich = "^13.5.2"
 fastapi-htmx = "^0.2.2"
 pytailwindcss = "^0.2.0"
 python-multipart = "^0.0.6"
+fastapi-mail = "^1.4.1"
 
 
 [build-system]
