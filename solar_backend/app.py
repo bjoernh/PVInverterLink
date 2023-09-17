@@ -10,13 +10,15 @@ from db import User, create_db_and_tables, engine
 from schemas import UserCreate, UserRead, UserUpdate
 from solar_backend.inverter import InverterAdmin
 from solar_backend.users import UserAdmin
-from solar_backend import signup
+from solar_backend.api import signup, login, start, inverter
 from solar_backend.config import settings
 from users import auth_backend, current_active_user, fastapi_users
-from solar_backend.admin_auth import authentication_backend
+from solar_backend.utils.admin_auth import authentication_backend
 import structlog
 
 from pydantic import BaseModel, EmailStr, Field
+
+
 
 processors = [structlog.dev.ConsoleRenderer()]  # TODO: destinct between dev and production output
 
@@ -55,6 +57,12 @@ app.include_router(
 )
 
 app.include_router(signup.router)
+app.include_router(login.router)
+app.include_router(start.router)
+app.include_router(inverter.router)
+
+admin.add_view(UserAdmin)
+admin.add_view(InverterAdmin)
 
 @app.get("/authenticated-route")
 async def authenticated_route(user: User = Depends(current_active_user)):
@@ -65,12 +73,3 @@ async def authenticated_route(user: User = Depends(current_active_user)):
 async def on_startup():
     # Not needed after setup Alembic
     await create_db_and_tables()
-
-@app.get("/", response_class=HTMLResponse)
-@htmx("signup", "signup")
-async def root_page(request: Request):
-    return {}
-
-admin.add_view(UserAdmin)
-
-admin.add_view(InverterAdmin)

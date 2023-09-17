@@ -1,5 +1,12 @@
 {% extends "base.jinja2" %}
 {% block title %}Registrieren{% endblock %}
 {% block content %}
-<h2>Verified!</h2> <!-- TODO:  -->
+<div class="sm:mx-auto sm:w-full sm:max-w-sm">
+<ul class="steps steps-vertical ">
+  <li class="step step-primary"><p><i class="fa-solid fa-user-plus"></i> Registrieren</p></li>
+  <li class="step step-primary"><p><i class="fa-solid fa-envelope-circle-check"></i> Email Verifizieren</p></li>
+  <li class="step"><button class="btn btn-accent" hx-get="/add_inverter"><i class="fa-solid fa-square-plus"></i> Wechselrichter Hinzufügen</button></li>
+  <li class="step"><p><i class="fa-solid fa-chart-line"></i> Dasboard erkunden</p></li>
+</ul>
+</div>
 {% endblock %}

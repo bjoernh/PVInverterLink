@@ -24,7 +24,15 @@ class UserUpdate(schemas.BaseUserUpdate):
     last_name: Optional[str]
 
 @dataclass
+class InverterAdd:
+        name: str
+        serial: str
+
+@dataclass
 class Inverter:
-    id: uuid.UUID
+    id: int
     name: str
+    serial_logger: str
+    influx_bucked_id: str
+    sw_version: str
     user: schemas.BaseUser[int]

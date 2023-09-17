@@ -21,7 +21,7 @@ class Inverter(Base):
     name: Mapped[str] = mapped_column(String)
     serial_logger: Mapped[str] = mapped_column(String)
     influx_bucked_id: Mapped[Optional[str]]
-    sw_version: Mapped[str] = mapped_column(String)
+    sw_version: Mapped[Optional[str]] = mapped_column(String)
     def __repr__(self):
         return f"{self.id} - {self.name}"
 

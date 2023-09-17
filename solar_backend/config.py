@@ -23,7 +23,10 @@ class Settings(BaseSettings):
     INFLUX_URL: AnyHttpUrl
     BASE_URL: AnyHttpUrl
     FASTMAIL: ConnectionConfig
+    COOKIE_SECURE: bool = True
 
 settings = Settings(_env_file='.env', _env_file_encoding='utf-8')
 
 fastmail = FastMail(settings.FASTMAIL)
+
+DEV_TESTING = True

@@ -1,0 +1,26 @@
+{% extends "base.jinja2" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+  <main class="flex flex-col justify-center px-6 py-12 lg:px-8">
+    <div class="sm:mx-auto sm:w-full sm:max-w-sm">
+      <h2 class="mt-10 text-3xl font-bold leading-9 tracking-tight">Login</h2>
+    </div>
+    <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+
+      <form class="space-y-4" action="/login" hx-taget="body" method="POST" hx-push-url="true">
+        <div>
+          <input name="username" type="email" placeholder="Email" class="input input-bordered w-full max-w-xs" />
+        </div>
+        <div>
+          <input name="password" type="password"  minlength="8" placeholder="Passwort" class="input input-bordered w-full max-w-xs" />
+        </div>
+        <div>
+          <button type="submit" class="btn btn-active btn-primary">Login</button>
+        </div>
+      </form>
+    </div>
+    <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+      <b><button class="btn" hx-get="/signup" hx-target="body">Account anlegen</button></b>
+    </div>
+  </main>
+{% endblock %}
