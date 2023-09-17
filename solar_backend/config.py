@@ -1,9 +1,10 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import AnyHttpUrl, BaseModel
-from fastapi_mail import ConnectionConfig
+from pydantic import AnyHttpUrl, BaseModel, AnyUrl
+from fastapi_mail import ConnectionConfig, FastMail, ConnectionConfig
+from ipaddress import IPv4Address
 
 class MailSettings(BaseModel):
-    MAIL_SUPPRESS_SEND: bool
+    SUPPRESS_SEND: bool
     MAIL_USERNAME: str
     MAIL_PASSWORD: str
     MAIL_FROM: str
@@ -19,9 +20,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore', env_nested_delimiter='__')
     DATABASE_URL: str
     AUTH_SECRET: str
-    INFLUX_URL: str
-    FASTMAIL: MailSettings
+    INFLUX_URL: AnyHttpUrl
+    BASE_URL: AnyHttpUrl
+    FASTMAIL: ConnectionConfig
 
 settings = Settings(_env_file='.env', _env_file_encoding='utf-8')
 
-mail_conf = ConnectionConfig(*settings.FASTMAIL.model_dump())
+fastmail = FastMail(settings.FASTMAIL)

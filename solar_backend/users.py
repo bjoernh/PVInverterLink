@@ -11,9 +11,10 @@ from fastapi_users.authentication import (
 )
 from fastapi_users.db import SQLAlchemyUserDatabase
 from sqladmin import ModelView
-from db import User, get_user_db, get_async_session
+from db import User, get_user_db
 from solar_backend.config import settings
 from solar_backend.influx import inflx
+from solar_backend.helpers import send_verify_mail
 
 logger = structlog.get_logger()
 
@@ -22,25 +23,29 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int], ModelView):
     reset_password_token_secret = settings.AUTH_SECRET
     verification_token_secret = settings.AUTH_SECRET
 
-    async def on_after_verify(self, user: User, request: Optional[Request] = None):
+    async def on_after_register(self, user: User, request: Optional[Request] = None):
         logger.info(f"User {user.email} has registered.", user=user)
     
-    async def on_after_register(self, user: User, request: Optional[Request] = None):
+    async def on_after_verify(self, user: User, request: Optional[Request] = None):
         logger.info(f"User {user.id} is verified.", user=user)
-        #_inflx_user, org = inflx.create_influx_user_and_org(f"{user.email}", user.hashed_password)
-        #logger.info(f"Influx setup for user {user.first_name} {user.last_name} completed")
-        #user.influx_org_id = org.id
-        #await self.user_db.session.commit()
+        _inflx_user, org = inflx.create_influx_user_and_org(f"{user.email}", user.hashed_password)
+        logger.info(f"Influx setup for user {user.first_name} {user.last_name} completed")
+        user.influx_org_id = org.id
+        await self.user_db.session.commit()
 
     async def on_after_forgot_password(
         self, user: User, token: str, request: Optional[Request] = None
     ):
-        print(f"User {user.id} has forgot their password. Reset token: {token}")
+        logger.info(f"User has forgot their password.",user=user, token=token)
 
     async def on_after_request_verify(
         self, user: User, token: str, request: Optional[Request] = None
     ):
-        print(f"Verification requested for user {user.id}. Verification token: {token}")
+        logger.info(f"Verification requested for user", user=user, token=token)
+        await send_verify_mail(email=user.email, token=token)
+        logger.info(f"verify email send to: {user.email}")
+
+ 
 
 
 async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db)):
@@ -51,7 +56,7 @@ bearer_transport = BearerTransport(tokenUrl="auth/jwt/login")
 
 
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=SECRET, lifetime_seconds=3600)
+    return JWTStrategy(secret=settings.AUTH_SECRET, lifetime_seconds=3600)
 
 
 auth_backend = AuthenticationBackend(
@@ -65,6 +70,9 @@ fastapi_users = FastAPIUsers[User, int](get_user_manager, [auth_backend])
 current_active_user = fastapi_users.current_user(active=True)
 
 class UserAdmin(ModelView, model=User):
+    def is_accessible(self, request: Request) -> bool:
+        # TODO: Only Superusers
+        return True
     column_list = [User.id, User.email, User.last_name]
     name = "User"
     column_searchable_list = [User.email, User.last_name]

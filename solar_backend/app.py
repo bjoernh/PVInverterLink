@@ -2,6 +2,7 @@ from fastapi import Depends, FastAPI, Request
 from pathlib import Path
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 from fastapi_htmx import htmx, htmx_init
 from sqladmin import Admin
 
@@ -12,6 +13,7 @@ from solar_backend.users import UserAdmin
 from solar_backend import signup
 from solar_backend.config import settings
 from users import auth_backend, current_active_user, fastapi_users
+from solar_backend.admin_auth import authentication_backend
 import structlog
 
 from pydantic import BaseModel, EmailStr, Field
@@ -23,9 +25,10 @@ structlog.configure(processors)
 logger = structlog.get_logger()
 
 app = FastAPI()
+app.add_middleware(SessionMiddleware, secret_key=settings.AUTH_SECRET)
 htmx_init(templates=Jinja2Templates(directory=Path("templates")))
 
-admin = Admin(app, engine)
+admin = Admin(app=app, authentication_backend=authentication_backend, engine=engine)
 
 app.include_router(
     fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"]
@@ -56,14 +59,14 @@ app.include_router(signup.router)
 @app.get("/authenticated-route")
 async def authenticated_route(user: User = Depends(current_active_user)):
     return {"message": f"Hello {user.email}!"}
-
+ 
 
 @app.on_event("startup")
 async def on_startup():
     # Not needed after setup Alembic
     await create_db_and_tables()
 
-@app.get("/signup", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse)
 @htmx("signup", "signup")
 async def root_page(request: Request):
     return {}

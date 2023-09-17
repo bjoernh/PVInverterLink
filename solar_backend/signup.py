@@ -1,34 +1,23 @@
 from typing import Annotated
-import contextlib
-from pydantic import BaseModel, EmailStr, Field, ValidationError
+
+from fastapi_users import BaseUserManager
+from pydantic import ValidationError
 import structlog
-from fastapi import APIRouter, Request, Form
+
+from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse
 from fastapi_htmx import htmx
+from solar_backend.config import settings
 
-from solar_backend.users import get_user_manager
-from solar_backend.db import get_async_session, get_user_db
+from solar_backend.users import get_user_manager, fastapi_users
+
 from solar_backend.schemas import UserCreate
+
+from fastapi_users import models
 
 logger = structlog.get_logger()
 
 router = APIRouter()
-
-get_async_session_context = contextlib.asynccontextmanager(get_async_session)
-get_user_db_context = contextlib.asynccontextmanager(get_user_db)
-get_user_manager_context = contextlib.asynccontextmanager(get_user_manager)
-
-async def create_user(first_name: str, last_name: str, email: str, password: str, is_superuser: bool = False):
-    async with get_async_session_context() as session:
-        async with get_user_db_context(session) as user_db:
-            async with get_user_manager_context(user_db) as user_manager:
-                user = await user_manager.create(
-                    UserCreate(
-                        email=email, password=password, is_superuser=is_superuser, last_name=last_name, first_name=first_name
-                    )
-                )
-                logger.info(f"User created {user}")
-
 
 
 @router.post("/v1/signup", response_class=HTMLResponse)
@@ -38,14 +27,26 @@ async def signup(
     last_name: Annotated[str, Form()],
     email: Annotated[str, Form()],
     password: Annotated[str, Form()],
-    request: Request):
+    request: Request,
+    user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)):
+    
     result = True
+    
     try:
         user = UserCreate(first_name=first_name, last_name=last_name, email=email, password=password)
     except ValidationError as e:
         return {"result": False, "error": str(e)}
+    await user_manager.create(user)
 
-
-    #await create_user(*user)
-    #TODO: Send verify email
     return {"result": result ,"email": email}
+
+@router.get("/verify")
+@htmx("complete_verify", "complete_verify")
+async def signup(token: str, 
+                 request: Request,
+                 user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)):
+    
+    user = await user_manager.verify(token)
+
+    logger.info(f"{user.email} is now verfied", user=user)
+    return {}
