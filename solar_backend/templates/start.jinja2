@@ -3,14 +3,28 @@
 {% block content %}
 
     <div class="sm:mx-auto sm:w-full sm:max-w-sm">
-      <h2 class="mt-10 text-3xl font-bold leading-9 tracking-tight">Hallo {{ name }}</h2>
+      <h2 class="mt-10 text-3xl font-bold leading-9 tracking-tight">Hallo {{ user.first_name }}</h2>
+    </div>
+    <div class="sm:mx-auto sm:w-full sm:max-w-sm">
+      <h2 class="mt-10 text-2xl font-bold leading-9 tracking-tight">Wechselrichter</h2>
     </div>
     <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-        <ul>
-            <li>Inverter 1</li>
-            <li>Invertger 2</li>
-        </ul>
+
+            {% for inverter in inverters %}
+            <div id="card-{{ inverter.id }}" class="card w-80 bg-base-100 shadow-xl mt-6">
+                <div class="card-body">
+                    <h2 class="card-title">{{ inverter.name }}</h2>
+                    <p>Seriennummer: {{ inverter.serial_logger }}</p>
+                    <div class="card-actions justify-end">
+                    <button class="btn btn-secondary" hx-delete="/inverter/{{ inverter.id }}" hs-swap="delete" hx-target="#card-{{ inverter.id }}">Entfernen</button>
+                    </div>
+                </div>
+            </div>
+            
+        {% else %}
+            <h2>Keine Wechselrichter</h2>
+        {% endfor %}
+
+        
     </div>
-
-
 {% endblock %}

@@ -4,17 +4,21 @@ from fastapi_users import BaseUserManager
 from pydantic import ValidationError
 import structlog
 
-from fastapi import APIRouter, Request, Form, Depends
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Request, Form, Depends, status
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
 from fastapi_htmx import htmx
 from solar_backend.config import settings
 from aiosmtplib.errors import SMTPRecipientsRefused
+from solar_backend.users import auth_backend, get_jwt_strategy
+from solar_backend.users import get_user_manager
 
-from solar_backend.users import get_user_manager, fastapi_users
 
 from solar_backend.schemas import UserCreate
 
 from fastapi_users import models, exceptions
+
+templates = Jinja2Templates(directory="templates")
 
 logger = structlog.get_logger()
 
@@ -54,8 +58,8 @@ async def signup(
             
     return {"result": result ,"email": email}
 
-@router.get("/verify")
-@htmx("complete_verify", "complete_verify")
+@router.get("/verify", response_class=HTMLResponse)
+#@htmx("complete_verify", "complete_verify")
 async def signup(token: str, 
                  request: Request,
                  user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)):
@@ -63,8 +67,13 @@ async def signup(token: str,
     try:
         user = await user_manager.verify(token)
         logger.info(f"{user.email} is now verfied", user=user)
+        response = await auth_backend.login(get_jwt_strategy(), user)
+        return templates.TemplateResponse("complete_verify.jinja2", {"request": request, "result": True}, headers=response.headers)
+
     except exceptions.UserAlreadyVerified:
-        logger.info(f"{user.email} is already verified", user=user)
+        logger.info(f"token was already used to verify", token=token)
+        return RedirectResponse(
+        '/login',
+        status_code=status.HTTP_302_FOUND)
 
     
-    return {}
