@@ -47,8 +47,11 @@ class InfluxManagement:
         member_request = AddResourceMemberRequestBody(id=user.id)
         member = organization_service.post_orgs_id_owners(org_id=org.id, add_resource_member_request_body=member_request)
         logger.info(f"user added to organisation", member=member)
+
+        authorization = self.create_authorization(org.id)
         
-        return (user, org)
+        return (user, org, authorization.token)
+
 
     def create_bucket(self, bucket_name: str, org_id):
         bucket_api = self._client.buckets_api()
@@ -58,8 +61,20 @@ class InfluxManagement:
     
     def set_default_permission(self):
         auth_api = self._client.authorizations_api()
-        per = Permission(action="write", resource=PermissionResource(type="buckets", id=bucket.id, ))
-        auth_api.create_authorization(org_id=ORG, permissions=per)
+        resource = PermissionResource(org_id=org_id, type="buckets", id=bucket_id)
+        read_buckets = Permission(action="read", resource=resource)
+        write_buckets = Permission(action="write", resource=PermissionResource(type="buckets", id=bucket.id))
+        auth_api.create_authorization(org_id=ORG, permissions=[read_buckets, write_buckets])
+
+    def create_authorization(self, org_id: str):
+        authorization = self._client.authorizations_api()
+        resource = PermissionResource(org_id=org_id, type="buckets")
+        read_bucket = Permission(action="read", resource=resource)
+        write_bucket = Permission(action="write", resource=resource)
+        permissions = [read_bucket, write_bucket]
+        authorization = authorization.create_authorization(org_id=org_id, permissions=permissions)
+        logger.info("authorization created", authorization=authorization)
+        return authorization
 
 
 inflx = InfluxManagement(db_url="http://localhost:8086")
@@ -67,5 +82,5 @@ inflx.connect(org='wtf')
 
 
 if __name__ == "__main__":
-    user, org = inflx.create_influx_user_and_org("tester16", "test1234")
+    user, org, token = inflx.create_influx_user_and_org("tester16@64b.de", "12345678")
     bucket = inflx.create_bucket("test_bucket16", org_id=org)

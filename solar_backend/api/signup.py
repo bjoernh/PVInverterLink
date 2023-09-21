@@ -10,7 +10,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi_htmx import htmx
 from solar_backend.config import settings
 from aiosmtplib.errors import SMTPRecipientsRefused
-from solar_backend.users import auth_backend, get_jwt_strategy
+from solar_backend.users import auth_backend_user, get_jwt_strategy
 from solar_backend.users import get_user_manager
 
 
@@ -59,7 +59,6 @@ async def signup(
     return {"result": result ,"email": email}
 
 @router.get("/verify", response_class=HTMLResponse)
-#@htmx("complete_verify", "complete_verify")
 async def signup(token: str, 
                  request: Request,
                  user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)):
@@ -67,7 +66,7 @@ async def signup(token: str,
     try:
         user = await user_manager.verify(token)
         logger.info(f"{user.email} is now verfied", user=user)
-        response = await auth_backend.login(get_jwt_strategy(), user)
+        response = await auth_backend_user.login(get_jwt_strategy(), user)
         return templates.TemplateResponse("complete_verify.jinja2", {"request": request, "result": True}, headers=response.headers)
 
     except exceptions.UserAlreadyVerified:
@@ -75,5 +74,3 @@ async def signup(token: str,
         return RedirectResponse(
         '/login',
         status_code=status.HTTP_302_FOUND)
-
-    

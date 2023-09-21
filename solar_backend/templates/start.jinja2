@@ -20,11 +20,21 @@
                     </div>
                 </div>
             </div>
+
+            
             
         {% else %}
             <h2>Keine Wechselrichter</h2>
         {% endfor %}
-
+    
+    <div id="add_new" class="card w-80 bg-base-100 shadow-xl mt-6">
+                <div class="card-body">
+                    <h2 class="card-title">Neuen Wechselrichter hinzufügen</h2>
+                    <div class="card-actions justify-end">
+                    <button class="btn btn-accent" hx-get="/add_inverter"  hx-target="body">Hinzufügen</button>
+                    </div>
+                </div>
+            </div>
         
     </div>
 {% endblock %}

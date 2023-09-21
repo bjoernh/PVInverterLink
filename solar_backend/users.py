@@ -30,9 +30,10 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int], ModelView):
     async def on_after_verify(self, user: User, request: Optional[Request] = None):
         logger.info(f"User {user.id} is verified.", user=user)
         if not DEV_TESTING:
-            _inflx_user, org = inflx.create_influx_user_and_org(f"{user.email}", user.hashed_password)
+            _inflx_user, org, token = inflx.create_influx_user_and_org(f"{user.email}", user.hashed_password)
             logger.info(f"Influx setup for user {user.first_name} {user.last_name} completed")
             user.influx_org_id = org.id
+            user.influx_token = token
             await self.user_db.session.commit()
 
     async def on_after_forgot_password(
@@ -51,24 +52,32 @@ async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db
     yield UserManager(user_db)
 
 
-cookie_transport = CookieTransport(cookie_secure=settings.COOKIE_SECURE)
-
-
 def get_jwt_strategy() -> JWTStrategy:
     return JWTStrategy(secret=settings.AUTH_SECRET, lifetime_seconds=3600)
 
 
-auth_backend = AuthenticationBackend(
+auth_backend_user = AuthenticationBackend(
     name="jwt",
-    transport=cookie_transport,
+    transport=CookieTransport(cookie_secure=settings.COOKIE_SECURE),
     get_strategy=get_jwt_strategy,
 )
 
-fastapi_users = FastAPIUsers[User, int](get_user_manager, [auth_backend])
 
+
+auth_backend_bearer = AuthenticationBackend(
+    name="jwt",
+    transport=BearerTransport(tokenUrl="auth/jwt/login"),
+    get_strategy=get_jwt_strategy,
+)
+
+fastapi_users = FastAPIUsers[User, int](get_user_manager, [auth_backend_user])
+fastapi_users_bearer = FastAPIUsers[User, int](get_user_manager,[auth_backend_bearer])
 
 current_active_user = fastapi_users.current_user(active=True, optional=True)
 current_superuser = fastapi_users.current_user(active=True, superuser=True)
+
+current_active_user_bearer = fastapi_users_bearer.current_user(active=True)
+current_superuser_bearer = fastapi_users_bearer.current_user(active=True, superuser=True)
 
 class UserAdmin(ModelView, model=User):
     column_list = [User.id, User.email, User.last_name]
