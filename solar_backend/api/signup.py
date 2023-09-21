@@ -32,7 +32,7 @@ async def root_page(request: Request):
 
 @router.post("/signup", response_class=HTMLResponse)
 @htmx("verify", "verify")
-async def signup(
+async def post_signup(
     first_name: Annotated[str, Form()],
     last_name: Annotated[str, Form()],
     email: Annotated[str, Form()],
@@ -59,7 +59,7 @@ async def signup(
     return {"result": result ,"email": email}
 
 @router.get("/verify", response_class=HTMLResponse)
-async def signup(token: str, 
+async def get_signup(token: str, 
                  request: Request,
                  user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)):
     

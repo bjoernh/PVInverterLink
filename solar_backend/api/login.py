@@ -47,7 +47,7 @@ async def post_login(username: Annotated[str, Form()],
         status_code=status.HTTP_303_SEE_OTHER)
 
 @router.get("/logout")
-async def post_login(request: Request, user: User = Depends(current_active_user)):
+async def get_logout(request: Request, user: User = Depends(current_active_user)):
     if user is None:
         return RedirectResponse('/login', status_code=status.HTTP_302_FOUND)
     response = await auth_backend_user.logout(get_jwt_strategy(), user, None)

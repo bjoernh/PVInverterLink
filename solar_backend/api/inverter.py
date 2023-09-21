@@ -19,12 +19,14 @@ logger = structlog.get_logger()
 
 router = APIRouter()
 
+
 @router.get("/add_inverter", response_class=HTMLResponse)
 @htmx("add_inverter", "add_inverter")
 async def get_add_inverter(request: Request):
     return {}
 
-@router.post("/add_inverter")
+
+@router.post("/inverter")
 async def post_add_inverter(inverter_to_add: InverterAdd, db_session = Depends(get_async_session), user: User = Depends(current_active_user)):
     if user is None:
         return RedirectResponse('/login', status_code=status.HTTP_303_SEE_OTHER)
@@ -42,6 +44,7 @@ async def post_add_inverter(inverter_to_add: InverterAdd, db_session = Depends(g
         await session.commit()
     
     return RedirectResponse('/', status_code=status.HTTP_303_SEE_OTHER)
+
 
 @router.delete("/inverter/{inverter_id}", response_class=HTMLResponse)
 @htmx("add_inverter", "add_inverter")
@@ -62,6 +65,6 @@ async def get_add_inverter(inverter_id: int, request: Request, db_session = Depe
 @router.get("/influx_token")
 async def get_token(serial: str, request: Request, user: User = Depends(current_superuser_bearer), db_session = Depends(get_async_session)):
     async with db_session as session:
-        token = await session.scalar(select(User.influx_token).join_from(User, Inverter).where(Inverter.serial_logger == serial))
-    
-    return {"serial": serial, "token": token}
+        result = await session.execute(select(User.influx_token, Inverter.influx_bucked_id, Inverter.name, User.influx_org_id).join_from(User, Inverter).where(Inverter.serial_logger == serial))
+        row = result.first()
+    return {"serial": serial, "token": row.influx_token, "bucket_id": row.influx_bucked_id, "bucket_name": row.name, "org_id": row.influx_org_id }
