@@ -6,7 +6,7 @@
     </div>
     <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
 
-      <form class="space-y-4" action="/login" hx-taget="body" method="POST" hx-push-url="true">
+      <form class="space-y-4" hx-post="/login" hx-target="#alert" hx-push-url="true">
         <div>
           <input name="username" type="email" placeholder="Email" class="input input-bordered w-full max-w-xs" />
         </div>
@@ -14,10 +14,11 @@
           <input name="password" type="password"  minlength="8" placeholder="Passwort" class="input input-bordered w-full max-w-xs" />
         </div>
         <div>
-          <button type="submit" class="btn btn-active btn-primary">Login</button>
+          <button class="btn btn-active btn-primary">Login</button>
         </div>
       </form>
     </div>
+
     <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
       <b><button class="btn" hx-get="/signup" hx-target="body" hx-push-url="true">Account anlegen</button></b>
     </div>
@@ -31,9 +32,8 @@
                   hx-target="#response">
             Passwort Zurücksetzen
           </button>
-          
-
     </div>
+
     <div id="reset_password" class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
       <div id="response"></div>
     </div>

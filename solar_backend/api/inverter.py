@@ -72,4 +72,7 @@ async def get_token(serial: str, request: Request, user: User = Depends(current_
     async with db_session as session:
         result = await session.execute(select(User.influx_token, Inverter.influx_bucked_id, Inverter.name, User.influx_org_id).join_from(User, Inverter).where(Inverter.serial_logger == serial))
         row = result.first()
-    return {"serial": serial, "token": row.influx_token, "bucket_id": row.influx_bucked_id, "bucket_name": row.name, "org_id": row.influx_org_id }
+    if row:
+        return {"serial": serial, "token": row.influx_token, "bucket_id": row.influx_bucked_id, "bucket_name": row.name, "org_id": row.influx_org_id }
+    else:
+        return HTMLResponse(status_code=status.HTTP_404_NOT_FOUND)

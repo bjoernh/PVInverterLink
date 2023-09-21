@@ -24,27 +24,29 @@ router = APIRouter()
 async def get_login(request: Request):
     return {}
 
-@router.post("/login")
+@router.post("/login", response_class=HTMLResponse)
 async def post_login(username: Annotated[str, Form()],
                      password: Annotated[str, Form()],
                      request: Request,
                      user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)):
     
-    try:
-        user = await user_manager.authenticate(credentials=OAuth2PasswordRequestForm(username=username, password=password))
-    except exceptions.UserNotExists:
-        return RedirectResponse('/login', status_code=status.HTTP_303_SEE_OTHER)
+
+    user = await user_manager.authenticate(credentials=OAuth2PasswordRequestForm(username=username, password=password))
     
     if user is None or not user.is_active:
-        return RedirectResponse('/login', status_code=status.HTTP_303_SEE_OTHER)
+        return HTMLResponse("""<div class="alert alert-error">
+                                <span><i class="fa-solid fa-circle-xmark"></i> Username oder Passwort falsch</span>
+                            </div>""")
 
     response = await auth_backend_user.login(get_jwt_strategy(), user)
     await user_manager.on_after_login(user, request, response)
     
+    response.headers.append("HX-Redirect", "/")
+    
     return RedirectResponse(
         '/',
         headers=response.headers,
-        status_code=status.HTTP_303_SEE_OTHER)
+        status_code=status.HTTP_200_OK)
 
 @router.get("/logout")
 async def get_logout(request: Request, user: User = Depends(current_active_user)):
