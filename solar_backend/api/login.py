@@ -55,3 +55,46 @@ async def get_logout(request: Request, user: User = Depends(current_active_user)
         '/login',
         headers=response.headers,
         status_code=status.HTTP_302_FOUND)
+
+
+@router.post("/request_reset_passwort", response_class=HTMLResponse)
+async def get_reset_password(request: Request, user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)):
+    email = request.headers.get('HX-Prompt')
+    user = await user_manager.get_by_email(email)
+    await user_manager.forgot_password(user)
+    return HTMLResponse("""<div class="alert alert-info">
+                                <span>Email wurde verschickt...</span>
+                            </div>""")
+
+
+@router.get("/reset_passwort")
+@htmx("new_password", "new_password")
+async def get_reset_password(token: str, request: Request, user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)):
+    return {"token" : token}
+
+
+@router.post("/reset_password", response_class=HTMLResponse)
+async def post_reset_password(
+    token: Annotated[str, Form()],
+    new_password1: Annotated[str, Form()],
+    new_password2: Annotated[str, Form()],
+    request: Request, 
+    user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)
+    ):
+    if new_password1 != new_password2:
+        return HTMLResponse("""<div class="alert alert-error">
+                                <span>Beide neuen Passwörter müssen gleich sein!</span>
+                            </div>""")
+
+    try:
+        #await user_manager.reset_password(token, new_password1)
+        return HTMLResponse("""<div class="alert alert-success shadow-lg">
+                            <span>Passwort wurde erfolgreich geändert.</span>
+                            <div>
+                                <button class="btn btn-sm" hx-get="/login" hx-target="body" hx-push-url="true">Zum Login</button>
+                            </div>
+                            </div>""")
+    except:
+        return HTMLResponse("""<div class="alert alert-error">
+                                <span>Token ist ungültig!</span><button class="btn btn-xs btn-active btn-neutral" hx-get="/login" hx-target="body">Erneut zurücksetzen</Button>
+                            </div>""")

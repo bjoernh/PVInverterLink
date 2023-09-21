@@ -1,7 +1,6 @@
 {% extends "base.jinja2" %}
 {% block title %}Login{% endblock %}
 {% block content %}
-  <main class="flex flex-col justify-center px-6 py-12 lg:px-8">
     <div class="sm:mx-auto sm:w-full sm:max-w-sm">
       <h2 class="mt-10 text-3xl font-bold leading-9 tracking-tight">Login</h2>
     </div>
@@ -22,5 +21,20 @@
     <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
       <b><button class="btn" hx-get="/signup" hx-target="body" hx-push-url="true">Account anlegen</button></b>
     </div>
-  </main>
+ 
+    <div id="reset_password" class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+
+          <button class="btn"
+                  hx-post="/request_reset_passwort"
+                  hx-push-url="true"
+                  hx-prompt="email"
+                  hx-target="#response">
+            Passwort Zurücksetzen
+          </button>
+          
+
+    </div>
+    <div id="reset_password" class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+      <div id="response"></div>
+    </div>
 {% endblock %}

@@ -13,7 +13,7 @@ from sqladmin import ModelView
 from db import User, get_user_db
 from solar_backend.config import settings, DEV_TESTING
 from solar_backend.utils.influx import inflx
-from solar_backend.utils.helpers import send_verify_mail
+from solar_backend.utils.helpers import send_verify_mail, send_reset_passwort_mail
 
 logger = structlog.get_logger()
 
@@ -39,6 +39,7 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int], ModelView):
     async def on_after_forgot_password(
         self, user: User, token: str, request: Optional[Request] = None
     ):
+        await send_reset_passwort_mail(user.email, token)
         logger.info(f"User has forgot their password.",user=user, token=token)
 
     async def on_after_request_verify(
