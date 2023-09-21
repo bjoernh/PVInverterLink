@@ -63,7 +63,7 @@ async def get_reset_password(request: Request, user_manager: BaseUserManager[mod
     user = await user_manager.get_by_email(email)
     await user_manager.forgot_password(user)
     return HTMLResponse("""<div class="alert alert-info">
-                                <span>Email wurde verschickt...</span>
+                                <span><i class="fa-solid fa-circle-info"></i> Email wurde verschickt...</span>
                             </div>""")
 
 
@@ -83,18 +83,18 @@ async def post_reset_password(
     ):
     if new_password1 != new_password2:
         return HTMLResponse("""<div class="alert alert-error">
-                                <span>Beide neuen Passwörter müssen gleich sein!</span>
+                                <span><i class="fa-solid fa-circle-xmark"></i> Beide neuen Passwörter müssen gleich sein!</span>
                             </div>""")
 
     try:
-        #await user_manager.reset_password(token, new_password1)
+        await user_manager.reset_password(token, new_password1)
         return HTMLResponse("""<div class="alert alert-success shadow-lg">
-                            <span>Passwort wurde erfolgreich geändert.</span>
+                            <span><i class="fa-solid fa-circle-check"></i> Passwort wurde erfolgreich geändert.</span>
                             <div>
                                 <button class="btn btn-sm" hx-get="/login" hx-target="body" hx-push-url="true">Zum Login</button>
                             </div>
                             </div>""")
     except:
         return HTMLResponse("""<div class="alert alert-error">
-                                <span>Token ist ungültig!</span><button class="btn btn-xs btn-active btn-neutral" hx-get="/login" hx-target="body">Erneut zurücksetzen</Button>
+                                <span><i class="fa-solid fa-circle-xmark"></i> Token ist ungültig!</span><button class="btn btn-xs btn-active btn-neutral" hx-get="/login" hx-target="body">Erneut zurücksetzen</Button>
                             </div>""")
