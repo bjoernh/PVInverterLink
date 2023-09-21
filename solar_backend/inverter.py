@@ -15,6 +15,10 @@ async def create_influx_bucket(user: User, bucket_name: str):
     bucket = inflx.create_bucket(bucket_name, user.influx_org_id)
     return bucket.id
 
+async def delete_influx_bucket(user: User, bucket_id: str):
+    inflx = InfluxManagement(user.influx_url)
+    inflx.connect(username=user.email, password=user.hashed_password)
+    inflx.delete_bucket(bucket_id)
 
 class InverterAdmin(ModelView, model=Inverter):
     async def on_model_change(self, data, model, is_created):
