@@ -31,7 +31,7 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     inverters = relationship("Inverter", back_populates="users")
     first_name: Mapped[str]  = mapped_column(String(32))
     last_name: Mapped[str] = mapped_column(String(32))
-    influx_url: Mapped[str] = mapped_column(String(64), default="http://localhost:8086")
+    influx_url: Mapped[str] = mapped_column(String(64), default=settings.INFLUX_URL)
     influx_org_id: Mapped[Optional[str]]
     influx_token: Mapped[Optional[str]]
     

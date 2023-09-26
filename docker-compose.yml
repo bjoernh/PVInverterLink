@@ -1,13 +1,39 @@
 version: '3'
-
 services:
+  backend:
+    build: .
+    ports:
+      - 8000:80
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend.env:/app/solar_backend/backend.env
+
   influxdb:
     image: "influxdb:2.7-alpine"
     ports:
     - 8086:8086
     volumes:
-      - ./influxdb/data:/var/lib/influxdb
-      - ./influxdb/config:/etc/influxdb
-      - ./influxdb/init:/docker-entrypoint-initdb.d
+      - influxdb:/var/lib/influxdb2:rw
     env_file: 
-    - influxdb.env
+      - influxdb.env
+
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: deyehard
+      POSTGRES_PASSWORD: dev-testing-ok
+      POSTGRES_DB: deyehard
+    ports:
+      - 5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 2s
+
+volumes:
+  pgdata:
+  influxdb:

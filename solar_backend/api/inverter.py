@@ -12,7 +12,7 @@ from solar_backend.schemas import InverterAdd
 from solar_backend.users import current_active_user, current_superuser_bearer
 from solar_backend.db import Inverter
 from solar_backend.inverter import create_influx_bucket, delete_influx_bucket
-from solar_backend.config import DEV_TESTING, settings
+from solar_backend.config import WEB_DEV_TESTING, settings
 
 
 logger = structlog.get_logger()
@@ -31,7 +31,7 @@ async def post_add_inverter(inverter_to_add: InverterAdd, db_session = Depends(g
     if user is None:
         return RedirectResponse('/login', status_code=status.HTTP_303_SEE_OTHER)
     
-    if not DEV_TESTING:
+    if not WEB_DEV_TESTING:
         bucket_id = await create_influx_bucket(user, inverter_to_add.name)
     else:
         bucket_id = "dev-test"

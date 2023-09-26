@@ -17,16 +17,17 @@ class MailSettings(BaseModel):
     VALIDATE_CERTS: bool = True
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore', env_nested_delimiter='__')
+    model_config = SettingsConfigDict(env_file='backend.env', env_file_encoding='utf-8', extra='ignore', env_nested_delimiter='__')
     DATABASE_URL: str
     AUTH_SECRET: str
-    INFLUX_URL: AnyHttpUrl
+    INFLUX_URL: str
+    INFLUX_OPERATOR_TOKEN: str
     BASE_URL: AnyHttpUrl
     FASTMAIL: ConnectionConfig
     COOKIE_SECURE: bool = True
 
-settings = Settings(_env_file='.env', _env_file_encoding='utf-8')
+settings = Settings(_env_file='backend.env', _env_file_encoding='utf-8')
 
 fastmail = FastMail(settings.FASTMAIL)
 
-DEV_TESTING = False
+WEB_DEV_TESTING = False  # setting to true will disable influx user, org and bucket creation for developing

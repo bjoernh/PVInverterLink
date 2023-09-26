@@ -2,10 +2,7 @@ import structlog
 from influxdb_client import Bucket, InfluxDBClient, OrganizationsService, AddResourceMemberRequestBody, User, Organization, Authorization
 from influxdb_client.domain.permission import Permission
 from influxdb_client.domain.permission_resource import PermissionResource
-
-#TODO: move to config
-# THIS must be an operator TOKEN!
-AUTH_TOKEN = "RT0HJE7H2MozT4HQCcq46xxSryV2Y1Nr1vUQZlU1jzplCFnlOayWQZV_IYZ-WKNddhXC3skguvxSkWDoH2RfvA=="
+from solar_backend.config import settings
 
 
 logger = structlog.get_logger()
@@ -14,7 +11,7 @@ logger = structlog.get_logger()
 class InfluxManagement:
     def __init__(self, db_url: str):
         self.db_url = db_url
-        self.token = AUTH_TOKEN
+        self.token = settings.INFLUX_OPERATOR_TOKEN
         self.connected = False
     
     def connect(self, org: str = None, username: str = None, password: str = None):
@@ -81,7 +78,7 @@ class InfluxManagement:
         return authorization
 
 
-inflx = InfluxManagement(db_url="http://localhost:8086")
+inflx = InfluxManagement(db_url=settings.INFLUX_URL)
 inflx.connect(org='wtf')
 
 
