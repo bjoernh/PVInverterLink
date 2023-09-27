@@ -1,5 +1,5 @@
 import structlog
-
+from pprint import pprint
 from pydantic import ValidationError
 
 from fastapi import APIRouter, Depends, Request, status
@@ -10,6 +10,7 @@ from solar_backend.db import Inverter, User, get_async_session
 
 from sqlalchemy import select
 from solar_backend.users import current_active_user
+from solar_backend.inverter import extend_current_powers
 from solar_backend.schemas import UserCreate
 from fastapi_users import models, exceptions
 
@@ -26,4 +27,9 @@ async def get_start(request: Request, user: User = Depends(current_active_user),
 
     async with db_session as session:
         inverters = await session.scalars(select(Inverter).where(Inverter.user_id == user.id))
+        inverters = inverters.all()
+
+    if inverters:
+        await extend_current_powers(list(inverters))
+    
     return {"user": user, "inverters": inverters}

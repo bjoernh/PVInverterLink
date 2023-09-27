@@ -22,8 +22,12 @@ class Inverter(Base):
     serial_logger: Mapped[str] = mapped_column(String)
     influx_bucked_id: Mapped[Optional[str]]
     sw_version: Mapped[Optional[str]] = mapped_column(String)
+    
     def __repr__(self):
         return f"{self.id} - {self.name}"
+    
+    class Config:
+        orm_mode = True
 
 class User(SQLAlchemyBaseUserTable[int], Base):
     __tablename__ = "user"

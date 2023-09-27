@@ -1,5 +1,4 @@
 from typing import Optional
-import uuid
 
 from pydantic.dataclasses import dataclass
 
@@ -36,3 +35,5 @@ class Inverter:
     influx_bucked_id: str
     sw_version: str
     user: schemas.BaseUser[int]
+    current_power: Optional[int]
+    last_update: Optional[str]

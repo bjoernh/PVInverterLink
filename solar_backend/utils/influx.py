@@ -80,8 +80,3 @@ class InfluxManagement:
 
 inflx = InfluxManagement(db_url=settings.INFLUX_URL)
 inflx.connect(org='wtf')
-
-
-if __name__ == "__main__":
-    user, org, token = inflx.create_influx_user_and_org("tester16@64b.de", "12345678")
-    bucket = inflx.create_bucket("test_bucket16", org_id=org)

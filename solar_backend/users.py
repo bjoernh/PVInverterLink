@@ -54,7 +54,7 @@ async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db
 
 
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=settings.AUTH_SECRET, lifetime_seconds=3600)
+    return JWTStrategy(secret=settings.AUTH_SECRET, lifetime_seconds=60*60*24*2)
 
 
 auth_backend_user = AuthenticationBackend(
