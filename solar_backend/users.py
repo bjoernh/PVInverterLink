@@ -10,7 +10,7 @@ from fastapi_users.authentication import (
 )
 from fastapi_users.db import SQLAlchemyUserDatabase
 from sqladmin import ModelView
-from db import User, get_user_db
+from solar_backend.db import User, get_user_db
 from solar_backend.config import settings, WEB_DEV_TESTING
 from solar_backend.utils.influx import inflx
 from solar_backend.utils.helpers import send_verify_mail, send_reset_passwort_mail

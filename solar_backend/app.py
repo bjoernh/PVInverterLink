@@ -1,22 +1,21 @@
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI
 from pathlib import Path
-from fastapi.responses import HTMLResponse
+import os
+
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
-from fastapi_htmx import htmx, htmx_init
+from fastapi_htmx import htmx_init
 from sqladmin import Admin
 
-from db import User, create_db_and_tables, engine
-from schemas import UserCreate, UserRead, UserUpdate
+from solar_backend.db import User, create_db_and_tables, engine, sessionmanager
 from solar_backend.inverter import InverterAdmin
 from solar_backend.users import UserAdmin
-from solar_backend.api import signup, login, start, inverter
+from solar_backend.api import signup, login, start, inverter, healthcheck
 from solar_backend.config import settings
 from solar_backend.users import auth_backend_bearer, fastapi_users_bearer, current_active_user_bearer
 from solar_backend.utils.admin_auth import authentication_backend
 import structlog
 
-from pydantic import BaseModel, EmailStr, Field
 
 
 
@@ -36,7 +35,7 @@ app = FastAPI(title="Deye Hard API",
                 },
 )
 app.add_middleware(SessionMiddleware, secret_key=settings.AUTH_SECRET)
-htmx_init(templates=Jinja2Templates(directory=Path("templates")))
+htmx_init(templates=Jinja2Templates(directory=Path(os.getcwd()) / Path("templates")))
 
 admin = Admin(app=app, authentication_backend=authentication_backend, engine=engine)
 
@@ -75,6 +74,7 @@ app.include_router(signup.router)
 app.include_router(login.router)
 app.include_router(start.router)
 app.include_router(inverter.router)
+app.include_router(healthcheck.router)
 
 admin.add_view(UserAdmin)
 admin.add_view(InverterAdmin)
@@ -86,5 +86,6 @@ async def authenticated_route(user: User = Depends(current_active_user_bearer)):
 
 @app.on_event("startup")
 async def on_startup():
+    sessionmanager.init(settings.DATABASE_URL)
     # Not needed after setup Alembic
     await create_db_and_tables()

@@ -31,7 +31,23 @@ humanize = "^4.8.0"
 [tool.poetry.group.dev.dependencies]
 pytailwindcss = "^0.2.0"
 pytest = "^7.4.0"
+pytest-asyncio = "^0.21.1"
+pytest-async-sqlalchemy = "^0.2.0"
+faker = "^19.6.2"
+factory-boy = "^3.3.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+markers = [
+    "unit: marks unit tests",
+    "integration: marks tests as integration tests, slow tests",
+    "smoke: tests if foundational errors exist",
+    "unit: tests that are unit tests",
+    "property_based: uses property based testing principles",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
