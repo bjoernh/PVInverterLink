@@ -38,6 +38,7 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     influx_url: Mapped[str] = mapped_column(String(64), default=settings.INFLUX_URL)
     influx_org_id: Mapped[Optional[str]]
     influx_token: Mapped[Optional[str]]
+    tmp_pass: Mapped[Optional[str]]
     
     def __repr__(self):
         return f"{self.id} - {self.first_name} {self.last_name}"
@@ -63,7 +64,7 @@ class DatabaseSessionManager:
         if self._engine is None:
             raise Exception("DatabaseSessionManager is not initialized")
 
-        async with self._engine.begin() as connection:
+        async with self._engine.begin(echo=True) as connection:
             try:
                 yield connection
             except Exception:

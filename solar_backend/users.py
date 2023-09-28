@@ -10,8 +10,9 @@ from fastapi_users.authentication import (
 )
 from fastapi_users.db import SQLAlchemyUserDatabase
 from sqladmin import ModelView
+from sqlalchemy import update
 from solar_backend.db import User, get_user_db
-from solar_backend.config import settings, WEB_DEV_TESTING
+from solar_backend.config import DEBUG, settings, WEB_DEV_TESTING
 from solar_backend.utils.influx import inflx
 from solar_backend.utils.email import send_verify_mail, send_reset_passwort_mail
 
@@ -31,11 +32,15 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int], ModelView):
         logger.info(f"User {user.id} is verified.", user=user)
         if not WEB_DEV_TESTING:
             inflx.connect(org='wtf')
-            _inflx_user, org, token = inflx.create_influx_user_and_org(f"{user.email}", user.hashed_password)
+            _inflx_user, org, token = inflx.create_influx_user_and_org(f"{user.email}", user.tmp_pass)
             logger.info(f"Influx setup for user {user.first_name} {user.last_name} completed")
-            user.influx_org_id = org.id
-            user.influx_token = token
-            await self.user_db.session.commit()
+            update_dict = {
+                "influx_org_id": org.id,
+                "influx_token": token,
+                "tmp_pass": ""}
+
+            await self.user_db.update(user, update_dict)
+            
 
     async def on_after_forgot_password(
         self, user: User, token: str, request: Optional[Request] = None
@@ -63,7 +68,6 @@ auth_backend_user = AuthenticationBackend(
     transport=CookieTransport(cookie_secure=settings.COOKIE_SECURE),
     get_strategy=get_jwt_strategy,
 )
-
 
 
 auth_backend_bearer = AuthenticationBackend(

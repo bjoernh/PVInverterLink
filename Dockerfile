@@ -29,6 +29,8 @@ ENV PYTHONPATH /app/
 EXPOSE 80
 
 COPY ./solar_backend/ /app/solar_backend/
+COPY ./alembic/ /app/alembic/
+COPY ./alembic.ini /app/
 
 WORKDIR /app/solar_backend/
 

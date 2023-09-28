@@ -9,18 +9,21 @@ from solar_backend.db import User
 
 
 class UserRead(schemas.BaseUser[int]):
-    first_name: Optional[str]
-    last_name: Optional[str]
-
+    first_name: str
+    last_name: str
+    tmp_pass: Optional[str]
 
 class UserCreate(schemas.BaseUserCreate):
     first_name: str
     last_name: str
+    tmp_pass: Optional[str]
 
 
 class UserUpdate(schemas.BaseUserUpdate):
-    first_name: Optional[str]
-    last_name: Optional[str]
+    first_name: str
+    last_name: str
+    tmp_pass: Optional[str]
+
 
 @dataclass
 class InverterAdd:

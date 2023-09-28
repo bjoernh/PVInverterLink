@@ -46,7 +46,7 @@ async def post_signup(
     result = True
     
     try:
-        user = UserCreate(first_name=first_name, last_name=last_name, email=email, password=password)
+        user = UserCreate(first_name=first_name, last_name=last_name, email=email, password=password, tmp_pass=password)
     except ValidationError as e:
         return {"result": False, "error": str(e)}
     

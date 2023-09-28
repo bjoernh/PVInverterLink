@@ -19,7 +19,7 @@ class InfluxManagement:
             self._client = InfluxDBClient(url=self.db_url, token=self.token, org=org)
         else:
             self._client = InfluxDBClient(url=self.db_url, username=username, password=password, org=org)
-        self.connect = True
+        self.connected = True
         logger.info(f"successful connected to {self.db_url}", org=org, url=self.db_url)
     
     def create_organization(self, name) -> Organization:
