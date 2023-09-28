@@ -79,4 +79,3 @@ class InfluxManagement:
 
 
 inflx = InfluxManagement(db_url=settings.INFLUX_URL)
-inflx.connect(org='wtf')

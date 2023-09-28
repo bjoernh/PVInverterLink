@@ -14,8 +14,8 @@ class UserRead(schemas.BaseUser[int]):
 
 
 class UserCreate(schemas.BaseUserCreate):
-    first_name: Optional[str]
-    last_name: Optional[str]
+    first_name: str
+    last_name: str
 
 
 class UserUpdate(schemas.BaseUserUpdate):

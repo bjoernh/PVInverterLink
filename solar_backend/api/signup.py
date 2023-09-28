@@ -12,13 +12,16 @@ from solar_backend.config import settings
 from aiosmtplib.errors import SMTPRecipientsRefused
 from solar_backend.users import auth_backend_user, get_jwt_strategy
 from solar_backend.users import get_user_manager
+from pathlib import Path
+import os
 
 
 from solar_backend.schemas import UserCreate
 
 from fastapi_users import models, exceptions
 
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory=Path(__file__).parent.resolve() / Path("../templates"))
+
 
 logger = structlog.get_logger()
 
@@ -67,6 +70,7 @@ async def get_signup(token: str,
         user = await user_manager.verify(token)
         logger.info(f"{user.email} is now verfied", user=user)
         response = await auth_backend_user.login(get_jwt_strategy(), user)
+
         return templates.TemplateResponse("complete_verify.jinja2", {"request": request, "result": True}, headers=response.headers)
 
     except exceptions.UserAlreadyVerified:

@@ -8,6 +8,8 @@ import pytest_asyncio
 from solar_backend.db import get_async_session, sessionmanager
 from solar_backend.app import app
 from httpx import AsyncClient
+from solar_backend.api import inverter
+from solar_backend import users
 
 
 DB_TESTING_URI = "sqlite+aiosqlite://"
@@ -33,7 +35,6 @@ async def create_tables(event_loop):
         await sessionmanager.create_all(connection)
 
 
-
 @pytest_asyncio.fixture(scope="function", autouse=True)
 async def session_override(event_loop):
     async def get_db_override():
@@ -46,3 +47,9 @@ async def session_override(event_loop):
 def client(event_loop):
     c = AsyncClient(app=app, base_url='http://test')
     yield c
+
+
+@pytest.fixture(scope="function")
+def without_influx(mocker):
+    mocker.patch.object(inverter, 'WEB_DEV_TESTING', True)
+    mocker.patch.object(users, 'WEB_DEV_TESTING', True)

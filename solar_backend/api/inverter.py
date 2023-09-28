@@ -12,7 +12,7 @@ from solar_backend.schemas import InverterAdd
 from solar_backend.users import current_active_user, current_superuser_bearer
 from solar_backend.db import Inverter
 from solar_backend.inverter import create_influx_bucket, delete_influx_bucket
-from solar_backend.config import WEB_DEV_TESTING, settings
+from solar_backend.config import WEB_DEV_TESTING
 
 
 logger = structlog.get_logger()

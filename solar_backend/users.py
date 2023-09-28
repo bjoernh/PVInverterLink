@@ -13,7 +13,7 @@ from sqladmin import ModelView
 from solar_backend.db import User, get_user_db
 from solar_backend.config import settings, WEB_DEV_TESTING
 from solar_backend.utils.influx import inflx
-from solar_backend.utils.helpers import send_verify_mail, send_reset_passwort_mail
+from solar_backend.utils.email import send_verify_mail, send_reset_passwort_mail
 
 logger = structlog.get_logger()
 
@@ -30,6 +30,7 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int], ModelView):
     async def on_after_verify(self, user: User, request: Optional[Request] = None):
         logger.info(f"User {user.id} is verified.", user=user)
         if not WEB_DEV_TESTING:
+            inflx.connect(org='wtf')
             _inflx_user, org, token = inflx.create_influx_user_and_org(f"{user.email}", user.hashed_password)
             logger.info(f"Influx setup for user {user.first_name} {user.last_name} completed")
             user.influx_org_id = org.id
