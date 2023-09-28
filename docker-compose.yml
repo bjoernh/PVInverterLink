@@ -9,6 +9,8 @@ services:
         condition: service_healthy
     volumes:
       - ./backend.env:/app/solar_backend/backend.env
+    environment:
+      - ENV_FILE=backend.env
 
   influxdb:
     image: "influxdb:2.7-alpine"

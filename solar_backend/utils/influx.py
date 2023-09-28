@@ -83,16 +83,16 @@ class InfluxManagement:
     
     def get_latest_values(self, user, bucket: str) -> dict:
         query_api = self._client.query_api()
-        tables = query_api.query(f"""from(bucket:"{bucket}") 
+        
+        try:
+            tables = query_api.query(f"""from(bucket:"{bucket}") 
                                  |> range(start: -24h) |> filter(fn: (r) => r["_measurement"] == "power")
                                  |> filter(fn: (r) => r["_field"] == "power_sued") 
                                  |> timedMovingAverage(every: 5m, period: 10m) |> last()""", org=user.email)
-        if tables:
             last = tables[0].records[0]
             return ( last.get_time(), int(last.get_value()) )
-        else:
+        except:
             raise NoValuesException("influx don't return any value ")
-
 
 
 inflx = InfluxManagement(db_url=settings.INFLUX_URL)

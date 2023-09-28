@@ -2,8 +2,16 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import AnyHttpUrl, BaseModel, AnyUrl
 from fastapi_mail import ConnectionConfig, FastMail, ConnectionConfig
 from pathlib import Path
+import os
+import structlog
+logger = structlog.get_logger()
 
-path_to_env = Path(__file__).parent.resolve() / Path('backend.local.env')
+ENF_FILE = os.environ.get('ENV_FILE', None)
+if ENF_FILE is None:
+    logger.critical("No Env File found, check if ENV_FILE is defined")
+
+
+path_to_env = Path(__file__).parent.resolve() / Path(ENF_FILE)
 
 class MailSettings(BaseModel):
     SUPPRESS_SEND: bool
