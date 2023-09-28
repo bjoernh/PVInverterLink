@@ -3,10 +3,13 @@ from influxdb_client import Bucket, InfluxDBClient, OrganizationsService, AddRes
 from influxdb_client.domain.permission import Permission
 from influxdb_client.domain.permission_resource import PermissionResource
 from solar_backend.config import settings
-
+#from solar_backend.users import User as UserBackend  #TODO: cycle import
 
 logger = structlog.get_logger()
 
+
+class NoValuesException(Exception):
+    pass
 
 class InfluxManagement:
     def __init__(self, db_url: str):
@@ -14,13 +17,14 @@ class InfluxManagement:
         self.token = settings.INFLUX_OPERATOR_TOKEN
         self.connected = False
     
-    def connect(self, org: str = None, username: str = None, password: str = None):
+    def connect(self, org: str = None, username: str = None, password: str = None, token: str = None):
         if not username:
-            self._client = InfluxDBClient(url=self.db_url, token=self.token, org=org)
+            self._client = InfluxDBClient(url=self.db_url, token=token if token else self.token, org=org)
         else:
             self._client = InfluxDBClient(url=self.db_url, username=username, password=password, org=org)
         self.connected = True
         logger.info(f"successful connected to {self.db_url}", org=org, url=self.db_url)
+
     
     def create_organization(self, name) -> Organization:
         org_api = self._client.organizations_api()
@@ -76,6 +80,19 @@ class InfluxManagement:
         authorization = authorization.create_authorization(org_id=org_id, permissions=permissions)
         logger.info("authorization created", authorization=authorization)
         return authorization
+    
+    def get_latest_values(self, user, bucket: str) -> dict:
+        query_api = self._client.query_api()
+        tables = query_api.query(f"""from(bucket:"{bucket}") 
+                                 |> range(start: -24h) |> filter(fn: (r) => r["_measurement"] == "power")
+                                 |> filter(fn: (r) => r["_field"] == "power_sued") 
+                                 |> timedMovingAverage(every: 5m, period: 10m) |> last()""", org=user.email)
+        if tables:
+            last = tables[0].records[0]
+            return ( last.get_time(), int(last.get_value()) )
+        else:
+            raise NoValuesException("influx don't return any value ")
+
 
 
 inflx = InfluxManagement(db_url=settings.INFLUX_URL)

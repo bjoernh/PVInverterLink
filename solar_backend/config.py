@@ -34,4 +34,4 @@ fastmail = FastMail(settings.FASTMAIL)
 
 WEB_DEV_TESTING = False  # setting to true will disable influx user, org and bucket creation for developing
 
-DEBUG = True  # turn on echo mode of sqlalchemy
+DEBUG = False  # turn on echo mode of sqlalchemy

@@ -30,6 +30,6 @@ async def get_start(request: Request, user: User = Depends(current_active_user),
         inverters = inverters.all()
 
     if inverters:
-        await extend_current_powers(list(inverters))
+        await extend_current_powers(user, list(inverters))
     
     return {"user": user, "inverters": inverters}
