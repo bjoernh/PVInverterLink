@@ -6,7 +6,7 @@ from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine, AsyncEngine, AsyncConnection
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from solar_backend.config import settings
+from solar_backend.config import settings, DEBUG
 
 
 class Base(DeclarativeBase):
@@ -49,7 +49,7 @@ class DatabaseSessionManager:
         self._sessionmaker: async_sessionmaker | None = None
 
     def init(self, host: str):
-        self._engine = create_async_engine(host)
+        self._engine = create_async_engine(host, echo=DEBUG)
         self._sessionmaker = async_sessionmaker(autocommit=False, bind=self._engine)
 
     async def close(self):
@@ -64,7 +64,7 @@ class DatabaseSessionManager:
         if self._engine is None:
             raise Exception("DatabaseSessionManager is not initialized")
 
-        async with self._engine.begin(echo=True) as connection:
+        async with self._engine.begin() as connection:
             try:
                 yield connection
             except Exception:

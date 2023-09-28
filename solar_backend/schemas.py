@@ -11,18 +11,18 @@ from solar_backend.db import User
 class UserRead(schemas.BaseUser[int]):
     first_name: str
     last_name: str
-    tmp_pass: Optional[str]
+    tmp_pass: Optional[str] = None
 
 class UserCreate(schemas.BaseUserCreate):
     first_name: str
     last_name: str
-    tmp_pass: Optional[str]
+    tmp_pass: Optional[str] = None
 
 
 class UserUpdate(schemas.BaseUserUpdate):
     first_name: str
     last_name: str
-    tmp_pass: Optional[str]
+    tmp_pass: Optional[str] = None
 
 
 @dataclass
@@ -38,5 +38,5 @@ class Inverter:
     influx_bucked_id: str
     sw_version: str
     user: schemas.BaseUser[int]
-    current_power: Optional[int]
-    last_update: Optional[str]
+    current_power: Optional[int] = None
+    last_update: Optional[str] = None
