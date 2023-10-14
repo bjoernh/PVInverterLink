@@ -87,8 +87,10 @@ class InfluxManagement:
         try:
             tables = query_api.query(f"""from(bucket:"{bucket}") 
                                  |> range(start: -24h) |> filter(fn: (r) => r["_measurement"] == "power")
-                                 |> filter(fn: (r) => r["_field"] == "power_sued") 
-                                 |> timedMovingAverage(every: 5m, period: 10m) |> last()""", org=user.email)
+                                 |> filter(fn: (r) => r["_measurement"] == "grid")
+                                 |> filter(fn: (r) => r["_field"] == "total_output_power")
+                                 |> timedMovingAverage(every: 5m, period: 10m)
+                                 |> last()""", org=user.email)
             last = tables[0].records[0]
             return ( last.get_time(), int(last.get_value()) )
         except:
