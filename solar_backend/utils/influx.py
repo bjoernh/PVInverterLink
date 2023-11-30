@@ -86,7 +86,7 @@ class InfluxManagement:
         
         try:
             tables = query_api.query(f"""from(bucket:"{bucket}") 
-                                 |> range(start: -24h) |> filter(fn: (r) => r["_measurement"] == "power")
+                                 |> range(start: -24h)
                                  |> filter(fn: (r) => r["_measurement"] == "grid")
                                  |> filter(fn: (r) => r["_field"] == "total_output_power")
                                  |> timedMovingAverage(every: 5m, period: 10m)
