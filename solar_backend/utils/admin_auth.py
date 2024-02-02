@@ -29,7 +29,9 @@ class AdminAuth(AuthenticationBackend):
                 async with get_user_manager_context(user_db) as user_manager:
                     try:
                         user = await user_manager.authenticate(OAuth2PasswordRequestForm(username=form["username"], password=form["password"]))
-                    except exceptions.UserNotExists:
+                    except:
+                        return False
+                    if not user:
                         return False
                     if not user.is_superuser:
                         return False
