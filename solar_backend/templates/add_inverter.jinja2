@@ -1,21 +1,24 @@
 {% extends "base.jinja2" %}
 {% block title %}Email verifizieren{% endblock %}
 {% block content %}
-    <div class="sm:mx-auto sm:w-full sm:max-w-sm">
+    <div id="add" hx-ext="response-targets">
+    <div  class="sm:mx-auto sm:w-full sm:max-w-sm">
       <h2 class="mt-10 text-3xl font-bold leading-9 tracking-tight"> Wechselrichter hinzufügen</h2>
     </div>
     <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
 
-    <form class="space-y-4" hx-post="/inverter" hx-ext='json-enc' hx-target="body" hx-push-url="true">
+    <form class="space-y-4" hx-post="/inverter" hx-ext='json-enc' hx-target="#add" hx-target-422="#exists">
         <div>
           <input name="name" type="text" placeholder="Name" class="input input-bordered w-full max-w-xs" />
         </div>
         <div>
           <input name="serial" type="text" placeholder="Seriennummer" class="input input-bordered w-full max-w-xs" />
         </div>
+        <div id="exists"></div>
         <div>
           <button type="submit" class="btn btn-active btn-primary">Hinzufügen</button>
         </div>
       </form>
+    </div>
     </div>
 {% endblock %}

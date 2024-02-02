@@ -1,9 +1,10 @@
+import asyncpg
 from sqlalchemy import select
 import structlog
 from fastapi_users import BaseUserManager
 
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, status, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi_htmx import htmx
 
@@ -31,24 +32,34 @@ async def post_add_inverter(inverter_to_add: InverterAdd, db_session = Depends(g
     if user is None:
         return RedirectResponse('/login', status_code=status.HTTP_303_SEE_OTHER)
     
-    if not WEB_DEV_TESTING:
-        bucket_id = await create_influx_bucket(user, inverter_to_add.name)
-    else:
-        bucket_id = "dev-test"
-        token = "dev-token"
-    new_inverter_obj = Inverter(user_id=user.id, name=inverter_to_add.name, serial_logger=inverter_to_add.serial, influx_bucked_id=bucket_id, sw_version='-')
-    
-    # TODO: catch errors
+    # check that inverter serial doesn't exist
     async with db_session as session:
-        session.add(new_inverter_obj)
-        await session.commit()
+        inverters = await session.scalars(select(Inverter).where(Inverter.serial_logger == inverter_to_add.serial))
+        inverters = inverters.all()
+        if inverters:
+            return HTMLResponse("<p style='color:red;'>Seriennummer existiert bereits</p>", status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+        if not WEB_DEV_TESTING:
+                bucket_id = await create_influx_bucket(user, inverter_to_add.name)
+        else:
+            bucket_id = "dev-test"
+            token = "dev-token"
+        new_inverter_obj = Inverter(user_id=user.id, name=inverter_to_add.name, serial_logger=inverter_to_add.serial, influx_bucked_id=bucket_id, sw_version='-')
+        
+        try:
+            session.add(new_inverter_obj)
+            await session.commit()
+        except asyncpg.exceptions.UniqueViolationError:
+            logger.error("Inverter serial already exists")
     
-    return RedirectResponse('/', status_code=status.HTTP_303_SEE_OTHER)
+    return HTMLResponse("""
+                        <div class="sm:mx-auto sm:w-full sm:max-w-sm">
+                        <h3 class="mt-10 text-3xl font-bold leading-9 tracking-tight"> Wechselrichter erfolgreich registriert</h3>
+                        <a href="/" hx-boost="false"><button class="btn">Weiter</button></a></div>""")
 
 
 @router.delete("/inverter/{inverter_id}", response_class=HTMLResponse)
-@htmx("add_inverter", "add_inverter")
-async def get_add_inverter(inverter_id: int, request: Request, db_session = Depends(get_async_session), user: User = Depends(current_active_user)):
+async def delete_inverter(inverter_id: int, request: Request, db_session = Depends(get_async_session), user: User = Depends(current_active_user)):
     """Delete a inverter"""
     if user is None:
         return RedirectResponse('/login', status_code=status.HTTP_303_SEE_OTHER)
@@ -57,12 +68,12 @@ async def get_add_inverter(inverter_id: int, request: Request, db_session = Depe
         inverter = await session.get(Inverter, inverter_id)
         bucket_id = inverter.influx_bucked_id
         await session.delete(inverter)
-        await session.commit()
     
-    logger.info(f"inverter {inverter_id} deleted")
+        logger.info(f"inverter {inverter_id} deleted")
 
-    await delete_influx_bucket(user, bucket_id)
-    
+        await delete_influx_bucket(user, bucket_id)
+        await session.commit()
+        
     return ""
 
 
