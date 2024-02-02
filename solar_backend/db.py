@@ -19,9 +19,11 @@ class Inverter(Base):
     user_id = mapped_column(ForeignKey("user.id"))
     users = relationship("User", back_populates="inverters")
     name: Mapped[str] = mapped_column(String)
-    serial_logger: Mapped[str] = mapped_column(String)
+    serial_logger: Mapped[str] = mapped_column(String, unique=True)
     influx_bucked_id: Mapped[Optional[str]]
     sw_version: Mapped[Optional[str]] = mapped_column(String)
+    rated_power: Mapped[Optional[int]] = mapped_column(Integer)
+    number_of_mppts: Mapped[Optional[int]] = mapped_column(Integer)
     
     def __repr__(self):
         return f"{self.id} - {self.name}"

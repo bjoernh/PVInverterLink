@@ -40,3 +40,5 @@ class Inverter:
     user: schemas.BaseUser[int]
     current_power: Optional[int] = None
     last_update: Optional[str] = None
+    rated_power: Optional[int] = None
+    number_of_mppts: Optional[int] = None
