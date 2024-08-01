@@ -1,22 +1,62 @@
 ---
 kind: pipeline
 type: docker
-name: build
+name: test
+
+trigger:
+  event:
+    - pull_request
+  branch:
+    - main
+
+steps:
+  - name: build-dry-run
+    image: plugins/docker:20.18.3
+    settings:
+      repo: registry.wtf-eg.net/solar/backend
+      dry_run: true
+
+---
+kind: pipeline
+type: docker
+name: build-main
 
 trigger:
   event:
     - push
   branch:
-    - master
+    - main
 
 steps:
-  - name: build-backend
-    image: plugins/docker
+  - name: build
+    image: plugins/docker:20.18.3
     settings:
       repo: registry.wtf-eg.net/solar/backend
+      tags:
+        - main
       registry: registry.wtf-eg.net
       username:
         from_secret: "docker_username"
       password:
         from_secret: "docker_password"
 
+---
+kind: pipeline
+type: docker
+name: build-tag
+
+trigger:
+  event:
+    - tag
+
+steps:
+  - name: build
+    image: plugins/docker:20.18.3
+    settings:
+      repo: registry.wtf-eg.net/solar/backend
+      auto_tag: true
+      registry: registry.wtf-eg.net
+      username:
+        from_secret: "docker_username"
+      password:
+        from_secret: "docker_password"
