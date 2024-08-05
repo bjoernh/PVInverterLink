@@ -5,6 +5,13 @@
     ":maintainLockFilesMonthly",
     ":pinVersions"
   ],
+  "packageRules": [
+    {
+      "matchDepTypes": ["dev-dependencies", "dev"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "dev-dependencies (non-major)",
+    }
+  ],
   "schedule": [
     "before 9am on Wednesday"
   ]
