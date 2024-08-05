@@ -11,7 +11,7 @@ trigger:
 
 steps:
   - name: pytest
-    image: python:3.11.9-alpine
+    image: python:3.11.9-alpine@sha256:cab9026aeb3d95351c22e7cdd979133e74d5525985e50fc5b39ef3ef372f616e
     commands:
       - export POETRY_HOME=/opt/poetry
       - python3 -m venv $POETRY_HOME
@@ -19,7 +19,7 @@ steps:
       - $POETRY_HOME/bin/poetry install
       - ENV_FILE=$DRONE_WORKSPACE/ci.env $POETRY_HOME/bin/poetry run pytest
   - name: build-dry-run
-    image: plugins/docker:20.18.3
+    image: plugins/docker:20.18.3@sha256:5c54e77b6c5e6f75b7bbca1bcf0cf5a4a2e90e63b45dac4b4798a3ce14c72cc9
     settings:
       repo: registry.wtf-eg.net/solar/backend
       dry_run: true
@@ -37,7 +37,7 @@ trigger:
 
 steps:
   - name: pytest
-    image: python:3.11.9-alpine
+    image: python:3.11.9-alpine@sha256:cab9026aeb3d95351c22e7cdd979133e74d5525985e50fc5b39ef3ef372f616e
     commands:
       - export POETRY_HOME=/opt/poetry
       - python3 -m venv $POETRY_HOME
@@ -45,7 +45,7 @@ steps:
       - $POETRY_HOME/bin/poetry install
       - ENV_FILE=$DRONE_WORKSPACE/ci.env $POETRY_HOME/bin/poetry run pytest
   - name: build
-    image: plugins/docker:20.18.3
+    image: plugins/docker:20.18.3@sha256:5c54e77b6c5e6f75b7bbca1bcf0cf5a4a2e90e63b45dac4b4798a3ce14c72cc9
     settings:
       repo: registry.wtf-eg.net/solar/backend
       tags:
@@ -67,7 +67,7 @@ trigger:
 
 steps:
   - name: pytest
-    image: python:3.11.9-alpine
+    image: python:3.11.9-alpine@sha256:cab9026aeb3d95351c22e7cdd979133e74d5525985e50fc5b39ef3ef372f616e
     commands:
       - export POETRY_HOME=/opt/poetry
       - python3 -m venv $POETRY_HOME
@@ -75,7 +75,7 @@ steps:
       - $POETRY_HOME/bin/poetry install
       - ENV_FILE=$DRONE_WORKSPACE/ci.env $POETRY_HOME/bin/poetry run pytest
   - name: build
-    image: plugins/docker:20.18.3
+    image: plugins/docker:20.18.3@sha256:5c54e77b6c5e6f75b7bbca1bcf0cf5a4a2e90e63b45dac4b4798a3ce14c72cc9
     settings:
       repo: registry.wtf-eg.net/solar/backend
       auto_tag: true
