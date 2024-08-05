@@ -15,7 +15,7 @@ steps:
     commands:
       - export POETRY_HOME=/opt/poetry
       - python3 -m venv $POETRY_HOME
-      - $POETRY_HOME/bin/pip install poetry==1.2.0
+      - $POETRY_HOME/bin/pip install poetry==1.8.3
       - $POETRY_HOME/bin/poetry install
       - ENV_FILE=$DRONE_WORKSPACE/ci.env poetry run pytest
   - name: build-dry-run
@@ -41,7 +41,7 @@ steps:
     commands:
       - export POETRY_HOME=/opt/poetry
       - python3 -m venv $POETRY_HOME
-      - $POETRY_HOME/bin/pip install poetry==1.2.0
+      - $POETRY_HOME/bin/pip install poetry==1.8.3
       - $POETRY_HOME/bin/poetry install
       - ENV_FILE=$DRONE_WORKSPACE/ci.env poetry run pytest
   - name: build
@@ -71,7 +71,7 @@ steps:
     commands:
       - export POETRY_HOME=/opt/poetry
       - python3 -m venv $POETRY_HOME
-      - $POETRY_HOME/bin/pip install poetry==1.2.0
+      - $POETRY_HOME/bin/pip install poetry==1.8.3
       - $POETRY_HOME/bin/poetry install
       - ENV_FILE=$DRONE_WORKSPACE/ci.env poetry run pytest
   - name: build
