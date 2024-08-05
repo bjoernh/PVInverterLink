@@ -17,7 +17,7 @@ steps:
       - python3 -m venv $POETRY_HOME
       - $POETRY_HOME/bin/pip install poetry==1.8.3
       - $POETRY_HOME/bin/poetry install
-      - ENV_FILE=$DRONE_WORKSPACE/ci.env poetry run pytest
+      - ENV_FILE=$DRONE_WORKSPACE/ci.env $POETRY_HOME/bin/poetry run pytest
   - name: build-dry-run
     image: plugins/docker:20.18.3
     settings:
@@ -43,7 +43,7 @@ steps:
       - python3 -m venv $POETRY_HOME
       - $POETRY_HOME/bin/pip install poetry==1.8.3
       - $POETRY_HOME/bin/poetry install
-      - ENV_FILE=$DRONE_WORKSPACE/ci.env poetry run pytest
+      - ENV_FILE=$DRONE_WORKSPACE/ci.env $POETRY_HOME/bin/poetry run pytest
   - name: build
     image: plugins/docker:20.18.3
     settings:
@@ -73,7 +73,7 @@ steps:
       - python3 -m venv $POETRY_HOME
       - $POETRY_HOME/bin/pip install poetry==1.8.3
       - $POETRY_HOME/bin/poetry install
-      - ENV_FILE=$DRONE_WORKSPACE/ci.env poetry run pytest
+      - ENV_FILE=$DRONE_WORKSPACE/ci.env $POETRY_HOME/bin/poetry run pytest
   - name: build
     image: plugins/docker:20.18.3
     settings:
