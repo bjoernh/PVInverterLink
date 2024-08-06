@@ -12,7 +12,7 @@
       "groupName": "dev-dependencies (non-major)"
     },
     {
-      "matchPackageNames": ["python"],
+      "matchDepNames": ["python"],
       "groupName": "Python",
       "separateMinorPatch": true,
       "separateMultipleMinor": true
