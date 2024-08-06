@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "solar-backend"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = ["Bjoern Hauffe <oss@64b.de>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "~3.11"
 fastapi = "^0.103.1"
 httpx = "^0.24.1"
 fastapi-users = {extras = ["sqlalchemy"], version = "^12.1.0"}
