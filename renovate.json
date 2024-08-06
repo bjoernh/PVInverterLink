@@ -10,7 +10,13 @@
       "matchDepTypes": ["dev-dependencies", "dev"],
       "matchUpdateTypes": ["patch", "minor"],
       "groupName": "dev-dependencies (non-major)"
-    }
+    },
+    {
+      "matchPackageNames": ["python"],
+      "groupName": "Python",
+      "separateMinorPatch": true,
+      "separateMultipleMinor": true
+    },
   ],
   "schedule": [
     "before 9am on Wednesday"
