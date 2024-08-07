@@ -658,13 +658,13 @@ doc = ["Sphinx", "sphinx-rtd-theme", "sphinxcontrib-spelling"]
 
 [[package]]
 name = "faker"
-version = "19.6.2"
+version = "19.13.0"
 description = "Faker is a Python package that generates fake data for you."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "Faker-19.6.2-py3-none-any.whl", hash = "sha256:8fba91068dc26e3159c1ac9f22444a2338704b0991d86605322e454bda420092"},
-    {file = "Faker-19.6.2.tar.gz", hash = "sha256:d5d5953556b0fb428a46019e03fc2d40eab2980135ddef5a9eb3d054947fdf83"},
+    {file = "Faker-19.13.0-py3-none-any.whl", hash = "sha256:da880a76322db7a879c848a0771e129338e0a680a9f695fd9a3e7a6ac82b45e1"},
+    {file = "Faker-19.13.0.tar.gz", hash = "sha256:14ccb0aec342d33aa3889a864a56e5b3c2d56bce1b89f9189f4fbc128b9afc1e"},
 ]
 
 [package.dependencies]
@@ -1581,35 +1581,35 @@ sqlalchemy = ">=1.4.0"
 
 [[package]]
 name = "pytest-asyncio"
-version = "0.21.1"
+version = "0.23.8"
 description = "Pytest support for asyncio"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "pytest-asyncio-0.21.1.tar.gz", hash = "sha256:40a7eae6dded22c7b604986855ea48400ab15b069ae38116e8c01238e9eeb64d"},
-    {file = "pytest_asyncio-0.21.1-py3-none-any.whl", hash = "sha256:8666c1c8ac02631d7c51ba282e0c69a8a452b211ffedf2599099845da5c5c37b"},
+    {file = "pytest_asyncio-0.23.8-py3-none-any.whl", hash = "sha256:50265d892689a5faefb84df80819d1ecef566eb3549cf915dfb33569359d1ce2"},
+    {file = "pytest_asyncio-0.23.8.tar.gz", hash = "sha256:759b10b33a6dc61cce40a8bd5205e302978bbbcc00e279a8b61d9a6a3c82e4d3"},
 ]
 
 [package.dependencies]
-pytest = ">=7.0.0"
+pytest = ">=7.0.0,<9"
 
 [package.extras]
 docs = ["sphinx (>=5.3)", "sphinx-rtd-theme (>=1.0)"]
-testing = ["coverage (>=6.2)", "flaky (>=3.5.0)", "hypothesis (>=5.7.1)", "mypy (>=0.931)", "pytest-trio (>=0.7.0)"]
+testing = ["coverage (>=6.2)", "hypothesis (>=5.7.1)"]
 
 [[package]]
 name = "pytest-mock"
-version = "3.11.1"
+version = "3.14.0"
 description = "Thin-wrapper around the mock package for easier use with pytest"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "pytest-mock-3.11.1.tar.gz", hash = "sha256:7f6b125602ac6d743e523ae0bfa71e1a697a2f5534064528c6ff84c2f7c2fc7f"},
-    {file = "pytest_mock-3.11.1-py3-none-any.whl", hash = "sha256:21c279fff83d70763b05f8874cc9cfb3fcacd6d354247a976f9529d19f9acf39"},
+    {file = "pytest-mock-3.14.0.tar.gz", hash = "sha256:2719255a1efeceadbc056d6bf3df3d1c5015530fb40cf347c0f9afac88410bd0"},
+    {file = "pytest_mock-3.14.0-py3-none-any.whl", hash = "sha256:0b72c38033392a5f4621342fe11e9219ac11ec9d375f8e2a0c164539e0d70f6f"},
 ]
 
 [package.dependencies]
-pytest = ">=5.0"
+pytest = ">=6.2.5"
 
 [package.extras]
 dev = ["pre-commit", "pytest-asyncio", "tox"]
@@ -2045,4 +2045,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.9"
-content-hash = "cf3280ed134f7f1792d21d62624dfc3b70a867977dbaa0f7a259f052cbf862ce"
+content-hash = "9e94eed48ee15c8965877f1b29d4e63bb20d516aca5e59beaf1b1b4f8ed22775"
