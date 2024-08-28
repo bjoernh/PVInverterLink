@@ -920,13 +920,13 @@ socks = ["socksio (==1.*)"]
 
 [[package]]
 name = "humanize"
-version = "4.8.0"
+version = "4.10.0"
 description = "Python humanize utilities"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "humanize-4.8.0-py3-none-any.whl", hash = "sha256:8bc9e2bb9315e61ec06bf690151ae35aeb65651ab091266941edf97c90836404"},
-    {file = "humanize-4.8.0.tar.gz", hash = "sha256:9783373bf1eec713a770ecaa7c2d7a7902c98398009dfa3d8a2df91eec9311e8"},
+    {file = "humanize-4.10.0-py3-none-any.whl", hash = "sha256:39e7ccb96923e732b5c2e27aeaa3b10a8dfeeba3eb965ba7b74a3eb0e30040a6"},
+    {file = "humanize-4.10.0.tar.gz", hash = "sha256:06b6eb0293e4b85e8d385397c5868926820db32b9b654b932f57fa41c23c9978"},
 ]
 
 [package.extras]
@@ -2007,4 +2007,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.9"
-content-hash = "86eea950727e13c5f29a486c65df7c2787d1335e58fa88daf2c9cfb7987b2962"
+content-hash = "2c9ebbf921177caea9aa8e047e144c9c2d268e6a4c02c0b8556ae480a4125c19"
