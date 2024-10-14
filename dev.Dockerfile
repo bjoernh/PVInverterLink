@@ -1,4 +1,4 @@
-FROM python:3.11.9-alpine@sha256:f9ce6fe33d9a5499e35c976df16d24ae80f6ef0a28be5433140236c2ca482686
+FROM python:3.11.10-alpine@sha256:004b4029670f2964bb102d076571c9d750c2a43b51c13c768e443c95a71aa9f3
 
 RUN apk add --update --no-cache --virtual .tmp-build-deps \
     gcc libc-dev linux-headers \
