@@ -189,13 +189,13 @@ docs = ["sphinx (==7.2.6)", "sphinx-mdinclude (==0.5.3)"]
 
 [[package]]
 name = "alembic"
-version = "1.13.2"
+version = "1.14.0"
 description = "A database migration tool for SQLAlchemy."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "alembic-1.13.2-py3-none-any.whl", hash = "sha256:6b8733129a6224a9a711e17c99b08462dbf7cc9670ba8f2e2ae9af860ceb1953"},
-    {file = "alembic-1.13.2.tar.gz", hash = "sha256:1ff0ae32975f4fd96028c39ed9bb3c867fe3af956bd7bb37343b54c9fe7445ef"},
+    {file = "alembic-1.14.0-py3-none-any.whl", hash = "sha256:99bd884ca390466db5e27ffccff1d179ec5c05c965cfefc0607e69f9e411cb25"},
+    {file = "alembic-1.14.0.tar.gz", hash = "sha256:b00892b53b3642d0b8dbedba234dbf1924b69be83a9a769d5a624b01094e304b"},
 ]
 
 [package.dependencies]
@@ -2007,4 +2007,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.10"
-content-hash = "4fcad8d67a4701bf9060e6ebf86cbb3db4b974e028e1d6eda5b07541e065e8fc"
+content-hash = "6e1015e8d76c0f756e6262e5853745cfbb20302f692a3772ae68bd71c2a61902"
