@@ -16,7 +16,7 @@ aiosqlite = "0.20.0"
 sqladmin = "0.14.1"
 itsdangerous = "2.1.2"
 sqlalchemy-utils = "0.41.2"
-alembic = "1.13.2"
+alembic = "1.14.0"
 influxdb-client = {extras = ["async"], version = "1.45.0"}
 pydantic-settings = "2.0.3"
 structlog = "23.1.0"
