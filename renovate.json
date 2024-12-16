@@ -9,11 +9,6 @@
   ],
   "packageRules": [
     {
-      "matchDepTypes": ["dev-dependencies", "dev"],
-      "matchUpdateTypes": ["patch", "minor"],
-      "groupName": "dev-dependencies (non-major)"
-    },
-    {
       "matchDepNames": ["python"],
       "groupName": "Python",
       "separateMinorPatch": true,
