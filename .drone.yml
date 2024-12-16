@@ -19,7 +19,7 @@ steps:
       - $POETRY_HOME/bin/poetry install
       - ENV_FILE=$DRONE_WORKSPACE/ci.env $POETRY_HOME/bin/poetry run pytest
   - name: build-dry-run
-    image: plugins/docker:20.18.4@sha256:a8d3d86853c721492213264815f1d00d3ed13f42f5c1855a02f47fa4d5f1e042
+    image: plugins/docker:20.18.5@sha256:b8fc8f07a67b2c04905d41e3b9883595328c56843302ebc2b15ffe35bc7b0e76
     settings:
       repo: registry.wtf-eg.net/solar/backend
       dry_run: true
@@ -45,7 +45,7 @@ steps:
       - $POETRY_HOME/bin/poetry install
       - ENV_FILE=$DRONE_WORKSPACE/ci.env $POETRY_HOME/bin/poetry run pytest
   - name: build
-    image: plugins/docker:20.18.4@sha256:a8d3d86853c721492213264815f1d00d3ed13f42f5c1855a02f47fa4d5f1e042
+    image: plugins/docker:20.18.5@sha256:b8fc8f07a67b2c04905d41e3b9883595328c56843302ebc2b15ffe35bc7b0e76
     settings:
       repo: registry.wtf-eg.net/solar/backend
       tags:
@@ -75,7 +75,7 @@ steps:
       - $POETRY_HOME/bin/poetry install
       - ENV_FILE=$DRONE_WORKSPACE/ci.env $POETRY_HOME/bin/poetry run pytest
   - name: build
-    image: plugins/docker:20.18.4@sha256:a8d3d86853c721492213264815f1d00d3ed13f42f5c1855a02f47fa4d5f1e042
+    image: plugins/docker:20.18.5@sha256:b8fc8f07a67b2c04905d41e3b9883595328c56843302ebc2b15ffe35bc7b0e76
     settings:
       repo: registry.wtf-eg.net/solar/backend
       auto_tag: true
