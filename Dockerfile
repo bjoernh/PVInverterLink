@@ -12,7 +12,7 @@ ENV PIPX_HOME=/app/.local/pipx \
     PATH=/app/.local/bin:$PATH
 
 RUN python3 -m pip install pipx && \
-    pipx install poetry
+    pipx install poetry==1.8.3
 
 WORKDIR /app/
 
