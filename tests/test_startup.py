@@ -1,9 +1,9 @@
 import pytest
-from httpx import AsyncClient
-
+from httpx import AsyncClient, ASGITransport
 from solar_backend.app import app
 
-client = AsyncClient(app=app, base_url='http://test')
+transport = ASGITransport(app=app)
+client = AsyncClient(transport=transport, base_url='http://test')
 
 
 @pytest.mark.integration
