@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 import pytest_asyncio
 from solar_backend.db import get_async_session, sessionmanager
 from solar_backend.app import app
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from solar_backend.api import inverter
 from solar_backend import users
 
@@ -45,7 +45,8 @@ async def session_override(event_loop):
 
 @pytest.fixture
 def client(event_loop):
-    c = AsyncClient(app=app, base_url='http://test')
+    transport = ASGITransport(app=app)
+    c = AsyncClient(transport=transport, base_url='http://test')
     yield c
 
 
