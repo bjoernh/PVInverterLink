@@ -40,7 +40,6 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     influx_url: Mapped[str] = mapped_column(String(64), default=settings.INFLUX_URL)
     influx_org_id: Mapped[Optional[str]]
     influx_token: Mapped[Optional[str]]
-    tmp_pass: Mapped[Optional[str]]
     
     def __repr__(self):
         return f"{self.id} - {self.first_name} {self.last_name}"

@@ -15,8 +15,16 @@ from solar_backend.db import User, get_user_db
 from solar_backend.config import DEBUG, settings, WEB_DEV_TESTING
 from solar_backend.utils.influx import inflx
 from solar_backend.utils.email import send_verify_mail, send_reset_passwort_mail
+import secrets
+import string
+
 
 logger = structlog.get_logger()
+
+def generate_secure_password(length):
+    characters = string.ascii_letters + string.digits + string.punctuation
+    password = ''.join(secrets.choice(characters) for _ in range(length))
+    return password
 
 
 class UserManager(IntegerIDMixin, BaseUserManager[User, int], ModelView):
@@ -28,16 +36,19 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int], ModelView):
         await self.request_verify(user, request=request)
 
     
+
     async def on_after_verify(self, user: User, request: Optional[Request] = None):
         logger.info(f"User {user.id} is verified.", user=user)
         if not WEB_DEV_TESTING:
             inflx.connect(org='wtf')
-            _inflx_user, org, token = inflx.create_influx_user_and_org(f"{user.email}", user.tmp_pass)
+
+            influx_password = generate_secure_password(12)
+            _inflx_user, org, token = inflx.create_influx_user_and_org(f"{user.email}", influx_password)
             logger.info(f"Influx setup for user {user.first_name} {user.last_name} completed")
             update_dict = {
                 "influx_org_id": org.id,
-                "influx_token": token,
-                "tmp_pass": ""}
+                "influx_token": token
+            }
 
             await self.user_db.update(user, update_dict)
             
