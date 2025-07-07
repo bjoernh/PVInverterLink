@@ -13,7 +13,7 @@ services:
       - ENV_FILE=backend.env
 
   influxdb:
-    image: "influxdb:2.7-alpine@sha256:0abb5192f5d03a926995a57d8ada705021872cf2e3c398e23f09a524b1e972c0"
+    image: "influxdb:2.7-alpine@sha256:ef14203d7014ac9a0df4f087d186901ea7d19993410b35782f6c3c421738eb25"
     ports:
     - 8086:8086
     volumes:
@@ -22,7 +22,7 @@ services:
       - influxdb.env
 
   db:
-    image: postgres:16-alpine@sha256:91e75546b4f229fa92cec21a2bf831ba03a1c101fc197daafff657f153e93a39
+    image: postgres:16-alpine@sha256:ef2235fd13b6cb29728a98ee17862ff5c9b7d20515a9b34804da4a45062695f6
     restart: always
     environment:
       POSTGRES_USER: deyehard
