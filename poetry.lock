@@ -181,19 +181,19 @@ frozenlist = ">=1.1.0"
 
 [[package]]
 name = "aiosmtplib"
-version = "2.0.2"
+version = "3.0.2"
 description = "asyncio SMTP client"
 optional = false
-python-versions = ">=3.7,<4.0"
+python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "aiosmtplib-2.0.2-py3-none-any.whl", hash = "sha256:1e631a7a3936d3e11c6a144fb8ffd94bb4a99b714f2cb433e825d88b698e37bc"},
-    {file = "aiosmtplib-2.0.2.tar.gz", hash = "sha256:138599a3227605d29a9081b646415e9e793796ca05322a78f69179f0135016a3"},
+    {file = "aiosmtplib-3.0.2-py3-none-any.whl", hash = "sha256:8783059603a34834c7c90ca51103c3aa129d5922003b5ce98dbaa6d4440f10fc"},
+    {file = "aiosmtplib-3.0.2.tar.gz", hash = "sha256:08fd840f9dbc23258025dca229e8a8f04d2ccf3ecb1319585615bfc7933f7f47"},
 ]
 
 [package.extras]
-docs = ["sphinx (>=5.3.0,<6.0.0)", "sphinx_autodoc_typehints (>=1.7.0,<2.0.0)"]
-uvloop = ["uvloop (>=0.14,<0.15) ; python_version == \"3.7\"", "uvloop (>=0.14,<0.15) ; python_version == \"3.8\"", "uvloop (>=0.17,<0.18) ; python_version >= \"3.9\" and python_version < \"4.0\""]
+docs = ["furo (>=2023.9.10)", "sphinx (>=7.0.0)", "sphinx-autodoc-typehints (>=1.24.0)", "sphinx-copybutton (>=0.5.0)"]
+uvloop = ["uvloop (>=0.18)"]
 
 [[package]]
 name = "aiosqlite"
@@ -690,14 +690,14 @@ wmi = ["wmi (>=1.5.1)"]
 
 [[package]]
 name = "email-validator"
-version = "2.0.0.post2"
+version = "2.2.0"
 description = "A robust email address syntax and deliverability validation library."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "email_validator-2.0.0.post2-py3-none-any.whl", hash = "sha256:2466ba57cda361fb7309fd3d5a225723c788ca4bbad32a0ebd5373b99730285c"},
-    {file = "email_validator-2.0.0.post2.tar.gz", hash = "sha256:1ff6e86044200c56ae23595695c54e9614f4a9551e0e393614f764860b3d7900"},
+    {file = "email_validator-2.2.0-py3-none-any.whl", hash = "sha256:561977c2d73ce3611850a06fa56b414621e0c8faa9d66f2611407d87465da631"},
+    {file = "email_validator-2.2.0.tar.gz", hash = "sha256:cb690f344c617a714f22e66ae771445a1ceb46821152df8e165c5f9a364582b7"},
 ]
 
 [package.dependencies]
@@ -777,23 +777,23 @@ jinja2 = ">=3.1,<4.0"
 
 [[package]]
 name = "fastapi-mail"
-version = "1.4.1"
+version = "1.5.0"
 description = "Simple lightweight mail library for FastApi"
 optional = false
-python-versions = ">=3.8.1,<4.0"
+python-versions = "<4.0,>=3.8.1"
 groups = ["main"]
 files = [
-    {file = "fastapi_mail-1.4.1-py3-none-any.whl", hash = "sha256:fa5ef23b2dea4d3ba4587f4bbb53f8f15274124998fb4e40629b3b636c76c398"},
-    {file = "fastapi_mail-1.4.1.tar.gz", hash = "sha256:9095b713bd9d3abb02fe6d7abb637502aaf680b52e177d60f96273ef6bc8bb70"},
+    {file = "fastapi_mail-1.5.0-py3-none-any.whl", hash = "sha256:c7c811a2a06e5aa3e444f8ae15052479a7726ca52e82c31b9e7bbac51a491204"},
+    {file = "fastapi_mail-1.5.0.tar.gz", hash = "sha256:d2e59cde8ef27e5c9e196639c9506b895000350e19a13b3e0a60cd4e33813f09"},
 ]
 
 [package.dependencies]
-aiosmtplib = ">=2.0,<3.0"
+aiosmtplib = ">=3.0.2,<4.0.0"
 blinker = ">=1.5,<2.0"
-email-validator = ">=2.0,<3.0"
+email-validator = ">=2.2.0,<3.0.0"
 Jinja2 = ">=3.0,<4.0"
-pydantic = ">=2.0,<3.0"
-pydantic_settings = ">=2.0,<3.0"
+pydantic = ">=2.10.1,<3.0.0"
+pydantic-settings = ">=2.6.1,<3.0.0"
 starlette = ">=0.24,<1.0"
 
 [package.extras]
@@ -2420,4 +2420,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "3.13.5"
-content-hash = "f4a3af4e7ea6f96ad43145ca0b56e8e169106611d7f6291892f49a898f1e70bb"
+content-hash = "11e7cfaae89003047cab09ed8586d45443cac087d131ab98aa02741ae3fe58b2"
