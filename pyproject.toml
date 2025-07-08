@@ -18,7 +18,7 @@ itsdangerous = "2.1.2"
 sqlalchemy-utils = "0.41.2"
 alembic = "1.14.0"
 influxdb-client = {extras = ["async"], version = "1.45.0"}
-pydantic-settings = "2.0.3"
+pydantic-settings = "2.10.1"
 structlog = "23.1.0"
 rich = "13.5.3"
 fastapi-htmx = "0.2.2"
