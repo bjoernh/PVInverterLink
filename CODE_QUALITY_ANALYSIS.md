@@ -35,6 +35,81 @@ Your codebase demonstrates **solid architectural foundations** with FastAPI, mod
 
 ## 🔴 CRITICAL SEVERITY ISSUES
 
+### 4. ✅ FIXED - Resource Leak on Transaction Failure
+**Confidence:** 100% | **Severity:** CRITICAL | **Status:** ✅ RESOLVED
+
+**File:** `solar_backend/api/inverter.py:31-95`
+
+**Original Issue:**
+If database commit failed after InfluxDB bucket creation, the bucket was orphaned and never cleaned up. Conversely, if InfluxDB bucket creation succeeded but database commit failed, the InfluxDB bucket remained without a corresponding database record.
+
+**Solution Applied:**
+- Reversed operation order: Database insert happens FIRST (with `bucket_id=None`)
+- Atomic transaction: If DB insert fails, no InfluxDB resources are created
+- Proper rollback: If InfluxDB fails after DB success, inverter is deleted from database
+- Better error handling: Explicit `session.rollback()` after IntegrityError
+- Cross-database compatibility: Uses SQLAlchemy's `IntegrityError` (works with PostgreSQL and SQLite)
+
+**Fixed Code Flow:**
+```python
+# 1. Create inverter with bucket_id=None
+new_inverter_obj = Inverter(
+    user_id=user.id,
+    name=inverter_to_add.name,
+    serial_logger=inverter_to_add.serial,
+    influx_bucked_id=None,  # Will be set after InfluxDB bucket creation
+    sw_version="-",
+)
+
+# 2. Insert to database first
+try:
+    session.add(new_inverter_obj)
+    await session.commit()
+    await session.refresh(new_inverter_obj)
+except IntegrityError as e:
+    await session.rollback()
+    logger.error("Inverter serial already exists", serial=inverter_to_add.serial)
+    return HTMLResponse("Seriennummer existiert bereits", status_code=422)
+
+# 3. After DB success, create InfluxDB bucket
+if not WEB_DEV_TESTING:
+    try:
+        bucket_id = await create_influx_bucket(user, inverter_to_add.name)
+        new_inverter_obj.influx_bucked_id = bucket_id
+        await session.commit()
+    except Exception as e:
+        # Rollback: delete the inverter we just created
+        logger.error("Failed to create InfluxDB bucket, rolling back inverter creation")
+        await session.delete(new_inverter_obj)
+        await session.commit()
+        return HTMLResponse("InfluxDB ist nicht verfügbar", status_code=503)
+```
+
+**Test Verification:** ✅ All 10 inverter CRUD tests passing
+
+---
+
+### 5. ✅ FIXED - Logic Bug in Metadata Completeness Check
+**Confidence:** 100% | **Severity:** CRITICAL | **Status:** ✅ RESOLVED
+
+**File:** `solar_backend/api/inverter.py:154`
+
+**Original Issue:**
+The `is_metadata_complete` field incorrectly referenced the class `Inverter.rated_power` instead of the instance `row.rated_power`.
+
+```python
+# BEFORE (buggy):
+"is_metadata_complete": True if Inverter.rated_power else False
+# Always returns True because Inverter.rated_power is a mapped_column object (truthy)
+
+# AFTER (fixed):
+"is_metadata_complete": row.rated_power is not None
+```
+
+**Test Verification:** ✅ Test passing in `test_inverter_api.py`
+
+---
+
 ### 1. Plaintext Password Storage in Database
 **Confidence:** 100% | **Severity:** CRITICAL
 
@@ -176,81 +251,6 @@ async def get_token(serial: str, request: Request,
 2. Add rate limiting to prevent abuse (see Issue #17)
 3. Consider implementing a token proxy service instead of direct credential exposure
 4. Ensure HTTPS is enforced (verify `COOKIE_SECURE=True` in production)
-
----
-
-### 4. ✅ FIXED - Resource Leak on Transaction Failure
-**Confidence:** 100% | **Severity:** CRITICAL | **Status:** ✅ RESOLVED
-
-**File:** `solar_backend/api/inverter.py:31-95`
-
-**Original Issue:**
-If database commit failed after InfluxDB bucket creation, the bucket was orphaned and never cleaned up. Conversely, if InfluxDB bucket creation succeeded but database commit failed, the InfluxDB bucket remained without a corresponding database record.
-
-**Solution Applied:**
-- Reversed operation order: Database insert happens FIRST (with `bucket_id=None`)
-- Atomic transaction: If DB insert fails, no InfluxDB resources are created
-- Proper rollback: If InfluxDB fails after DB success, inverter is deleted from database
-- Better error handling: Explicit `session.rollback()` after IntegrityError
-- Cross-database compatibility: Uses SQLAlchemy's `IntegrityError` (works with PostgreSQL and SQLite)
-
-**Fixed Code Flow:**
-```python
-# 1. Create inverter with bucket_id=None
-new_inverter_obj = Inverter(
-    user_id=user.id,
-    name=inverter_to_add.name,
-    serial_logger=inverter_to_add.serial,
-    influx_bucked_id=None,  # Will be set after InfluxDB bucket creation
-    sw_version="-",
-)
-
-# 2. Insert to database first
-try:
-    session.add(new_inverter_obj)
-    await session.commit()
-    await session.refresh(new_inverter_obj)
-except IntegrityError as e:
-    await session.rollback()
-    logger.error("Inverter serial already exists", serial=inverter_to_add.serial)
-    return HTMLResponse("Seriennummer existiert bereits", status_code=422)
-
-# 3. After DB success, create InfluxDB bucket
-if not WEB_DEV_TESTING:
-    try:
-        bucket_id = await create_influx_bucket(user, inverter_to_add.name)
-        new_inverter_obj.influx_bucked_id = bucket_id
-        await session.commit()
-    except Exception as e:
-        # Rollback: delete the inverter we just created
-        logger.error("Failed to create InfluxDB bucket, rolling back inverter creation")
-        await session.delete(new_inverter_obj)
-        await session.commit()
-        return HTMLResponse("InfluxDB ist nicht verfügbar", status_code=503)
-```
-
-**Test Verification:** ✅ All 10 inverter CRUD tests passing
-
----
-
-### 5. ✅ FIXED - Logic Bug in Metadata Completeness Check
-**Confidence:** 100% | **Severity:** CRITICAL | **Status:** ✅ RESOLVED
-
-**File:** `solar_backend/api/inverter.py:154`
-
-**Original Issue:**
-The `is_metadata_complete` field incorrectly referenced the class `Inverter.rated_power` instead of the instance `row.rated_power`.
-
-```python
-# BEFORE (buggy):
-"is_metadata_complete": True if Inverter.rated_power else False
-# Always returns True because Inverter.rated_power is a mapped_column object (truthy)
-
-# AFTER (fixed):
-"is_metadata_complete": row.rated_power is not None
-```
-
-**Test Verification:** ✅ Test passing in `test_inverter_api.py`
 
 ---
 
@@ -580,54 +580,6 @@ async def create_influx_bucket(user: User, bucket_name: str):
 
 ---
 
-### 13. Inconsistent Error Responses
-**Confidence:** 80% | **Severity:** MEDIUM
-
-**File:** `solar_backend/api/inverter.py:157`
-
-**Issue:**
-The `/influx_token` endpoint returns `HTMLResponse` with 404 status for a JSON API endpoint. This is inconsistent with the documented API behavior.
-
-```python
-@router.get("/influx_token")
-async def get_token(serial: str, ...):
-    # ...
-    if row:
-        return {
-            "serial": serial,
-            "token": row.influx_token,
-            # ... JSON response
-        }
-    else:
-        return HTMLResponse(status_code=status.HTTP_404_NOT_FOUND)  # Should be JSON!
-```
-
-**Impact:**
-- External inverters expecting JSON will fail to parse HTML
-- Inconsistent API contract
-- Breaks API documentation
-
-**Recommended Fix:**
-```python
-from fastapi import HTTPException
-
-@router.get("/influx_token")
-async def get_token(serial: str, ...):
-    # ...
-    if not row:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Inverter with serial {serial} not found"
-        )
-    return {
-        "serial": serial,
-        "token": row.influx_token,
-        # ...
-    }
-```
-
----
-
 ### 14. ✅ FIXED - Hardcoded InfluxDB Organization
 **Confidence:** 85% | **Severity:** MEDIUM | **Status:** ✅ RESOLVED
 
@@ -700,56 +652,6 @@ async def post_login(..., csrf_protect: CsrfProtect = Depends()):
 
 ---
 
-### 16. Email Validation Insufficient
-**Confidence:** 80% | **Severity:** MEDIUM
-
-**File:** `solar_backend/api/signup.py:49`
-
-**Issue:**
-Email validation relies solely on Pydantic's EmailStr validation, which doesn't prevent disposable email addresses or check DNS records.
-
-**Impact:**
-- Users can register with disposable email addresses
-- No verification that email domain actually exists
-- Potential for spam registrations
-
-**Recommended Fix:**
-```python
-# Install email-validator
-# pip install email-validator
-
-import re
-from email_validator import validate_email, EmailNotValidError
-
-async def validate_email_domain(email: str) -> bool:
-    """Validate email and check DNS records"""
-    try:
-        # Validate email format and DNS
-        validation = validate_email(email, check_deliverability=True)
-        email = validation.email
-
-        # Block disposable email domains
-        disposable_domains = [
-            "tempmail.com", "throwaway.email", "guerrillamail.com",
-            "10minutemail.com", "mailinator.com"
-        ]
-        domain = email.split("@")[1]
-        if domain in disposable_domains:
-            return False
-        return True
-    except EmailNotValidError:
-        return False
-
-# In signup:
-if not await validate_email_domain(email):
-    return {
-        "result": False,
-        "error": "Bitte verwenden Sie eine gültige Email-Adresse"
-    }
-```
-
----
-
 ### 17. ✅ FIXED - No Rate Limiting on Authentication Endpoints
 **Confidence:** 85% | **Severity:** MEDIUM | **Status:** ✅ RESOLVED
 
@@ -797,6 +699,104 @@ async def post_login(...):
 ```
 
 **Test Verification:** All 54 tests passing.
+
+---
+
+### 13. Inconsistent Error Responses
+**Confidence:** 80% | **Severity:** MEDIUM
+
+**File:** `solar_backend/api/inverter.py:157`
+
+**Issue:**
+The `/influx_token` endpoint returns `HTMLResponse` with 404 status for a JSON API endpoint. This is inconsistent with the documented API behavior.
+
+```python
+@router.get("/influx_token")
+async def get_token(serial: str, ...):
+    # ...
+    if row:
+        return {
+            "serial": serial,
+            "token": row.influx_token,
+            # ... JSON response
+        }
+    else:
+        return HTMLResponse(status_code=status.HTTP_404_NOT_FOUND)  # Should be JSON!
+```
+
+**Impact:**
+- External inverters expecting JSON will fail to parse HTML
+- Inconsistent API contract
+- Breaks API documentation
+
+**Recommended Fix:**
+```python
+from fastapi import HTTPException
+
+@router.get("/influx_token")
+async def get_token(serial: str, ...):
+    # ...
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Inverter with serial {serial} not found"
+        )
+    return {
+        "serial": serial,
+        "token": row.influx_token,
+        # ...
+    }
+```
+
+---
+
+### 16. Email Validation Insufficient
+**Confidence:** 80% | **Severity:** MEDIUM
+
+**File:** `solar_backend/api/signup.py:49`
+
+**Issue:**
+Email validation relies solely on Pydantic's EmailStr validation, which doesn't prevent disposable email addresses or check DNS records.
+
+**Impact:**
+- Users can register with disposable email addresses
+- No verification that email domain actually exists
+- Potential for spam registrations
+
+**Recommended Fix:**
+```python
+# Install email-validator
+# pip install email-validator
+
+import re
+from email_validator import validate_email, EmailNotValidError
+
+async def validate_email_domain(email: str) -> bool:
+    """Validate email and check DNS records"""
+    try:
+        # Validate email format and DNS
+        validation = validate_email(email, check_deliverability=True)
+        email = validation.email
+
+        # Block disposable email domains
+        disposable_domains = [
+            "tempmail.com", "throwaway.email", "guerrillamail.com",
+            "10minutemail.com", "mailinator.com"
+        ]
+        domain = email.split("@")[1]
+        if domain in disposable_domains:
+            return False
+        return True
+    except EmailNotValidError:
+        return False
+
+# In signup:
+if not await validate_email_domain(email):
+    return {
+        "result": False,
+        "error": "Bitte verwenden Sie eine gültige Email-Adresse"
+    }
+```
 
 ---
 
