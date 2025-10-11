@@ -5,6 +5,8 @@ from influxdb_client.domain.permission_resource import PermissionResource
 from solar_backend.config import settings
 #from solar_backend.users import User as UserBackend  #TODO: cycle import
 
+from influxdb_client.client.exceptions import InfluxDBError
+
 logger = structlog.get_logger()
 
 
@@ -93,8 +95,9 @@ class InfluxManagement:
                                  |> last()""", org=user.email)
             last = tables[0].records[0]
             return ( last.get_time(), int(last.get_value()) )
-        except:
-            raise NoValuesException("influx don't return any value ")
+        except (InfluxDBError, IndexError, KeyError) as e:
+            logger.error("No values in InfluxDB", error=str(e), bucket=bucket)
+            raise NoValuesException(f"InfluxDB query failed: {str(e)}")
 
 
 inflx = InfluxManagement(db_url=settings.INFLUX_URL)

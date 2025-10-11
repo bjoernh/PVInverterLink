@@ -1,5 +1,8 @@
+import structlog
 from fastapi_mail import MessageSchema, MessageType
 from solar_backend.config import fastmail, settings
+
+logger = structlog.get_logger()
 
 async def send_verify_mail(email: str, token: str) -> bool:
     verify_url = f"{settings.BASE_URL}verify?token={token}"
@@ -13,7 +16,8 @@ async def send_verify_mail(email: str, token: str) -> bool:
     try:
         await fastmail.send_message(message)
         return True
-    except:
+    except Exception as e:
+        logger.error("Email send failed", error=str(e), recipient=email, exc_info=True)
         return False
     
 
@@ -29,5 +33,6 @@ async def send_reset_passwort_mail(email: str, token: str) -> bool:
     try:
         await fastmail.send_message(message)
         return True
-    except:
+    except Exception as e:
+        logger.error("Email send failed", error=str(e), recipient=email, exc_info=True)
         return False

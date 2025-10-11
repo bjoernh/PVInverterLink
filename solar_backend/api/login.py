@@ -96,7 +96,8 @@ async def post_reset_password(
                                 <button class="btn btn-sm" hx-get="/login" hx-target="body" hx-push-url="true">Zum Login</button>
                             </div>
                             </div>""")
-    except:
+    except (exceptions.InvalidResetPasswordToken, exceptions.UserInactive, exceptions.UserNotExists) as e:
+        logger.error("Password reset failed", error=str(e), token_hash=hash(token))
         return HTMLResponse("""<div class="alert alert-error">
                                 <span><i class="fa-solid fa-circle-xmark"></i> Token ist ungültig!</span><button class="btn btn-xs btn-active btn-neutral" hx-get="/login" hx-target="body">Erneut zurücksetzen</Button>
                             </div>""")

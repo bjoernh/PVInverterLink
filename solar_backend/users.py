@@ -19,9 +19,34 @@ from solar_backend.utils.email import send_verify_mail, send_reset_passwort_mail
 logger = structlog.get_logger()
 
 
+from fastapi_users.exceptions import InvalidPasswordException
+from solar_backend.schemas import UserCreate
+
+
 class UserManager(IntegerIDMixin, BaseUserManager[User, int], ModelView):
     reset_password_token_secret = settings.AUTH_SECRET
     verification_token_secret = settings.AUTH_SECRET
+
+    async def validate_password(self, password: str, user: User | UserCreate) -> None:
+        if not WEB_DEV_TESTING:
+            # Check for common passwords
+            common_passwords = ["password", "123456", "12345678", "qwerty"]
+            if password.lower() in common_passwords:
+                raise InvalidPasswordException(reason="Passwort ist zu einfach")
+
+            if len(password) < 8:
+                raise InvalidPasswordException(
+                    reason="Passwort muss mindestens 8 Zeichen lang sein"
+                )
+            if not any(c.isdigit() for c in password):
+                raise InvalidPasswordException(
+                    reason="Passwort muss mindestens eine Zahl enthalten"
+                )
+            if not any(c.isupper() for c in password):
+                raise InvalidPasswordException(
+                    reason="Passwort muss mindestens einen Großbuchstaben enthalten"
+                )
+        await super().validate_password(password, user)
 
     async def on_after_register(self, user: User, request: Optional[Request] = None):
         logger.info(f"User {user.email} has registered.", user=user)
