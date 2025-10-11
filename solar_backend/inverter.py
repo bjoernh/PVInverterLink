@@ -14,27 +14,27 @@ _t = humanize.i18n.activate("de_DE")
 
 async def create_influx_bucket(user: User, bucket_name: str):
     """create a bucket with given name and return the crated bucket id"""
-    inflx = InfluxManagement(user.influx_url)
-    inflx.connect(org=user.email, token=user.influx_token)
-    bucket = inflx.create_bucket(bucket_name, user.influx_org_id)
-    return bucket.id
+    async with InfluxManagement(user.influx_url) as inflx:
+        inflx.connect(org=user.email, token=user.influx_token)
+        bucket = inflx.create_bucket(bucket_name, user.influx_org_id)
+        return bucket.id
 
 async def delete_influx_bucket(user: User, bucket_id: str):
-    inflx = InfluxManagement(user.influx_url)
-    inflx.connect(org=user.email, token=user.influx_token)
-    inflx.delete_bucket(bucket_id)
+    async with InfluxManagement(user.influx_url) as inflx:
+        inflx.connect(org=user.email, token=user.influx_token)
+        inflx.delete_bucket(bucket_id)
 
 async def extend_current_powers(user: User, inverters: list[Inverter]):
-    inflx = InfluxManagement(user.influx_url)
-    inflx.connect(org=user.email, token=user.influx_token)
-    for i in inverters:
-        try:
-            time, power = inflx.get_latest_values(user, i.name)
-            i.current_power = power
-            i.last_update = humanize.naturaltime(datetime.now(timezone.utc) - time)
-        except NoValuesException:
-            i.current_power = "-"
-            i.last_update = "Keine aktuellen Werte"
+    async with InfluxManagement(user.influx_url) as inflx:
+        inflx.connect(org=user.email, token=user.influx_token)
+        for i in inverters:
+            try:
+                time, power = inflx.get_latest_values(user, i.name)
+                i.current_power = power
+                i.last_update = humanize.naturaltime(datetime.now(timezone.utc) - time)
+            except NoValuesException:
+                i.current_power = "-"
+                i.last_update = "Keine aktuellen Werte"
 
 
 

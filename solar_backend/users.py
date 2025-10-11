@@ -13,7 +13,7 @@ from sqladmin import ModelView
 from sqlalchemy import update
 from solar_backend.db import User, get_user_db
 from solar_backend.config import DEBUG, settings, WEB_DEV_TESTING
-from solar_backend.utils.influx import inflx
+from solar_backend.utils.influx import InfluxManagement
 from solar_backend.utils.email import send_verify_mail, send_reset_passwort_mail
 
 logger = structlog.get_logger()
@@ -57,15 +57,16 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int], ModelView):
         logger.info(f"User {user.id} is verified.", user=user)
         if not WEB_DEV_TESTING:
             try:
-                inflx.connect(org='wtf')
-                _inflx_user, org, token = inflx.create_influx_user_and_org(f"{user.email}", user.tmp_pass)
-                logger.info(f"Influx setup for user {user.first_name} {user.last_name} completed")
-                update_dict = {
-                    "influx_org_id": org.id,
-                    "influx_token": token,
-                    "tmp_pass": ""}
+                async with InfluxManagement(db_url=settings.INFLUX_URL) as inflx:
+                    inflx.connect(org='wtf')
+                    _inflx_user, org, token = inflx.create_influx_user_and_org(f"{user.email}", user.tmp_pass)
+                    logger.info(f"Influx setup for user {user.first_name} {user.last_name} completed")
+                    update_dict = {
+                        "influx_org_id": org.id,
+                        "influx_token": token,
+                        "tmp_pass": ""}
 
-                await self.user_db.update(user, update_dict)
+                    await self.user_db.update(user, update_dict)
             except Exception as e:
                 logger.error(
                     "Failed to create InfluxDB user/org during verification",

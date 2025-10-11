@@ -541,62 +541,40 @@ admin = Admin(app=app, authentication_backend=authentication_backend, engine=ses
 
 ---
 
-### 12. Missing InfluxDB Connection Cleanup
-**Confidence:** 85% | **Severity:** MEDIUM
+### 12. ✅ FIXED - Missing InfluxDB Connection Cleanup
+**Confidence:** 85% | **Severity:** MEDIUM | **Status:** ✅ RESOLVED
 
-**File:** `solar_backend/utils/influx.py:20-26`
+**File:** `solar_backend/utils/influx.py`
 
-**Issue:**
-The `InfluxManagement.connect()` method creates an InfluxDB client but never closes it. No context manager or explicit close method.
+**Original Issue:**
+The `InfluxManagement` class created an InfluxDB client but never closed it, leading to potential HTTP connection leaks, file descriptor exhaustion, and memory leaks.
 
+**Solution Applied:**
+- Implemented an asynchronous context manager for the `InfluxManagement` class by adding `__aenter__` and `__aexit__` methods.
+- The `__aexit__` method ensures that the InfluxDB client is always closed, even if errors occur.
+- Refactored all usages of `InfluxManagement` in `solar_backend/inverter.py` and `solar_backend/users.py` to use the `async with` statement, guaranteeing proper connection cleanup.
+- Removed the global `inflx` instance to prevent shared state and ensure that connections are managed on a per-request basis.
+
+**Fixed Code Flow:**
 ```python
-def connect(self, org: str = None, username: str = None,
-           password: str = None, token: str = None):
-    if not username:
-        self._client = InfluxDBClient(url=self.db_url,
-                                     token=token if token else self.token,
-                                     org=org)
-    else:
-        self._client = InfluxDBClient(url=self.db_url,
-                                     username=username,
-                                     password=password,
-                                     org=org)
-    self.connected = True
-    # No cleanup mechanism!
-```
-
-**Impact:**
-- HTTP connection leaks to InfluxDB
-- File descriptor exhaustion over time
-- Memory leaks from unclosed clients
-
-**Recommended Fix:**
-```python
+# solar_backend/utils/influx.py
 class InfluxManagement:
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if hasattr(self, '_client') and self._client:
-            self._client.close()
-        return False
-
-    # Or implement async context manager
     async def __aenter__(self):
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if hasattr(self, '_client') and self._client:
+        if self._client:
             self._client.close()
-        return False
 
-# Usage:
+# solar_backend/inverter.py
 async def create_influx_bucket(user: User, bucket_name: str):
-    with InfluxManagement(user.influx_url) as inflx:
+    async with InfluxManagement(user.influx_url) as inflx:
         inflx.connect(org=user.email, token=user.influx_token)
         bucket = inflx.create_bucket(bucket_name, user.influx_org_id)
         return bucket.id
 ```
+
+**Test Verification:** All 54 tests passing.
 
 ---
 

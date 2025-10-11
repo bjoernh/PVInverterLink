@@ -18,6 +18,14 @@ class InfluxManagement:
         self.db_url = db_url
         self.token = settings.INFLUX_OPERATOR_TOKEN
         self.connected = False
+        self._client: InfluxDBClient | None = None
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self._client:
+            self._client.close()
     
     def connect(self, org: str = None, username: str = None, password: str = None, token: str = None):
         if not username:
@@ -100,4 +108,4 @@ class InfluxManagement:
             raise NoValuesException(f"InfluxDB query failed: {str(e)}")
 
 
-inflx = InfluxManagement(db_url=settings.INFLUX_URL)
+
