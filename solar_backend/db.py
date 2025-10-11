@@ -50,6 +50,12 @@ class DatabaseSessionManager:
         self._engine: AsyncEngine | None = None
         self._sessionmaker: async_sessionmaker | None = None
 
+    @property
+    def engine(self) -> AsyncEngine:
+        if self._engine is None:
+            raise Exception("DatabaseSessionManager is not initialized")
+        return self._engine
+
     def init(self, host: str):
         self._engine = create_async_engine(host, echo=DEBUG)
         self._sessionmaker = async_sessionmaker(autocommit=False, bind=self._engine)
@@ -97,12 +103,8 @@ class DatabaseSessionManager:
 sessionmanager = DatabaseSessionManager()
 
 
-engine = create_async_engine(settings.DATABASE_URL)
-async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
-
-
 async def create_db_and_tables():
-    async with engine.begin() as conn:
+    async with sessionmanager.connect() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
 

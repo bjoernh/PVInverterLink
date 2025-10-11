@@ -7,7 +7,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from fastapi_htmx import htmx_init
 from sqladmin import Admin
 
-from solar_backend.db import User, create_db_and_tables, engine, sessionmanager
+from solar_backend.db import User, create_db_and_tables, sessionmanager
 from solar_backend.inverter import InverterAdmin
 from solar_backend.users import UserAdmin
 from solar_backend.api import signup, login, start, inverter, healthcheck
@@ -37,7 +37,8 @@ app = FastAPI(title="Deye Hard API",
 app.add_middleware(SessionMiddleware, secret_key=settings.AUTH_SECRET)
 htmx_init(templates=Jinja2Templates(directory=Path(os.getcwd()) / Path("templates")))
 
-admin = Admin(app=app, authentication_backend=authentication_backend, engine=engine)
+sessionmanager.init(settings.DATABASE_URL)
+admin = Admin(app=app, authentication_backend=authentication_backend, engine=sessionmanager.engine)
 
 # app.include_router(
 #     fastapi_users.get_auth_router(auth_backend_user), prefix="/auth/jwt", tags=["auth"]
@@ -86,6 +87,5 @@ async def authenticated_route(user: User = Depends(current_active_user_bearer)):
 
 @app.on_event("startup")
 async def on_startup():
-    sessionmanager.init(settings.DATABASE_URL)
     # Not needed after setup Alembic
     await create_db_and_tables()

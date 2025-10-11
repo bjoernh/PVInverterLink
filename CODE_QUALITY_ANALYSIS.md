@@ -449,40 +449,31 @@ from fastapi_users.models import UserCreate
 
 ---
 
-### 10. Insecure JWT Admin Authentication
-**Confidence:** 85% | **Severity:** HIGH
+### 10. ✅ FIXED - Insecure JWT Admin Authentication
+**Confidence:** 85% | **Severity:** HIGH | **Status:** ✅ RESOLVED
 
-**File:** `solar_backend/utils/admin_auth.py:39,57`
+**File:** `solar_backend/utils/admin_auth.py`
 
-**Issue:**
-The admin authentication backend creates JWT tokens with only email payload and doesn't validate expiration or include proper claims. The `verify=True` parameter is deprecated in newer PyJWT versions.
+**Original Issue:**
+The admin authentication backend created JWT tokens with only an email payload, no expiration, and used a deprecated `verify=True` parameter for decoding. This meant admin sessions never expired and tokens could be reused indefinitely if stolen.
 
+**Solution Applied:**
+- Enhanced the JWT payload to include `exp` (8-hour expiration), `iat`, `user_id`, and `is_superuser` claims.
+- Updated the token verification logic in the `authenticate` method to use `options={"verify_exp": True}` for decoding, which correctly validates the token's expiration.
+- Implemented `try...except` blocks to gracefully handle `jwt.ExpiredSignatureError` and `jwt.InvalidTokenError`, with appropriate logging for each case.
+- Added a check to ensure the `is_superuser` claim is present and true in the token payload, preventing non-admin users from accessing the admin interface.
+
+**Fixed Code Flow:**
 ```python
-# Line 39 - Token creation
-token = jwt.encode({"email": user.email}, settings.AUTH_SECRET, algorithm="HS256")
-
-# Line 57 - Token verification
-jwt.decode(token, settings.AUTH_SECRET, algorithms="HS256", verify=True)
-```
-
-**Impact:**
-- No token expiration (admin sessions never expire)
-- Minimal token payload (no user ID, no timestamp)
-- Deprecated `verify=True` parameter
-- Admin token could be reused indefinitely if stolen
-
-**Recommended Fix:**
-```python
-from datetime import datetime, timedelta
-import jwt
-
 # In login:
-exp = datetime.utcnow() + timedelta(hours=8)
+from datetime import datetime, timedelta, timezone
+
+exp = datetime.now(timezone.utc) + timedelta(hours=8)
 token = jwt.encode({
     "email": user.email,
     "user_id": user.id,
     "exp": exp,
-    "iat": datetime.utcnow(),
+    "iat": datetime.now(timezone.utc),
     "is_superuser": True
 }, settings.AUTH_SECRET, algorithm="HS256")
 
@@ -505,56 +496,48 @@ except jwt.InvalidTokenError as e:
     return RedirectResponse(request.url_for("admin:login"), status_code=302)
 ```
 
+**Test Verification:** All 54 tests passing.
+
 ---
 
 ## 🟡 MEDIUM SEVERITY ISSUES
 
-### 11. Duplicate Database Engine Creation
-**Confidence:** 95% | **Severity:** MEDIUM
+### 11. ✅ FIXED - Duplicate Database Engine Creation
+**Confidence:** 95% | **Severity:** MEDIUM | **Status:** ✅ RESOLVED
 
 **Files Affected:**
-- `solar_backend/db.py:100-101`
-- `solar_backend/app.py:89`
+- `solar_backend/db.py`
+- `solar_backend/app.py`
 
-**Issue:**
-Two separate database engines are created - one in `db.py` directly and one through `sessionmanager.init()` in `app.py`. This wastes connection pool resources.
+**Original Issue:**
+The application created two separate database engines: one at the module level in `db.py` and another through `sessionmanager.init()` in `app.py`. This led to wasted connection pool resources and potential for connection limit exhaustion.
 
+**Solution Applied:**
+- Removed the module-level database engine creation in `solar_backend/db.py`.
+- The `DatabaseSessionManager` is now the single source of truth for the database engine.
+- Added an `engine` property to the `DatabaseSessionManager` to expose the engine for use by other parts of the application, like SQLAdmin.
+- The `sessionmanager` is now initialized in `app.py` before the `Admin` instance is created, ensuring the engine is available.
+- The `Admin` instance is now configured to use `sessionmanager.engine`.
+
+**Fixed Code Flow:**
 ```python
-# db.py:100-101
-engine = create_async_engine(settings.DATABASE_URL)
-async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
-
-# app.py:89 (in on_startup)
-sessionmanager.init(settings.DATABASE_URL)  # Creates another engine
-```
-
-**Impact:**
-- Double connection pools consuming resources
-- Potential connection limit exhaustion
-- Confusion about which engine/session to use
-
-**Recommended Fix:**
-```python
-# db.py - Remove module-level engine creation
-sessionmanager = DatabaseSessionManager()
-
-# Add property to expose engine for SQLAdmin
+# db.py
 class DatabaseSessionManager:
-    # ... existing code ...
-
+    # ...
     @property
     def engine(self):
         if self._engine is None:
             raise Exception("DatabaseSessionManager is not initialized")
         return self._engine
 
-# app.py - Use sessionmanager.engine for SQLAdmin
-admin = Admin(
-    app=app,
-    authentication_backend=authentication_backend,
-    engine=sessionmanager.engine
-)
+sessionmanager = DatabaseSessionManager()
+
+# app.py
+sessionmanager.init(settings.DATABASE_URL)
+admin = Admin(app=app, authentication_backend=authentication_backend, engine=sessionmanager.engine)
 ```
+
+**Test Verification:** All 54 tests passing.
 
 ---
 
