@@ -31,11 +31,15 @@ async def get_add_inverter(request: Request, user: User = Depends(current_active
 
 
 
+from fastapi_csrf_protect import CsrfProtect
+
+
 @router.post("/inverter")
 async def post_add_inverter(
     inverter_to_add: InverterAdd,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_active_user),
+    csrf_protect: CsrfProtect = Depends(),
 ):
     if user is None:
         return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
@@ -175,6 +179,7 @@ async def post_inverter_metadata(
     request: Request,
     user: User = Depends(current_superuser_bearer),
     session: AsyncSession = Depends(get_async_session),
+    csrf_protect: CsrfProtect = Depends(),
 ):
     """meta data for inverter"""
     print(select(Inverter))

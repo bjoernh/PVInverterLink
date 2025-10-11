@@ -25,12 +25,16 @@ router = APIRouter()
 async def get_login(request: Request, user: User = Depends(current_active_user)):
     return {"user": user}
 
+from fastapi_csrf_protect import CsrfProtect
+
+
 @router.post("/login", response_class=HTMLResponse)
 @limiter.limit("5/minute")
 async def post_login(username: Annotated[str, Form()],
                      password: Annotated[str, Form()],
                      request: Request,
-                     user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)):
+                     user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
+                     csrf_protect: CsrfProtect = Depends()):
     
 
     user = await user_manager.authenticate(credentials=OAuth2PasswordRequestForm(username=username, password=password))
@@ -63,7 +67,7 @@ async def get_logout(request: Request, user: User = Depends(current_active_user)
 
 @router.post("/request_reset_passwort", response_class=HTMLResponse)
 @limiter.limit("5/hour")
-async def get_reset_password(request: Request, user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)):
+async def get_reset_password(request: Request, user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager), csrf_protect: CsrfProtect = Depends()):
     email = request.headers.get('HX-Prompt')
     user = await user_manager.get_by_email(email)
     await user_manager.forgot_password(user)
@@ -84,7 +88,8 @@ async def post_reset_password(
     new_password1: Annotated[str, Form()],
     new_password2: Annotated[str, Form()],
     request: Request, 
-    user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)
+    user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
+    csrf_protect: CsrfProtect = Depends()
     ):
     if new_password1 != new_password2:
         return HTMLResponse("""<div class="alert alert-error">

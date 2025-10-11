@@ -14,11 +14,16 @@ from solar_backend.db import User, create_db_and_tables, sessionmanager
 from solar_backend.inverter import InverterAdmin
 from solar_backend.users import UserAdmin
 from solar_backend.api import signup, login, start, inverter, healthcheck
-from solar_backend.config import settings
+from solar_backend.config import settings, WEB_DEV_TESTING
 from solar_backend.users import auth_backend_bearer, fastapi_users_bearer, current_active_user_bearer
 from solar_backend.utils.admin_auth import authentication_backend
 from solar_backend.limiter import limiter
 import structlog
+from fastapi_csrf_protect import CsrfProtect
+from fastapi_csrf_protect.exceptions import CsrfProtectError
+from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+from fastapi import Request
 
 
 processors = [structlog.dev.ConsoleRenderer()]  # TODO: destinct between dev and production output
@@ -36,6 +41,22 @@ app = FastAPI(title="Deye Hard API",
                 "displayRequestDuration": True,
                 },
 )
+
+if not WEB_DEV_TESTING:
+    @app.exception_handler(CsrfProtectError)
+    def csrf_protect_exception_handler(request: Request, exc: CsrfProtectError):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={'detail': exc.message}
+        )
+
+    class CsrfSettings(BaseModel):
+        secret_key: str = settings.AUTH_SECRET
+        header_name: str = "HX-CSRF-Token"
+
+    @CsrfProtect.load_config
+    def get_csrf_config():
+        return CsrfSettings()
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SessionMiddleware, secret_key=settings.AUTH_SECRET)

@@ -34,6 +34,9 @@ async def root_page(request: Request):
     return {"user": None}
 
 
+from fastapi_csrf_protect import CsrfProtect
+
+
 @router.post("/signup", response_class=HTMLResponse)
 @htmx("verify", "verify")
 @limiter.limit("3/hour")
@@ -43,7 +46,8 @@ async def post_signup(
     email: Annotated[str, Form()],
     password: Annotated[str, Form()],
     request: Request,
-    user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)):
+    user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
+    csrf_protect: CsrfProtect = Depends()):
     
     result = True
     
