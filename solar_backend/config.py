@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=path_to_env, env_file_encoding='utf-8', extra='ignore', env_nested_delimiter='__')
     DATABASE_URL: str
     AUTH_SECRET: str
+    ENCRYPTION_KEY: str = "6DLfBB4KnMuChUJZsMHWz2kJTtNRNTTtoTCCbH7CYyw="
     INFLUX_URL: str
     INFLUX_OPERATOR_TOKEN: str
     INFLUX_OPERATOR_ORG: str = "wtf"

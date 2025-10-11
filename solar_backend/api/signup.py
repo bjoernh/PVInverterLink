@@ -37,6 +37,9 @@ async def root_page(request: Request):
 from fastapi_csrf_protect import CsrfProtect
 
 
+from solar_backend.utils.crypto import CryptoManager
+
+
 @router.post("/signup", response_class=HTMLResponse)
 @htmx("verify", "verify")
 @limiter.limit("3/hour")
@@ -52,7 +55,16 @@ async def post_signup(
     result = True
     
     try:
-        user = UserCreate(first_name=first_name, last_name=last_name, email=email, password=password, tmp_pass=password)
+        # Encrypt the password for temporary storage
+        crypto = CryptoManager(settings.ENCRYPTION_KEY)
+        encrypted_password = crypto.encrypt(password)
+        user = UserCreate(
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            password=password,  # For hashing by fastapi-users
+            tmp_pass=encrypted_password  # Encrypted for InfluxDB setup
+        )
     except ValidationError as e:
         return {"result": False, "error": str(e)}
     
