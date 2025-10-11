@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     AUTH_SECRET: str
     INFLUX_URL: str
     INFLUX_OPERATOR_TOKEN: str
+    INFLUX_OPERATOR_ORG: str = "wtf"
     BASE_URL: AnyHttpUrl
     FASTMAIL: ConnectionConfig
     COOKIE_SECURE: bool = True

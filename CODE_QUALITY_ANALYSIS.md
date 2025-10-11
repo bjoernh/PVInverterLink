@@ -626,28 +626,20 @@ async def get_token(serial: str, ...):
 
 ---
 
-### 14. Hardcoded InfluxDB Organization
-**Confidence:** 85% | **Severity:** MEDIUM
+### 14. ✅ FIXED - Hardcoded InfluxDB Organization
+**Confidence:** 85% | **Severity:** MEDIUM | **Status:** ✅ RESOLVED
 
 **File:** `solar_backend/users.py:35`
 
-**Issue:**
-The InfluxDB organization is hardcoded to 'wtf' when creating users. This should be configurable.
+**Original Issue:**
+The InfluxDB organization was hardcoded to 'wtf' in `solar_backend/users.py` when creating users, which made it difficult to configure for different environments.
 
-```python
-async def on_after_verify(self, user: User, request: Optional[Request] = None):
-    logger.info(f"User {user.id} is verified.", user=user)
-    if not WEB_DEV_TESTING:
-        try:
-            inflx.connect(org='wtf')  # Hardcoded!
-```
+**Solution Applied:**
+- Added an `INFLUX_OPERATOR_ORG` setting to the `Settings` class in `solar_backend/config.py`, with a default value of "wtf".
+- Updated the `on_after_verify` method in `solar_backend/users.py` to use `settings.INFLUX_OPERATOR_ORG` instead of the hardcoded value.
+- This change allows the InfluxDB organization to be configured via environment variables, following 12-factor app principles.
 
-**Impact:**
-- Cannot be changed without code modification
-- Deployment to different environments requires code changes
-- Not following 12-factor app principles
-
-**Recommended Fix:**
+**Fixed Code Flow:**
 ```python
 # config.py
 class Settings(BaseSettings):
@@ -657,6 +649,8 @@ class Settings(BaseSettings):
 # users.py
 inflx.connect(org=settings.INFLUX_OPERATOR_ORG)
 ```
+
+**Test Verification:** All 54 tests passing.
 
 ---
 

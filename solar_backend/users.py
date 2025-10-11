@@ -58,7 +58,7 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int], ModelView):
         if not WEB_DEV_TESTING:
             try:
                 async with InfluxManagement(db_url=settings.INFLUX_URL) as inflx:
-                    inflx.connect(org='wtf')
+                    inflx.connect(org=settings.INFLUX_OPERATOR_ORG)
                     _inflx_user, org, token = inflx.create_influx_user_and_org(f"{user.email}", user.tmp_pass)
                     logger.info(f"Influx setup for user {user.first_name} {user.last_name} completed")
                     update_dict = {
