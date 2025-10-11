@@ -1,45 +1,47 @@
-[tool.poetry]
+[project]
 name = "solar-backend"
 version = "0.1.0"
 description = ""
-authors = ["Bjoern Hauffe <oss@64b.de>"]
+authors = [{name = "Bjoern Hauffe", email = "oss@64b.de"}]
 readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115.0",
+    "httpx>=0.28.0",
+    "fastapi-users[sqlalchemy]>=13.0.0",
+    "asyncpg>=0.30.0",
+    "uvicorn>=0.34.0",
+    "aiosqlite>=0.20.0",
+    "sqladmin>=0.20.0",
+    "itsdangerous>=2.2.0",
+    "sqlalchemy-utils>=0.41.2",
+    "alembic>=1.14.0",
+    "influxdb-client[async]>=1.49.0",
+    "pydantic-settings>=2.8.0",
+    "structlog>=24.4.0",
+    "rich>=13.9.0",
+    "fastapi-htmx>=0.4.0",
+    "python-multipart>=0.0.9",
+    "fastapi-mail>=1.4.1",
+    "nest-asyncio>=1.6.0",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "humanize>=4.11.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.13"
-fastapi = "^0.115.0"
-httpx = "^0.28.0"
-fastapi-users = {extras = ["sqlalchemy"], version = "^13.0.0"}
-asyncpg = "^0.30.0"
-uvicorn = "^0.34.0"
-aiosqlite = "^0.20.0"
-sqladmin = "^0.20.0"
-itsdangerous = "^2.2.0"
-sqlalchemy-utils = "^0.41.2"
-alembic = "^1.14.0"
-influxdb-client = {extras = ["async"], version = "^1.49.0"}
-pydantic-settings = "^2.8.0"
-structlog = "^24.4.0"
-rich = "^13.9.0"
-fastapi-htmx = "^0.4.0"
-python-multipart = "^0.0.9"
-fastapi-mail = "^1.4.1"
-nest-asyncio = "^1.6.0"
-sqlalchemy = {extras = ["asyncio"], version = "^2.0.36"}
-humanize = "^4.11.0"
-
-[tool.poetry.group.dev.dependencies]
-pytailwindcss = "^0.2.0"
-pytest = "^8.3.0"
-pytest-asyncio = "^0.25.0"
-pytest-async-sqlalchemy = "^0.2.0"
-faker = "^33.0.0"
-factory-boy = "^3.3.0"
-pytest-mock = "^3.14.0"
+[project.optional-dependencies]
+dev = [
+    "pytailwindcss>=0.2.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.25.0",
+    "pytest-async-sqlalchemy>=0.2.0",
+    "faker>=33.0.0",
+    "factory-boy>=3.3.0",
+    "pytest-mock>=3.14.0",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 markers = [

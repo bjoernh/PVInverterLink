@@ -15,26 +15,26 @@ Deye Hard Backend is a FastAPI-based solar inverter management system that integ
 - **Authentication**: fastapi-users with JWT (Bearer + Cookie transport)
 - **Admin Interface**: SQLAdmin
 - **Template Engine**: Jinja2
-- **Package Manager**: Poetry
-- **Python Version**: 3.11+
+- **Package Manager**: uv
+- **Python Version**: 3.13+
 
 ## Development Commands
 
 ### Local Development
 ```bash
 # Install dependencies
-poetry install
+uv sync
 
 # Run development server
-poetry run uvicorn solar_backend.app:app --reload
+uv run uvicorn solar_backend.app:app --reload
 
 # Run tests
-poetry run pytest
+uv run pytest
 
 # Run specific test markers
-poetry run pytest -m unit
-poetry run pytest -m integration
-poetry run pytest -m smoke
+uv run pytest -m unit
+uv run pytest -m integration
+uv run pytest -m smoke
 ```
 
 ### Docker Development
@@ -55,16 +55,16 @@ docker-compose up -d --build backend
 ### Database Migrations
 ```bash
 # Create a new migration
-poetry run alembic revision --autogenerate -m "description"
+uv run alembic revision --autogenerate -m "description"
 
 # Apply migrations
-poetry run alembic upgrade head
+uv run alembic upgrade head
 
 # Rollback one migration
-poetry run alembic downgrade -1
+uv run alembic downgrade -1
 
 # View migration history
-poetry run alembic history
+uv run alembic history
 ```
 
 ## Architecture
@@ -192,9 +192,9 @@ This operator token allows the backend to create per-user organizations and toke
 ### Database Changes
 
 1. Modify models in `db.py`
-2. Generate migration: `poetry run alembic revision --autogenerate -m "description"`
+2. Generate migration: `uv run alembic revision --autogenerate -m "description"`
 3. Review generated migration in `alembic/versions/`
-4. Apply: `poetry run alembic upgrade head`
+4. Apply: `uv run alembic upgrade head`
 
 ### Working with InfluxDB
 
