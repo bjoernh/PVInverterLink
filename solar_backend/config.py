@@ -9,9 +9,9 @@ logger = structlog.get_logger()
 ENF_FILE = os.environ.get('ENV_FILE', None)
 if ENF_FILE is None:
     logger.critical("No Env File found, check if ENV_FILE is defined")
-
-
-path_to_env = Path(__file__).parent.resolve() / Path(ENF_FILE)
+    path_to_env = None
+else:
+    path_to_env = Path(__file__).parent.resolve() / Path(ENF_FILE)
 
 class MailSettings(BaseModel):
     SUPPRESS_SEND: bool

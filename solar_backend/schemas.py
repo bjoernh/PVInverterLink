@@ -31,6 +31,11 @@ class InverterAdd:
         serial: str
 
 @dataclass
+class InverterAddMetadata:
+        rated_power: int
+        number_of_mppts: int
+
+@dataclass
 class Inverter:
     id: int
     name: str

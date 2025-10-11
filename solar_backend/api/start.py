@@ -33,3 +33,16 @@ async def get_start(request: Request, user: User = Depends(current_active_user),
         await extend_current_powers(user, list(inverters))
     
     return {"user": user, "inverters": inverters}
+
+@router.get("/test", response_class=HTMLResponse)
+@htmx("test", "test")
+async def get_test(request: Request):
+    return {}
+
+@router.post("/post_test")
+async def post_test():
+    return HTMLResponse("""<a href="/" hx-boost="false">weiter</a>""")
+    #extra_headers = {"HX-Redirect": "/", "HX-Refresh":"true"}
+    return RedirectResponse('/', status_code=status.HTTP_200_OK, headers=extra_headers)
+    #return HTMLResponse("", headers=extra_headers)
+    #return HTMLResponse("Seriennummer existiert bereits", status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)

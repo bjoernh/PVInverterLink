@@ -9,7 +9,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi_htmx import htmx
 
 from solar_backend.db import User, get_async_session
-from solar_backend.schemas import InverterAdd
+from solar_backend.schemas import InverterAdd, InverterAddMetadata
+from solar_backend.schemas import Inverter as InverterSchema
 from solar_backend.users import current_active_user, current_superuser_bearer
 from solar_backend.db import Inverter
 from solar_backend.inverter import create_influx_bucket, delete_influx_bucket
@@ -81,9 +82,32 @@ async def delete_inverter(inverter_id: int, request: Request, db_session = Depen
 async def get_token(serial: str, request: Request, user: User = Depends(current_superuser_bearer), db_session = Depends(get_async_session)):
     """Get all information related to a inverter with given serial number"""
     async with db_session as session:
-        result = await session.execute(select(User.influx_token, Inverter.influx_bucked_id, Inverter.name, User.influx_org_id).join_from(User, Inverter).where(Inverter.serial_logger == serial))
+        result = await session.execute(select(User.influx_token, Inverter.influx_bucked_id, Inverter.name, Inverter.rated_power , User.influx_org_id).join_from(User, Inverter).where(Inverter.serial_logger == serial))
         row = result.first()
     if row:
-        return {"serial": serial, "token": row.influx_token, "bucket_id": row.influx_bucked_id, "bucket_name": row.name, "org_id": row.influx_org_id }
+        return {
+            "serial": serial,
+            "token": row.influx_token,
+            "bucket_id": row.influx_bucked_id,
+            "bucket_name": row.name,
+            "org_id": row.influx_org_id,
+            "is_metadata_complete": True if Inverter.rated_power else False
+            }
     else:
         return HTMLResponse(status_code=status.HTTP_404_NOT_FOUND)
+
+@router.post("/inverter_metadata/{serial_logger}", response_model=InverterSchema)
+async def post_inverter_metadata(data: InverterAddMetadata, serial_logger: str, request: Request, user: User = Depends(current_superuser_bearer), db_session = Depends(get_async_session)):
+    """meta data for inverter"""
+    async with db_session as session:
+        print(select(Inverter))
+        # SELECT abfrage gibt keinen inverter zurück, warum ?
+        #result = await session.execute()
+        # inverter = result.scalar()
+        # if inverter:
+        #     inverter.rated_power = data.rated_power
+        #     inverter.number_of_mppts = data.number_of_mppts
+        #     await session.commit()
+        #     return inverter
+        # else:
+        #     return HTMLResponse(status_code=status.HTTP_404_NOT_FOUND)
