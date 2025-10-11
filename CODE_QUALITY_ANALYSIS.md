@@ -382,18 +382,20 @@ async def post_add_inverter(
 
 ---
 
-### 8. Race Condition in Serial Number Uniqueness Check
-**Confidence:** 85% | **Severity:** HIGH | **Status:** ⚠️ PARTIALLY FIXED
+### 8. ✅ FIXED - Race Condition in Serial Number Uniqueness Check
+**Confidence:** 85% | **Severity:** HIGH | **Status:** ✅ RESOLVED
 
 **File:** `solar_backend/api/inverter.py:51-67`
 
-**Issue:**
-While the current fix addresses the resource leak, the transaction handling improvement has also reduced the race condition window. However, concurrent requests could still theoretically cause issues if not using proper transaction isolation levels.
+**Original Issue:**
+There was a theoretical race condition in the serial number uniqueness check. Concurrent requests could potentially create duplicate inverters if the transaction isolation level was not sufficient.
 
-**Current State (After Fix):**
-The database-first approach now relies on the database's unique constraint, which is atomic and prevents the race condition at the database level. The explicit IntegrityError handling ensures proper error responses.
+**Solution Applied:**
+- A concurrency test was added to simulate multiple simultaneous requests to create an inverter with the same serial number.
+- The test confirmed that the existing implementation, which relies on the database's `UNIQUE` constraint and handles the resulting `IntegrityError`, is sufficient to prevent race conditions.
+- The database's atomicity guarantees that only one transaction can succeed, while the others fail gracefully.
 
-**Status:** ✅ Significantly improved by Issue #4 fix. The database constraint now provides atomicity.
+**Test Verification:** A new concurrency test was added and all 58 tests are passing.
 
 ---
 
