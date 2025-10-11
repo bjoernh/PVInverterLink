@@ -37,7 +37,7 @@ async def get_start(request: Request, user: User = Depends(current_active_user),
 @router.get("/test", response_class=HTMLResponse)
 @htmx("test", "test")
 async def get_test(request: Request):
-    return {}
+    return {"user": None}
 
 @router.post("/post_test")
 async def post_test():

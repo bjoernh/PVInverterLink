@@ -31,15 +31,27 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int], ModelView):
     async def on_after_verify(self, user: User, request: Optional[Request] = None):
         logger.info(f"User {user.id} is verified.", user=user)
         if not WEB_DEV_TESTING:
-            inflx.connect(org='wtf')
-            _inflx_user, org, token = inflx.create_influx_user_and_org(f"{user.email}", user.tmp_pass)
-            logger.info(f"Influx setup for user {user.first_name} {user.last_name} completed")
-            update_dict = {
-                "influx_org_id": org.id,
-                "influx_token": token,
-                "tmp_pass": ""}
+            try:
+                inflx.connect(org='wtf')
+                _inflx_user, org, token = inflx.create_influx_user_and_org(f"{user.email}", user.tmp_pass)
+                logger.info(f"Influx setup for user {user.first_name} {user.last_name} completed")
+                update_dict = {
+                    "influx_org_id": org.id,
+                    "influx_token": token,
+                    "tmp_pass": ""}
 
-            await self.user_db.update(user, update_dict)
+                await self.user_db.update(user, update_dict)
+            except Exception as e:
+                logger.error(
+                    "Failed to create InfluxDB user/org during verification",
+                    error=str(e),
+                    user_id=user.id,
+                    user_email=user.email
+                )
+                # Clear tmp_pass even if InfluxDB setup fails
+                await self.user_db.update(user, {"tmp_pass": ""})
+                # User verification still succeeds, but InfluxDB setup failed
+                # Admin needs to check INFLUX_OPERATOR_TOKEN and manually set up user
             
 
     async def on_after_forgot_password(

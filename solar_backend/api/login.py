@@ -21,8 +21,8 @@ router = APIRouter()
 
 @router.get("/login", response_class=HTMLResponse)
 @htmx("login", "login")
-async def get_login(request: Request):
-    return {}
+async def get_login(request: Request, user: User = Depends(current_active_user)):
+    return {"user": user}
 
 @router.post("/login", response_class=HTMLResponse)
 async def post_login(username: Annotated[str, Form()],
@@ -71,8 +71,8 @@ async def get_reset_password(request: Request, user_manager: BaseUserManager[mod
 
 @router.get("/reset_passwort")
 @htmx("new_password", "new_password")
-async def get_reset_password(token: str, request: Request, user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)):
-    return {"token" : token}
+async def get_reset_password(token: str, request: Request, user: User = Depends(current_active_user), user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)):
+    return {"token": token, "user": user}
 
 
 @router.post("/reset_password", response_class=HTMLResponse)

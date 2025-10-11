@@ -48,7 +48,7 @@ docker-compose logs -f backend
 # Stop all services
 docker-compose down
 
-# Rebuild backend after code changes
+# Rebuild backend after general changes (not backend code)
 docker-compose up -d --build backend
 ```
 
@@ -203,9 +203,30 @@ This operator token allows the backend to create per-user organizations and toke
 - Bucket operations should always link to user's organization
 - Use `WEB_DEV_TESTING=True` to bypass InfluxDB during local development
 
+### HTMX Error Handling
+
+HTMX by default only processes 200-series HTTP responses. To display error messages for non-200 status codes, use the `response-targets` extension:
+
+- **Extension loaded**: `base.jinja2:72` includes `response-targets.js`
+- **Usage pattern**: Add `hx-target-XXX="#element-id"` attributes to forms/elements
+- **Example**: `<form hx-post="/endpoint" hx-target-422="#error-div" hx-target-503="#error-div">
+- **Backend**: Return `HTMLResponse` with error message and appropriate HTTP status codedocker
+
 ## Known Issues & TODOs
 
 - `/inverter_metadata/{serial_logger}` endpoint has incomplete SELECT query (see `api/inverter.py:100-112`)
 - Cycle import between `utils/influx.py` and user models (commented out at line 6)
 - TODO in `inverter.py` to decide bucket data retention policy
 - Structlog configured only for dev output (see `app.py:22`)
+- don't rebuild the backend container, because in dev mode the app directory is mapped into the container and uvicorn is started with --reload option and detect file changes
+
+### Dependency Compatibility Issues
+
+**Pydantic 2.12+ and fastapi-mail 1.5.0 incompatibility** (as of October 2025):
+- **Issue**: fastapi-mail 1.5.0 has a breaking bug with Pydantic 2.12+ that causes `AttributeError: 'ValidationInfo' object has no attribute 'multipart_subtype'` when sending emails
+- **Root cause**: Schema validator in `fastapi_mail/schemas.py` line 100 uses incorrect API for Pydantic 2.12+ after-model validators
+- **GitHub issue**: https://github.com/sabuhish/fastapi-mail/issues/236
+- **Pending fix**: PR #237 (https://github.com/sabuhish/fastapi-mail/pull/237) not yet merged
+- **Current workaround**: `pyproject.toml` line 20 constrains Pydantic to `>=2.0.0,<2.12` to maintain compatibility
+- **Action required**: When fastapi-mail releases version 1.6.0+ with the fix, remove the Pydantic version constraint and upgrade both packages
+- **Testing**: After upgrade, test email functionality (user registration, password reset) to verify compatibility

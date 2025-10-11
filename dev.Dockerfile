@@ -1,8 +1,5 @@
 FROM python:3.13-alpine
 
-RUN apk add --update --no-cache --virtual .tmp-build-deps \
-    gcc libc-dev linux-headers \
-    && apk add libffi-dev
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
@@ -11,6 +8,7 @@ WORKDIR /app/
 
 # Copy dependency files
 COPY pyproject.toml uv.lock /app/
+COPY README.md /app/
 
 # Install dependencies including dev dependencies
 RUN uv sync --frozen

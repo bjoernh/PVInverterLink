@@ -30,7 +30,7 @@ router = APIRouter()
 @router.get("/signup", response_class=HTMLResponse)
 @htmx("signup", "signup")
 async def root_page(request: Request):
-    return {}
+    return {"user": None}
 
 
 @router.post("/signup", response_class=HTMLResponse)

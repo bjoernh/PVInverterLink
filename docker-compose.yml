@@ -1,4 +1,3 @@
-version: '3'
 services:
   backend:
     build: .
@@ -15,10 +14,10 @@ services:
   influxdb:
     image: "influxdb:2.7-alpine"
     ports:
-    - 8086:8086
+      - 8086:8086
     volumes:
       - influxdb:/var/lib/influxdb2:rw
-    env_file: 
+    env_file:
       - influxdb.env
 
   db:
@@ -33,7 +32,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready"]
+      test: ["CMD-SHELL", "pg_isready -U deyehard"]
       interval: 2s
 
 volumes:
