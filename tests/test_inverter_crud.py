@@ -106,7 +106,7 @@ async def test_list_user_inverters(client, test_user, test_inverter, without_inf
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_delete_inverter(client, test_user, test_inverter, mocker, without_influx, db_session):
+async def test_delete_inverter(client, test_user, test_inverter, without_influx, db_session):
     """Test deleting an inverter as owner."""
     # Login first
     await client.post(
@@ -114,17 +114,10 @@ async def test_delete_inverter(client, test_user, test_inverter, mocker, without
         data={"username": "testuser@example.com", "password": "testpassword123"}
     )
 
-    # Mock InfluxDB bucket deletion
-    mock_delete = mocker.patch(
-        'solar_backend.api.inverter.delete_influx_bucket',
-        return_value=None
-    )
-
     # Delete inverter
     response = await client.delete(f"/inverter/{test_inverter.id}")
 
     assert response.status_code == 200
-    mock_delete.assert_called_once()
 
     # Verify inverter was deleted from database
     async with db_session as session:

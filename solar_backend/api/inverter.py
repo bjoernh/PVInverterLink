@@ -1,5 +1,6 @@
 import asyncpg
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 import structlog
 from fastapi_users import BaseUserManager
 
@@ -37,48 +38,59 @@ async def post_add_inverter(
     if user is None:
         return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
 
-    # check that inverter serial doesn't exist
     async with db_session as session:
-        inverters = await session.scalars(
-            select(Inverter).where(Inverter.serial_logger == inverter_to_add.serial)
+        # Create inverter object without bucket_id first
+        new_inverter_obj = Inverter(
+            user_id=user.id,
+            name=inverter_to_add.name,
+            serial_logger=inverter_to_add.serial,
+            influx_bucked_id=None,  # Will be set after InfluxDB bucket creation
+            sw_version="-",
         )
-        inverters = inverters.all()
-        if inverters:
+
+        # Insert into database first to ensure serial uniqueness
+        try:
+            session.add(new_inverter_obj)
+            await session.commit()
+            await session.refresh(new_inverter_obj)  # Get the ID
+        except IntegrityError as e:
+            # Handles both PostgreSQL (asyncpg) and SQLite unique constraint violations
+            await session.rollback()  # Explicitly rollback after error
+            logger.error(
+                "Inverter serial already exists",
+                serial=inverter_to_add.serial,
+                error=str(e),
+            )
             return HTMLResponse(
                 "<p style='color:red;'>Seriennummer existiert bereits</p>",
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
+        # After successful DB insert, create InfluxDB bucket
         if not WEB_DEV_TESTING:
             try:
                 bucket_id = await create_influx_bucket(user, inverter_to_add.name)
+                new_inverter_obj.influx_bucked_id = bucket_id
+                await session.commit()
             except Exception as e:
+                # Rollback: delete the inverter we just created
                 logger.error(
-                    "Failed to create InfluxDB bucket",
+                    "Failed to create InfluxDB bucket, rolling back inverter creation",
                     error=str(e),
                     user_id=user.id,
+                    inverter_id=new_inverter_obj.id,
                     bucket_name=inverter_to_add.name,
                 )
+                await session.delete(new_inverter_obj)
+                await session.commit()
                 return HTMLResponse(
                     "<p style='color:red;'>Fehler: InfluxDB ist nicht verfügbar. Bitte kontaktieren Sie den Administrator.</p>",
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
         else:
-            bucket_id = "dev-test"
-            token = "dev-token"
-        new_inverter_obj = Inverter(
-            user_id=user.id,
-            name=inverter_to_add.name,
-            serial_logger=inverter_to_add.serial,
-            influx_bucked_id=bucket_id,
-            sw_version="-",
-        )
-
-        try:
-            session.add(new_inverter_obj)
+            # In dev/test mode, just set a dummy bucket_id
+            new_inverter_obj.influx_bucked_id = "dev-test"
             await session.commit()
-        except asyncpg.exceptions.UniqueViolationError:
-            logger.error("Inverter serial already exists")
 
     return HTMLResponse("""
                         <div class="sm:mx-auto sm:w-full sm:max-w-sm">

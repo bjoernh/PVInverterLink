@@ -1,6 +1,14 @@
 import asyncio
 import os
 from pathlib import Path
+
+# IMPORTANT: Set ENV_FILE before any solar_backend imports
+# This ensures settings are loaded from test.env during test execution
+if "ENV_FILE" not in os.environ:
+    test_env_path = Path(__file__).parent / "test.env"
+    # Use relative path from solar_backend/config.py location
+    os.environ["ENV_FILE"] = "../tests/test.env"
+
 import pytest
 from fastapi_htmx import htmx_init
 from fastapi.templating import Jinja2Templates

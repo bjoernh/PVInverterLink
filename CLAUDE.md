@@ -28,13 +28,19 @@ uv sync
 # Run development server
 uv run uvicorn solar_backend.app:app --reload
 
-# Run tests
+# Run tests (test environment auto-configured)
 uv run pytest
 
 # Run specific test markers
 uv run pytest -m unit
 uv run pytest -m integration
 uv run pytest -m smoke
+
+# Run with verbose output
+uv run pytest -v
+
+# Note: Test configuration is automatically loaded from tests/test.env
+# No need to manually set ENV_FILE environment variable
 ```
 
 ### Docker Development
