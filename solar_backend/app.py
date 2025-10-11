@@ -6,6 +6,9 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi_htmx import htmx_init
 from sqladmin import Admin
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from solar_backend.db import User, create_db_and_tables, sessionmanager
 from solar_backend.inverter import InverterAdmin
@@ -14,9 +17,8 @@ from solar_backend.api import signup, login, start, inverter, healthcheck
 from solar_backend.config import settings
 from solar_backend.users import auth_backend_bearer, fastapi_users_bearer, current_active_user_bearer
 from solar_backend.utils.admin_auth import authentication_backend
+from solar_backend.limiter import limiter
 import structlog
-
-
 
 
 processors = [structlog.dev.ConsoleRenderer()]  # TODO: destinct between dev and production output
@@ -34,6 +36,8 @@ app = FastAPI(title="Deye Hard API",
                 "displayRequestDuration": True,
                 },
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SessionMiddleware, secret_key=settings.AUTH_SECRET)
 htmx_init(templates=Jinja2Templates(directory=Path(os.getcwd()) / Path("templates")))
 

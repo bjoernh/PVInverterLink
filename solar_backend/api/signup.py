@@ -17,6 +17,7 @@ import os
 
 
 from solar_backend.schemas import UserCreate
+from solar_backend.limiter import limiter
 
 from fastapi_users import models, exceptions
 
@@ -35,6 +36,7 @@ async def root_page(request: Request):
 
 @router.post("/signup", response_class=HTMLResponse)
 @htmx("verify", "verify")
+@limiter.limit("3/hour")
 async def post_signup(
     first_name: Annotated[str, Form()],
     last_name: Annotated[str, Form()],

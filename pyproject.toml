@@ -27,6 +27,7 @@ dependencies = [
     "nest-asyncio>=1.6.0",
     "sqlalchemy[asyncio]>=2.0.36",
     "humanize>=4.11.0",
+    "slowapi>=0.1.9",
 ]
 
 [project.optional-dependencies]
@@ -54,6 +55,7 @@ markers = [
     "smoke: tests if foundational errors exist",
     "unit: tests that are unit tests",
     "property_based: uses property based testing principles",
+    "enable_rate_limiter: enable rate limiter for a specific test",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",

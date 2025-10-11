@@ -10,6 +10,7 @@ from solar_backend.db import User
 
 
 from solar_backend.users import get_user_manager, current_active_user
+from solar_backend.limiter import limiter
 
 from fastapi_users import models, exceptions
 from solar_backend.users import auth_backend_user, get_jwt_strategy
@@ -25,6 +26,7 @@ async def get_login(request: Request, user: User = Depends(current_active_user))
     return {"user": user}
 
 @router.post("/login", response_class=HTMLResponse)
+@limiter.limit("5/minute")
 async def post_login(username: Annotated[str, Form()],
                      password: Annotated[str, Form()],
                      request: Request,
@@ -60,6 +62,7 @@ async def get_logout(request: Request, user: User = Depends(current_active_user)
 
 
 @router.post("/request_reset_passwort", response_class=HTMLResponse)
+@limiter.limit("5/hour")
 async def get_reset_password(request: Request, user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)):
     email = request.headers.get('HX-Prompt')
     user = await user_manager.get_by_email(email)

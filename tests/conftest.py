@@ -143,3 +143,9 @@ async def superuser_token(client, superuser):
     from tests.helpers import get_bearer_token
     token = await get_bearer_token(client, "superuser@example.com", "testpassword123")
     return token
+
+@pytest.fixture(autouse=True)
+def disable_rate_limiter(mocker, request):
+    if 'enable_rate_limiter' in request.keywords:
+        return
+    mocker.patch("solar_backend.limiter.limiter.enabled", False)

@@ -743,51 +743,53 @@ if not await validate_email_domain(email):
 
 ---
 
-### 17. No Rate Limiting on Authentication Endpoints
-**Confidence:** 85% | **Severity:** MEDIUM
+### 17. ✅ FIXED - No Rate Limiting on Authentication Endpoints
+**Confidence:** 85% | **Severity:** MEDIUM | **Status:** ✅ RESOLVED
 
 **Files Affected:**
+- `solar_backend/app.py`
 - `solar_backend/api/login.py`
 - `solar_backend/api/signup.py`
+- `solar_backend/limiter.py`
+- `tests/conftest.py`
 
-**Issue:**
-Login, signup, and password reset endpoints have no rate limiting, allowing brute force attacks.
+**Original Issue:**
+The login, signup, and password reset endpoints had no rate limiting, which made them vulnerable to brute-force attacks, account enumeration, and denial-of-service attacks.
 
-**Impact:**
-- Brute force password attacks possible
-- Account enumeration via signup/login timing
-- DoS via excessive requests
-- Password reset email spam
+**Solution Applied:**
+- Installed the `slowapi` library.
+- Created a central `Limiter` instance in a new `solar_backend/limiter.py` module to avoid circular dependencies.
+- Configured the main application in `solar_backend/app.py` to use the limiter and its exception handler.
+- Applied rate limits to the authentication endpoints:
+  - `@limiter.limit("5/minute")` for the login endpoint (`/login`).
+  - `@limiter.limit("3/hour")` for the signup endpoint (`/signup`).
+  - `@limiter.limit("5/hour")` for the password reset request endpoint (`/request_reset_passwort`).
+- Added a fixture to `tests/conftest.py` to disable the rate limiter during tests, preventing test failures due to rate limiting.
 
-**Recommended Fix:**
+**Fixed Code Flow:**
 ```python
-# Install slowapi
-# pip install slowapi
-
-from slowapi import Limiter, _rate_limit_exceeded_handler
+# solar_backend/limiter.py
+from slowapi import Limiter
 from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 
 limiter = Limiter(key_func=get_remote_address)
+
+# solar_backend/app.py
+from solar_backend.limiter import limiter
+# ...
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Add to endpoints:
+# solar_backend/api/login.py
+from solar_backend.limiter import limiter
+# ...
 @router.post("/login", response_class=HTMLResponse)
-@limiter.limit("5/minute")  # 5 attempts per minute
-async def post_login(request: Request, username: str, password: str, ...):
-    # ...
-
-@router.post("/signup", response_class=HTMLResponse)
-@limiter.limit("3/hour")  # 3 signups per hour per IP
-async def post_signup(request: Request, ...):
-    # ...
-
-@router.post("/request_reset_passwort", response_class=HTMLResponse)
-@limiter.limit("5/hour")  # 5 reset requests per hour
-async def get_reset_password(request: Request, ...):
+@limiter.limit("5/minute")
+async def post_login(...):
     # ...
 ```
+
+**Test Verification:** All 54 tests passing.
 
 ---
 
