@@ -34,7 +34,7 @@
                     </div>
                     <p>Seriennummer: {{ inverter.serial_logger }}</p>
                     <div class="card-actions justify-end">
-                    <a target="_blank" href="http://localhost:8086/orgs/1732f0297ff2c090/dashboards/0be31dfafaa16000?lower=now%28%29+-+12h" class="btn btn-primary">Details</a>
+                    <a href="/dashboard/{{ inverter.id }}" class="btn btn-primary">Dashboard</a>
                     <button class="btn btn-secondary" hx-delete="/inverter/{{ inverter.id }}" hs-swap="delete" hx-target="#card-{{ inverter.id }}" hx-confirm="Soll der Wechselrichter wirklich gelöscht werden, alle gespeicherten Daten werden gelöscht?">Entfernen</button>
                     </div>
                 </div>

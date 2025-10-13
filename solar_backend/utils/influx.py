@@ -150,9 +150,9 @@ class InfluxManagement:
     
     def get_latest_values(self, user, bucket: str) -> dict:
         query_api = self._client.query_api()
-        
+
         try:
-            tables = query_api.query(f"""from(bucket:"{bucket}") 
+            tables = query_api.query(f"""from(bucket:"{bucket}")
                                  |> range(start: -24h)
                                  |> filter(fn: (r) => r["_measurement"] == "grid")
                                  |> filter(fn: (r) => r["_field"] == "total_output_power")
@@ -163,6 +163,65 @@ class InfluxManagement:
         except (InfluxDBError, IndexError, KeyError) as e:
             logger.error("No values in InfluxDB", error=str(e), bucket=bucket)
             raise NoValuesException(f"InfluxDB query failed: {str(e)}")
+
+    def get_power_timeseries(self, user, bucket: str, time_range: str = "1h") -> list[dict]:
+        """
+        Get time-series power data for dashboard graphs.
+
+        Args:
+            user: User object with email for org lookup
+            bucket: Bucket name to query
+            time_range: Time range string (1h, 6h, 24h, 7d, 30d)
+
+        Returns:
+            List of dicts with timestamp and power values
+        """
+        query_api = self._client.query_api()
+
+        # Map time range to aggregation window
+        aggregation_map = {
+            "1h": "1m",
+            "6h": "5m",
+            "24h": "10m",
+            "7d": "1h",
+            "30d": "4h"
+        }
+
+        window = aggregation_map.get(time_range, "5m")
+
+        try:
+            query = f"""
+                from(bucket:"{bucket}")
+                |> range(start: -{time_range})
+                |> filter(fn: (r) => r["_measurement"] == "grid")
+                |> filter(fn: (r) => r["_field"] == "total_output_power")
+                |> aggregateWindow(every: {window}, fn: mean, createEmpty: false)
+                |> yield(name: "mean")
+            """
+
+            tables = query_api.query(query, org=user.email)
+
+            data_points = []
+            for table in tables:
+                for record in table.records:
+                    data_points.append({
+                        "time": record.get_time().isoformat(),
+                        "power": int(record.get_value()) if record.get_value() else 0
+                    })
+
+            logger.info("Retrieved time-series data",
+                       bucket=bucket,
+                       time_range=time_range,
+                       data_points=len(data_points))
+
+            return data_points
+
+        except (InfluxDBError, IndexError, KeyError) as e:
+            logger.error("Failed to retrieve time-series data",
+                        error=str(e),
+                        bucket=bucket,
+                        time_range=time_range)
+            raise NoValuesException(f"InfluxDB time-series query failed: {str(e)}")
 
 
 

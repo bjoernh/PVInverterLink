@@ -13,7 +13,7 @@ from slowapi.errors import RateLimitExceeded
 from solar_backend.db import User, create_db_and_tables, sessionmanager
 from solar_backend.inverter import InverterAdmin
 from solar_backend.users import UserAdmin
-from solar_backend.api import signup, login, start, inverter, healthcheck, account
+from solar_backend.api import signup, login, start, inverter, healthcheck, account, dashboard
 from solar_backend.config import settings, WEB_DEV_TESTING
 from solar_backend.users import auth_backend_bearer, fastapi_users_bearer, current_active_user_bearer
 from solar_backend.utils.admin_auth import authentication_backend
@@ -101,6 +101,7 @@ app.include_router(login.router)
 app.include_router(start.router)
 app.include_router(inverter.router)
 app.include_router(account.router)
+app.include_router(dashboard.router)
 app.include_router(healthcheck.router)
 
 admin.add_view(UserAdmin)
