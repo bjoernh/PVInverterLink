@@ -221,24 +221,68 @@ async def get_token(
         return HTMLResponse(status_code=status.HTTP_404_NOT_FOUND)
 
 
-@router.post("/inverter_metadata/{serial_logger}", response_model=InverterSchema)
+@router.post("/inverter_metadata/{serial_logger}")
 async def post_inverter_metadata(
     data: InverterAddMetadata,
     serial_logger: str,
     request: Request,
     user: User = Depends(current_superuser_bearer),
     session: AsyncSession = Depends(get_async_session),
-    csrf_protect: CsrfProtect = Depends(),
 ):
-    """meta data for inverter"""
-    print(select(Inverter))
-    # SELECT abfrage gibt keinen inverter zurück, warum ?
-    # result = await session.execute()
-    # inverter = result.scalar()
-    # if inverter:
-    #     inverter.rated_power = data.rated_power
-    #     inverter.number_of_mppts = data.number_of_mppts
-    #     await session.commit()
-    #     return inverter
-    # else:
-    #     return HTMLResponse(status_code=status.HTTP_404_NOT_FOUND)
+    """
+    Update metadata for an inverter identified by serial logger number.
+
+    This endpoint is called by the collector (superuser) to update inverter
+    metadata such as rated power and number of MPPTs after collecting this
+    information from the inverter telemetry.
+
+    Args:
+        data: Metadata containing rated_power and number_of_mppts
+        serial_logger: Unique serial number of the data logger
+
+    Returns:
+        Updated inverter data with metadata
+
+    Raises:
+        404: Inverter with given serial_logger not found
+    """
+    # Query inverter by serial_logger
+    result = await session.execute(
+        select(Inverter).where(Inverter.serial_logger == serial_logger)
+    )
+    inverter = result.scalar_one_or_none()
+
+    if not inverter:
+        logger.warning(
+            "Inverter not found for metadata update",
+            serial_logger=serial_logger
+        )
+        return HTMLResponse(
+            content=f"Inverter with serial {serial_logger} not found",
+            status_code=status.HTTP_404_NOT_FOUND
+        )
+
+    # Update metadata fields
+    inverter.rated_power = data.rated_power
+    inverter.number_of_mppts = data.number_of_mppts
+
+    await session.commit()
+    await session.refresh(inverter)
+
+    logger.info(
+        "Inverter metadata updated",
+        serial_logger=serial_logger,
+        inverter_id=inverter.id,
+        rated_power=data.rated_power,
+        number_of_mppts=data.number_of_mppts
+    )
+
+    # Return success response with updated data
+    return {
+        "id": inverter.id,
+        "serial_logger": inverter.serial_logger,
+        "name": inverter.name,
+        "rated_power": inverter.rated_power,
+        "number_of_mppts": inverter.number_of_mppts,
+        "sw_version": inverter.sw_version
+    }

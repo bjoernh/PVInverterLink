@@ -63,12 +63,50 @@ class InfluxManagement:
         
         return (user, org, authorization.token)
 
-    def create_bucket(self, bucket_name: str, org_id) -> Bucket:
+    def create_bucket(self, bucket_name: str, org_id, retention_seconds: int = 63072000) -> Bucket:
+        """
+        Create a bucket with specified retention policy.
+
+        Args:
+            bucket_name: Name of the bucket
+            org_id: Organization ID
+            retention_seconds: Data retention period in seconds (default: 63072000 = 2 years)
+
+        Returns:
+            Created Bucket object
+        """
         bucket_api = self._client.buckets_api()
-        bucket = bucket_api.create_bucket(bucket_name=bucket_name, org_id=org_id)  #TODO: decide how long data will be kept in the database (in seconds)
-        logger.info("Bucket created", bucket=bucket)
+        bucket = bucket_api.create_bucket(
+            bucket_name=bucket_name,
+            org_id=org_id,
+            retention_rules=[{"type": "expire", "everySeconds": retention_seconds}]
+        )
+        logger.info("Bucket created with retention policy",
+                   bucket=bucket.name,
+                   retention_days=retention_seconds // 86400)
         return bucket
     
+    def update_bucket_retention(self, bucket_id: str, retention_seconds: int = 63072000):
+        """
+        Update retention policy for an existing bucket.
+
+        Args:
+            bucket_id: Bucket ID to update
+            retention_seconds: Data retention period in seconds (default: 63072000 = 2 years)
+        """
+        bucket_api = self._client.buckets_api()
+        bucket = bucket_api.find_bucket_by_id(bucket_id)
+        if bucket:
+            bucket.retention_rules = [{"type": "expire", "everySeconds": retention_seconds}]
+            bucket_api.update_bucket(bucket)
+            logger.info("Bucket retention policy updated",
+                       bucket_id=bucket_id,
+                       bucket_name=bucket.name,
+                       retention_days=retention_seconds // 86400)
+        else:
+            logger.warning("Bucket not found for retention update", bucket_id=bucket_id)
+            raise ValueError(f"Bucket {bucket_id} not found")
+
     def delete_bucket(self, bucket_id: str):
         bucket_api = self._client.buckets_api()
         bucket_api.delete_bucket(bucket_id)

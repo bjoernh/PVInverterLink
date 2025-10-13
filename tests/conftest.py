@@ -58,6 +58,18 @@ async def client(event_loop):
         yield c
 
 
+@pytest_asyncio.fixture
+async def async_client(client):
+    """Alias for client fixture for consistency with test naming."""
+    return client
+
+
+@pytest_asyncio.fixture
+async def async_session(db_session):
+    """Alias for db_session fixture for consistency with test naming."""
+    return db_session
+
+
 @pytest.fixture(scope="function")
 def without_influx(mocker):
     mocker.patch.object(inverter, 'WEB_DEV_TESTING', True)
@@ -143,6 +155,19 @@ async def superuser_token(client, superuser):
     from tests.helpers import get_bearer_token
     token = await get_bearer_token(client, "superuser@example.com", "testpassword123")
     return token
+
+
+@pytest_asyncio.fixture
+async def user_token_headers(bearer_token):
+    """Get authorization headers with bearer token for regular user."""
+    return {"Authorization": f"Bearer {bearer_token}"}
+
+
+@pytest_asyncio.fixture
+async def superuser_token_headers(superuser_token):
+    """Get authorization headers with bearer token for superuser."""
+    return {"Authorization": f"Bearer {superuser_token}"}
+
 
 @pytest.fixture(autouse=True)
 def disable_rate_limiter(mocker, request):
