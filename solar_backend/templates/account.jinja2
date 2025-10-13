@@ -1,0 +1,94 @@
+{% extends "base.jinja2" %}
+{% block title %}Konto Verwalten{% endblock %}
+{% block content %}
+    <div class="sm:mx-auto sm:w-full sm:max-w-2xl">
+      <h2 class="mt-10 text-3xl font-bold leading-9 tracking-tight">Konto Verwalten</h2>
+    </div>
+
+    <!-- Change Email Section -->
+    <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-2xl">
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h3 class="card-title">E-Mail-Adresse ändern</h3>
+          <div id="email-alert"></div>
+          <form class="space-y-4" hx-post="/account/change-email" hx-target="#email-alert" hx-ext="response-targets" hx-target-422="#email-alert" hx-target-401="#email-alert">
+            <div>
+              <label class="label">
+                <span class="label-text">Aktuelle E-Mail</span>
+              </label>
+              <input type="text" value="{{ user.email }}" disabled class="input input-bordered w-full" />
+            </div>
+            <div>
+              <label class="label">
+                <span class="label-text">Neue E-Mail-Adresse</span>
+              </label>
+              <input name="new_email" type="email" required placeholder="neue@email.de" class="input input-bordered w-full" />
+            </div>
+            <div>
+              <button type="submit" class="btn btn-primary">E-Mail ändern</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Change Password Section -->
+    <div class="mt-6 sm:mx-auto sm:w-full sm:max-w-2xl">
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h3 class="card-title">Passwort ändern</h3>
+          <div id="password-alert"></div>
+          <form class="space-y-4" hx-post="/account/change-password" hx-target="#password-alert" hx-ext="response-targets" hx-target-422="#password-alert" hx-target-401="#password-alert" hx-target-207="#password-alert">
+            <div>
+              <label class="label">
+                <span class="label-text">Aktuelles Passwort</span>
+              </label>
+              <input name="current_password" type="password" required minlength="8" placeholder="Aktuelles Passwort" class="input input-bordered w-full" />
+            </div>
+            <div>
+              <label class="label">
+                <span class="label-text">Neues Passwort</span>
+              </label>
+              <input name="new_password1" type="password" required minlength="8" placeholder="Neues Passwort" class="input input-bordered w-full" />
+              <label class="label">
+                <span class="label-text-alt">Mind. 8 Zeichen, 1 Zahl, 1 Großbuchstabe</span>
+              </label>
+            </div>
+            <div>
+              <label class="label">
+                <span class="label-text">Neues Passwort bestätigen</span>
+              </label>
+              <input name="new_password2" type="password" required minlength="8" placeholder="Neues Passwort wiederholen" class="input input-bordered w-full" />
+            </div>
+            <div>
+              <button type="submit" class="btn btn-primary">Passwort ändern</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Account Section -->
+    <div class="mt-6 mb-10 sm:mx-auto sm:w-full sm:max-w-2xl">
+      <div class="card bg-base-100 shadow-xl border-2 border-error">
+        <div class="card-body">
+          <h3 class="card-title text-error">Konto löschen</h3>
+          <div class="alert alert-warning">
+            <span><i class="fa-solid fa-triangle-exclamation"></i> <strong>Achtung:</strong> Diese Aktion kann nicht rückgängig gemacht werden! Alle Ihre Wechselrichter und gespeicherten Daten werden dauerhaft gelöscht.</span>
+          </div>
+          <div id="delete-alert"></div>
+          <form class="space-y-4" hx-post="/account/delete" hx-target="#delete-alert" hx-ext="response-targets" hx-target-422="#delete-alert" hx-target-401="#delete-alert" hx-confirm="Sind Sie sicher, dass Sie Ihr Konto unwiderruflich löschen möchten? Alle Daten gehen verloren!">
+            <div>
+              <label class="label">
+                <span class="label-text">Passwort zur Bestätigung</span>
+              </label>
+              <input name="password" type="password" required minlength="8" placeholder="Passwort eingeben" class="input input-bordered w-full" />
+            </div>
+            <div>
+              <button type="submit" class="btn btn-error">Konto unwiderruflich löschen</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+{% endblock %}

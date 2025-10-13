@@ -73,6 +73,25 @@ class InfluxManagement:
         bucket_api = self._client.buckets_api()
         bucket_api.delete_bucket(bucket_id)
         logger.info(f"Bucket deleted", bucket_id=bucket_id)
+
+    def update_user_password(self, username: str, new_password: str):
+        """Update password for an InfluxDB user."""
+        user_api = self._client.users_api()
+        # Find user by name (email)
+        users = user_api.find_users()
+        user = next((u for u in users if u.name == username), None)
+        if user:
+            user_api.update_password(user, new_password)
+            logger.info("InfluxDB password updated", username=username)
+        else:
+            logger.warning("InfluxDB user not found for password update", username=username)
+            raise ValueError(f"InfluxDB user {username} not found")
+
+    def delete_organization(self, org_id: str):
+        """Delete an InfluxDB organization."""
+        org_api = self._client.organizations_api()
+        org_api.delete_organization(org_id)
+        logger.info("InfluxDB organization deleted", org_id=org_id)
     
     def set_default_permission(self):
         auth_api = self._client.authorizations_api()
