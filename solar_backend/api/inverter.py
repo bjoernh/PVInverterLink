@@ -27,6 +27,29 @@ router = APIRouter()
 @router.get("/add_inverter", response_class=HTMLResponse)
 @htmx("add_inverter", "add_inverter")
 async def get_add_inverter(request: Request, user: User = Depends(current_active_user)):
+    if user is None:
+        return RedirectResponse('/login', status_code=status.HTTP_303_SEE_OTHER)
+
+    # Block unverified users
+    if not user.is_verified:
+        return HTMLResponse(
+            """<div class="sm:mx-auto sm:w-full sm:max-w-sm">
+                <div class="alert alert-warning shadow-lg mt-6">
+                    <div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div>
+                            <h3 class="font-bold">Email-Verifizierung erforderlich</h3>
+                            <div class="text-sm">Bitte verifizieren Sie zuerst Ihre E-Mail-Adresse, bevor Sie einen Wechselrichter hinzufügen können.</div>
+                        </div>
+                    </div>
+                </div>
+                <a href="/" class="btn btn-primary mt-4" hx-boost="true">Zurück zur Übersicht</a>
+            </div>""",
+            status_code=status.HTTP_403_FORBIDDEN
+        )
+
     return {"user": user}
 
 
@@ -43,6 +66,32 @@ async def post_add_inverter(
 ):
     if user is None:
         return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    # Check if user is verified
+    if not user.is_verified:
+        logger.warning(
+            "Unverified user attempted to add inverter",
+            user_id=user.id,
+            user_email=user.email
+        )
+        return HTMLResponse(
+            "<p style='color:red;'>Bitte verifizieren Sie zuerst Ihre E-Mail-Adresse.</p>",
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+
+    # Check if InfluxDB credentials are set (safety check)
+    if not WEB_DEV_TESTING and (not user.influx_token or not user.influx_org_id):
+        logger.error(
+            "User is verified but missing InfluxDB credentials",
+            user_id=user.id,
+            user_email=user.email,
+            has_token=bool(user.influx_token),
+            has_org_id=bool(user.influx_org_id)
+        )
+        return HTMLResponse(
+            "<p style='color:red;'>Ihr Konto ist nicht vollständig eingerichtet. Bitte kontaktieren Sie den Administrator.</p>",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
     # Create inverter object without bucket_id first
     new_inverter_obj = Inverter(

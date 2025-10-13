@@ -29,7 +29,11 @@
         </label>
         <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
           <li><a href="/" hx-push-url="true">Home</a></li>
+          {% if user.is_verified %}
           <li><a href="/add_inverter" hx-push-url="true">Hinzufügen</a></li>
+          {% else %}
+          <li class="disabled"><a class="text-base-300">Hinzufügen (Email verifizieren)</a></li>
+          {% endif %}
           <li><a href="/account" hx-push-url="true">Konto Verwalten</a></li>
           <li><a href="/logout" hx-push-url="true">Logout</a></li>
         </ul>

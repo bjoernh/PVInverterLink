@@ -3,12 +3,23 @@
 {% block content %}
 
     <div class="sm:mx-auto sm:w-full sm:max-w-sm">
+            {% if not user.is_verified %}
+            <div class="alert alert-warning shadow-lg mt-6">
+                <div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    <div>
+                        <h3 class="font-bold">Email-Verifizierung ausstehend</h3>
+                        <div class="text-xs">Bitte bestätigen Sie Ihre E-Mail-Adresse ({{ user.email }}), um alle Funktionen nutzen zu können.</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             {% for inverter in inverters %}
             <div id="card-{{ inverter.id }}" class="card w-80 bg-base-100 shadow-xl card-normal mt-6">
                 <div class="card-body">
                     <h1 class="card-title">{{ inverter.name }}</h1>
                     <div class="stats shadow stats-vertical">
-  
+
                     <div class="stat">
                     <div class="stat-figure text-primary">
                     <svg width="40" height="40" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -19,7 +30,7 @@
                         <div class="stat-value">{{ inverter.current_power }} W</div>
                         <div class="stat-desc">{{ inverter.last_update }}</div>
                     </div>
-                    
+
                     </div>
                     <p>Seriennummer: {{ inverter.serial_logger }}</p>
                     <div class="card-actions justify-end">
@@ -28,14 +39,15 @@
                     </div>
                 </div>
             </div>
-            
-            
+
+
         {% else %}
+            {% if user.is_verified %}
             <div id="card-demo" class="card w-80 bg-base-100 shadow-xl card-normal mt-6">
                 <div class="card-body">
                     <h1 class="card-title">Demo PV</h1>
                     <div class="stats shadow stats-vertical">
-  
+
                     <div class="stat">
                     <div class="stat-figure text-primary">
                     <svg width="40" height="40" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -46,13 +58,17 @@
                         <div class="stat-value">333 W</div>
                         <div class="stat-desc">vor 26 Sekunden</div>
                     </div>
-                    
+
                     </div>
                     <p>Seriennummer: 123456789</p>
                 </div>
             </div>
-        
-    
+            {% endif %}
+
+        {% endfor %}
+
+        {# Add new inverter card or verification warning #}
+        {% if user.is_verified %}
         <div id="add_new" class="card w-80 bg-base-100 shadow-xl mt-6">
                     <div class="card-body">
                         <h2 class="card-title">Neuen Wechselrichter hinzufügen</h2>
@@ -61,7 +77,18 @@
                         </div>
                     </div>
                 </div>
-            
+        {% else %}
+        <div id="verification_warning" class="card w-80 bg-warning text-warning-content shadow-xl mt-6">
+                    <div class="card-body">
+                        <h2 class="card-title">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            Email-Verifizierung erforderlich
+                        </h2>
+                        <p>Bitte verifizieren Sie Ihre E-Mail-Adresse, bevor Sie einen Wechselrichter hinzufügen können.</p>
+                        <p class="text-sm mt-2">Wir haben Ihnen eine Bestätigungsmail an <strong>{{ user.email }}</strong> gesendet. Klicken Sie auf den Link in der E-Mail, um Ihr Konto zu aktivieren.</p>
+                    </div>
+                </div>
+        {% endif %}
+
         </div>
-    {% endfor %}
 {% endblock %}
