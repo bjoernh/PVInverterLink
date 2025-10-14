@@ -30,6 +30,7 @@ dependencies = [
     "slowapi>=0.1.9",
     "fastapi-csrf-protect>=1.0.7",
     "cryptography>=46.0.2",
+    "plotly>=5.18.0",
 ]
 
 [project.optional-dependencies]

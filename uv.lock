@@ -992,6 +992,15 @@ wheels = [
 ]
 
 [[package]]
+name = "narwhals"
+version = "2.8.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ae/05/79a5b5a795f36c1aaa002d194c1ef71e5d95f7e1900155bbfde734815ab9/narwhals-2.8.0.tar.gz", hash = "sha256:52e0b22d54718264ae703bd9293af53b04abc995a1414908c3b807ba8c913858", size = 574277 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1d/86/ac808ecb94322a3f1ea31627d13ab3e50dd4333564d711e0e481ad0f4586/narwhals-2.8.0-py3-none-any.whl", hash = "sha256:6304856676ba4a79fd34148bda63aed8060dd6edb1227edf3659ce5e091de73c", size = 415852 },
+]
+
+[[package]]
 name = "nest-asyncio"
 version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1007,6 +1016,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a1/d4/1fc4078c65507b51b96ca8f8c3ba19e6a61c8253c72794544580a7b6c24d/packaging-25.0.tar.gz", hash = "sha256:d443872c98d677bf60f6a1f2f8c1cb748e8fe762d2bf9d3148b5599295b0fc4f", size = 165727 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/20/12/38679034af332785aac8774540895e234f4d07f7545804097de4b666afd8/packaging-25.0-py3-none-any.whl", hash = "sha256:29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484", size = 66469 },
+]
+
+[[package]]
+name = "plotly"
+version = "6.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "narwhals" },
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0c/63/961d47c9ffd592a575495891cdcf7875dc0903ebb33ac238935714213789/plotly-6.3.1.tar.gz", hash = "sha256:dd896e3d940e653a7ce0470087e82c2bd903969a55e30d1b01bb389319461bb0", size = 6956460 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3f/93/023955c26b0ce614342d11cc0652f1e45e32393b6ab9d11a664a60e9b7b7/plotly-6.3.1-py3-none-any.whl", hash = "sha256:8b4420d1dcf2b040f5983eed433f95732ed24930e496d36eb70d211923532e64", size = 9833698 },
 ]
 
 [[package]]
@@ -1368,6 +1390,7 @@ dependencies = [
     { name = "influxdb-client", extra = ["async"] },
     { name = "itsdangerous" },
     { name = "nest-asyncio" },
+    { name = "plotly" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
@@ -1409,6 +1432,7 @@ requires-dist = [
     { name = "influxdb-client", extras = ["async"], specifier = ">=1.49.0" },
     { name = "itsdangerous", specifier = ">=2.2.0" },
     { name = "nest-asyncio", specifier = ">=1.6.0" },
+    { name = "plotly", specifier = ">=5.18.0" },
     { name = "pydantic", specifier = ">=2.0.0,<2.12" },
     { name = "pydantic-settings", specifier = ">=2.8.0" },
     { name = "pytailwindcss", marker = "extra == 'dev'", specifier = ">=0.2.0" },

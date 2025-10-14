@@ -1,9 +1,17 @@
 import structlog
-from influxdb_client import Bucket, InfluxDBClient, OrganizationsService, AddResourceMemberRequestBody, User, Organization, Authorization
+from influxdb_client import (
+    Bucket,
+    InfluxDBClient,
+    OrganizationsService,
+    AddResourceMemberRequestBody,
+    User,
+    Organization,
+    Authorization,
+)
 from influxdb_client.domain.permission import Permission
 from influxdb_client.domain.permission_resource import PermissionResource
 from solar_backend.config import settings
-#from solar_backend.users import User as UserBackend  #TODO: cycle import
+# from solar_backend.users import User as UserBackend  #TODO: cycle import
 
 from influxdb_client.client.exceptions import InfluxDBError
 
@@ -12,17 +20,21 @@ logger = structlog.get_logger()
 
 class NoValuesException(Exception):
     """Raised when InfluxDB query returns no data."""
+
     pass
 
 
 class InfluxConnectionError(Exception):
     """Raised when InfluxDB is not reachable or connection fails."""
+
     pass
 
 
 class InfluxUnavailableError(Exception):
     """Raised when InfluxDB service is temporarily unavailable."""
+
     pass
+
 
 class InfluxManagement:
     def __init__(self, db_url: str):
@@ -53,16 +65,28 @@ class InfluxManagement:
             health = self._client.health()
             is_healthy = health.status == "pass"
             if not is_healthy:
-                logger.warning("InfluxDB health check failed", status=health.status, message=health.message)
+                logger.warning(
+                    "InfluxDB health check failed",
+                    status=health.status,
+                    message=health.message,
+                )
             return is_healthy
         except (ConnectionError, TimeoutError, OSError) as e:
-            logger.error("InfluxDB connection test failed", error=str(e), url=self.db_url)
+            logger.error(
+                "InfluxDB connection test failed", error=str(e), url=self.db_url
+            )
             return False
         except Exception as e:
             logger.error("InfluxDB health check error", error=str(e), url=self.db_url)
             return False
 
-    def connect(self, org: str = None, username: str = None, password: str = None, token: str = None):
+    def connect(
+        self,
+        org: str = None,
+        username: str = None,
+        password: str = None,
+        token: str = None,
+    ):
         """
         Connect to InfluxDB and verify the connection is working.
 
@@ -77,27 +101,45 @@ class InfluxManagement:
         """
         try:
             if not username:
-                self._client = InfluxDBClient(url=self.db_url, token=token if token else self.token, org=org)
+                self._client = InfluxDBClient(
+                    url=self.db_url, token=token if token else self.token, org=org
+                )
             else:
-                self._client = InfluxDBClient(url=self.db_url, username=username, password=password, org=org)
+                self._client = InfluxDBClient(
+                    url=self.db_url, username=username, password=password, org=org
+                )
 
             # Test the connection
             if not self._test_connection():
-                raise InfluxConnectionError(f"InfluxDB at {self.db_url} is not healthy or not reachable")
+                raise InfluxConnectionError(
+                    f"InfluxDB at {self.db_url} is not healthy or not reachable"
+                )
 
             self.connected = True
-            logger.info(f"successfully connected to {self.db_url}", org=org, url=self.db_url)
+            logger.info(
+                f"successfully connected to {self.db_url}", org=org, url=self.db_url
+            )
 
         except InfluxConnectionError:
             # Re-raise our custom exception
             raise
         except (ConnectionError, TimeoutError, OSError) as e:
-            logger.error("InfluxDB connection failed", error=str(e), url=self.db_url, org=org)
-            raise InfluxConnectionError(f"Cannot connect to InfluxDB at {self.db_url}: {str(e)}") from e
+            logger.error(
+                "InfluxDB connection failed", error=str(e), url=self.db_url, org=org
+            )
+            raise InfluxConnectionError(
+                f"Cannot connect to InfluxDB at {self.db_url}: {str(e)}"
+            ) from e
         except Exception as e:
-            logger.error("Unexpected error connecting to InfluxDB", error=str(e), url=self.db_url, org=org)
-            raise InfluxConnectionError(f"Failed to connect to InfluxDB: {str(e)}") from e
-
+            logger.error(
+                "Unexpected error connecting to InfluxDB",
+                error=str(e),
+                url=self.db_url,
+                org=org,
+            )
+            raise InfluxConnectionError(
+                f"Failed to connect to InfluxDB: {str(e)}"
+            ) from e
 
     def create_organization(self, name) -> Organization:
         """
@@ -116,15 +158,33 @@ class InfluxManagement:
             org_api = self._client.organizations_api()
             return org_api.create_organization(name=name)
         except (ConnectionError, TimeoutError, OSError) as e:
-            logger.error("InfluxDB connection error in create_organization", error=str(e), org_name=name)
-            raise InfluxConnectionError(f"Cannot reach InfluxDB to create organization: {str(e)}") from e
+            logger.error(
+                "InfluxDB connection error in create_organization",
+                error=str(e),
+                org_name=name,
+            )
+            raise InfluxConnectionError(
+                f"Cannot reach InfluxDB to create organization: {str(e)}"
+            ) from e
         except InfluxDBError as e:
-            if "connection" in str(e).lower() or "refused" in str(e).lower() or "unavailable" in str(e).lower():
-                logger.error("InfluxDB unavailable in create_organization", error=str(e), org_name=name)
-                raise InfluxConnectionError(f"InfluxDB service unavailable: {str(e)}") from e
+            if (
+                "connection" in str(e).lower()
+                or "refused" in str(e).lower()
+                or "unavailable" in str(e).lower()
+            ):
+                logger.error(
+                    "InfluxDB unavailable in create_organization",
+                    error=str(e),
+                    org_name=name,
+                )
+                raise InfluxConnectionError(
+                    f"InfluxDB service unavailable: {str(e)}"
+                ) from e
             raise  # Re-raise other InfluxDB errors
-    
-    def create_influx_user_and_org(self, username: str, password: str) -> (User, Organization, str):
+
+    def create_influx_user_and_org(
+        self, username: str, password: str
+    ) -> (User, Organization, str):
         """
         Create InfluxDB user and organization.
 
@@ -138,7 +198,7 @@ class InfluxManagement:
         Raises:
             InfluxConnectionError: If InfluxDB is not reachable
         """
-        #TODO: check that user don't exist
+        # TODO: check that user don't exist
 
         try:
             user_api = self._client.users_api()
@@ -151,10 +211,14 @@ class InfluxManagement:
             org = self.create_organization(username)
             logger.info(f"Organization {org.name} created", org=org)
 
-            organization_service = OrganizationsService(api_client=self._client.api_client)
+            organization_service = OrganizationsService(
+                api_client=self._client.api_client
+            )
 
             member_request = AddResourceMemberRequestBody(id=user.id)
-            member = organization_service.post_orgs_id_owners(org_id=org.id, add_resource_member_request_body=member_request)
+            member = organization_service.post_orgs_id_owners(
+                org_id=org.id, add_resource_member_request_body=member_request
+            )
             logger.info(f"user added to organisation", member=member)
 
             authorization = self.create_authorization(org.id)
@@ -165,15 +229,33 @@ class InfluxManagement:
             # Re-raise connection errors
             raise
         except (ConnectionError, TimeoutError, OSError) as e:
-            logger.error("InfluxDB connection error in create_influx_user_and_org", error=str(e), username=username)
-            raise InfluxConnectionError(f"Cannot reach InfluxDB to create user: {str(e)}") from e
+            logger.error(
+                "InfluxDB connection error in create_influx_user_and_org",
+                error=str(e),
+                username=username,
+            )
+            raise InfluxConnectionError(
+                f"Cannot reach InfluxDB to create user: {str(e)}"
+            ) from e
         except InfluxDBError as e:
-            if "connection" in str(e).lower() or "refused" in str(e).lower() or "unavailable" in str(e).lower():
-                logger.error("InfluxDB unavailable in create_influx_user_and_org", error=str(e), username=username)
-                raise InfluxConnectionError(f"InfluxDB service unavailable: {str(e)}") from e
+            if (
+                "connection" in str(e).lower()
+                or "refused" in str(e).lower()
+                or "unavailable" in str(e).lower()
+            ):
+                logger.error(
+                    "InfluxDB unavailable in create_influx_user_and_org",
+                    error=str(e),
+                    username=username,
+                )
+                raise InfluxConnectionError(
+                    f"InfluxDB service unavailable: {str(e)}"
+                ) from e
             raise  # Re-raise other InfluxDB errors
 
-    def create_bucket(self, bucket_name: str, org_id, retention_seconds: int = 63072000) -> Bucket:
+    def create_bucket(
+        self, bucket_name: str, org_id, retention_seconds: int = 63072000
+    ) -> Bucket:
         """
         Create a bucket with specified retention policy.
 
@@ -193,22 +275,42 @@ class InfluxManagement:
             bucket = bucket_api.create_bucket(
                 bucket_name=bucket_name,
                 org_id=org_id,
-                retention_rules=[{"type": "expire", "everySeconds": retention_seconds}]
+                retention_rules=[{"type": "expire", "everySeconds": retention_seconds}],
             )
-            logger.info("Bucket created with retention policy",
-                       bucket=bucket.name,
-                       retention_days=retention_seconds // 86400)
+            logger.info(
+                "Bucket created with retention policy",
+                bucket=bucket.name,
+                retention_days=retention_seconds // 86400,
+            )
             return bucket
         except (ConnectionError, TimeoutError, OSError) as e:
-            logger.error("InfluxDB connection error in create_bucket", error=str(e), bucket_name=bucket_name)
-            raise InfluxConnectionError(f"Cannot reach InfluxDB to create bucket: {str(e)}") from e
+            logger.error(
+                "InfluxDB connection error in create_bucket",
+                error=str(e),
+                bucket_name=bucket_name,
+            )
+            raise InfluxConnectionError(
+                f"Cannot reach InfluxDB to create bucket: {str(e)}"
+            ) from e
         except InfluxDBError as e:
-            if "connection" in str(e).lower() or "refused" in str(e).lower() or "unavailable" in str(e).lower():
-                logger.error("InfluxDB unavailable in create_bucket", error=str(e), bucket_name=bucket_name)
-                raise InfluxConnectionError(f"InfluxDB service unavailable: {str(e)}") from e
+            if (
+                "connection" in str(e).lower()
+                or "refused" in str(e).lower()
+                or "unavailable" in str(e).lower()
+            ):
+                logger.error(
+                    "InfluxDB unavailable in create_bucket",
+                    error=str(e),
+                    bucket_name=bucket_name,
+                )
+                raise InfluxConnectionError(
+                    f"InfluxDB service unavailable: {str(e)}"
+                ) from e
             raise  # Re-raise other InfluxDB errors
-    
-    def update_bucket_retention(self, bucket_id: str, retention_seconds: int = 63072000):
+
+    def update_bucket_retention(
+        self, bucket_id: str, retention_seconds: int = 63072000
+    ):
         """
         Update retention policy for an existing bucket.
 
@@ -224,22 +326,44 @@ class InfluxManagement:
             bucket_api = self._client.buckets_api()
             bucket = bucket_api.find_bucket_by_id(bucket_id)
             if bucket:
-                bucket.retention_rules = [{"type": "expire", "everySeconds": retention_seconds}]
+                bucket.retention_rules = [
+                    {"type": "expire", "everySeconds": retention_seconds}
+                ]
                 bucket_api.update_bucket(bucket)
-                logger.info("Bucket retention policy updated",
-                           bucket_id=bucket_id,
-                           bucket_name=bucket.name,
-                           retention_days=retention_seconds // 86400)
+                logger.info(
+                    "Bucket retention policy updated",
+                    bucket_id=bucket_id,
+                    bucket_name=bucket.name,
+                    retention_days=retention_seconds // 86400,
+                )
             else:
-                logger.warning("Bucket not found for retention update", bucket_id=bucket_id)
+                logger.warning(
+                    "Bucket not found for retention update", bucket_id=bucket_id
+                )
                 raise ValueError(f"Bucket {bucket_id} not found")
         except (ConnectionError, TimeoutError, OSError) as e:
-            logger.error("InfluxDB connection error in update_bucket_retention", error=str(e), bucket_id=bucket_id)
-            raise InfluxConnectionError(f"Cannot reach InfluxDB to update bucket: {str(e)}") from e
+            logger.error(
+                "InfluxDB connection error in update_bucket_retention",
+                error=str(e),
+                bucket_id=bucket_id,
+            )
+            raise InfluxConnectionError(
+                f"Cannot reach InfluxDB to update bucket: {str(e)}"
+            ) from e
         except InfluxDBError as e:
-            if "connection" in str(e).lower() or "refused" in str(e).lower() or "unavailable" in str(e).lower():
-                logger.error("InfluxDB unavailable in update_bucket_retention", error=str(e), bucket_id=bucket_id)
-                raise InfluxConnectionError(f"InfluxDB service unavailable: {str(e)}") from e
+            if (
+                "connection" in str(e).lower()
+                or "refused" in str(e).lower()
+                or "unavailable" in str(e).lower()
+            ):
+                logger.error(
+                    "InfluxDB unavailable in update_bucket_retention",
+                    error=str(e),
+                    bucket_id=bucket_id,
+                )
+                raise InfluxConnectionError(
+                    f"InfluxDB service unavailable: {str(e)}"
+                ) from e
             raise  # Re-raise other InfluxDB errors
 
     def delete_bucket(self, bucket_id: str):
@@ -257,12 +381,28 @@ class InfluxManagement:
             bucket_api.delete_bucket(bucket_id)
             logger.info(f"Bucket deleted", bucket_id=bucket_id)
         except (ConnectionError, TimeoutError, OSError) as e:
-            logger.error("InfluxDB connection error in delete_bucket", error=str(e), bucket_id=bucket_id)
-            raise InfluxConnectionError(f"Cannot reach InfluxDB to delete bucket: {str(e)}") from e
+            logger.error(
+                "InfluxDB connection error in delete_bucket",
+                error=str(e),
+                bucket_id=bucket_id,
+            )
+            raise InfluxConnectionError(
+                f"Cannot reach InfluxDB to delete bucket: {str(e)}"
+            ) from e
         except InfluxDBError as e:
-            if "connection" in str(e).lower() or "refused" in str(e).lower() or "unavailable" in str(e).lower():
-                logger.error("InfluxDB unavailable in delete_bucket", error=str(e), bucket_id=bucket_id)
-                raise InfluxConnectionError(f"InfluxDB service unavailable: {str(e)}") from e
+            if (
+                "connection" in str(e).lower()
+                or "refused" in str(e).lower()
+                or "unavailable" in str(e).lower()
+            ):
+                logger.error(
+                    "InfluxDB unavailable in delete_bucket",
+                    error=str(e),
+                    bucket_id=bucket_id,
+                )
+                raise InfluxConnectionError(
+                    f"InfluxDB service unavailable: {str(e)}"
+                ) from e
             raise  # Re-raise other InfluxDB errors
 
     def update_user_password(self, username: str, new_password: str):
@@ -286,15 +426,33 @@ class InfluxManagement:
                 user_api.update_password(user, new_password)
                 logger.info("InfluxDB password updated", username=username)
             else:
-                logger.warning("InfluxDB user not found for password update", username=username)
+                logger.warning(
+                    "InfluxDB user not found for password update", username=username
+                )
                 raise ValueError(f"InfluxDB user {username} not found")
         except (ConnectionError, TimeoutError, OSError) as e:
-            logger.error("InfluxDB connection error in update_user_password", error=str(e), username=username)
-            raise InfluxConnectionError(f"Cannot reach InfluxDB to update password: {str(e)}") from e
+            logger.error(
+                "InfluxDB connection error in update_user_password",
+                error=str(e),
+                username=username,
+            )
+            raise InfluxConnectionError(
+                f"Cannot reach InfluxDB to update password: {str(e)}"
+            ) from e
         except InfluxDBError as e:
-            if "connection" in str(e).lower() or "refused" in str(e).lower() or "unavailable" in str(e).lower():
-                logger.error("InfluxDB unavailable in update_user_password", error=str(e), username=username)
-                raise InfluxConnectionError(f"InfluxDB service unavailable: {str(e)}") from e
+            if (
+                "connection" in str(e).lower()
+                or "refused" in str(e).lower()
+                or "unavailable" in str(e).lower()
+            ):
+                logger.error(
+                    "InfluxDB unavailable in update_user_password",
+                    error=str(e),
+                    username=username,
+                )
+                raise InfluxConnectionError(
+                    f"InfluxDB service unavailable: {str(e)}"
+                ) from e
             raise  # Re-raise other InfluxDB errors
 
     def delete_organization(self, org_id: str):
@@ -312,20 +470,40 @@ class InfluxManagement:
             org_api.delete_organization(org_id)
             logger.info("InfluxDB organization deleted", org_id=org_id)
         except (ConnectionError, TimeoutError, OSError) as e:
-            logger.error("InfluxDB connection error in delete_organization", error=str(e), org_id=org_id)
-            raise InfluxConnectionError(f"Cannot reach InfluxDB to delete organization: {str(e)}") from e
+            logger.error(
+                "InfluxDB connection error in delete_organization",
+                error=str(e),
+                org_id=org_id,
+            )
+            raise InfluxConnectionError(
+                f"Cannot reach InfluxDB to delete organization: {str(e)}"
+            ) from e
         except InfluxDBError as e:
-            if "connection" in str(e).lower() or "refused" in str(e).lower() or "unavailable" in str(e).lower():
-                logger.error("InfluxDB unavailable in delete_organization", error=str(e), org_id=org_id)
-                raise InfluxConnectionError(f"InfluxDB service unavailable: {str(e)}") from e
+            if (
+                "connection" in str(e).lower()
+                or "refused" in str(e).lower()
+                or "unavailable" in str(e).lower()
+            ):
+                logger.error(
+                    "InfluxDB unavailable in delete_organization",
+                    error=str(e),
+                    org_id=org_id,
+                )
+                raise InfluxConnectionError(
+                    f"InfluxDB service unavailable: {str(e)}"
+                ) from e
             raise  # Re-raise other InfluxDB errors
-    
+
     def set_default_permission(self):
         auth_api = self._client.authorizations_api()
         resource = PermissionResource(org_id=org_id, type="buckets", id=bucket_id)
         read_buckets = Permission(action="read", resource=resource)
-        write_buckets = Permission(action="write", resource=PermissionResource(type="buckets", id=bucket.id))
-        auth_api.create_authorization(org_id=ORG, permissions=[read_buckets, write_buckets])
+        write_buckets = Permission(
+            action="write", resource=PermissionResource(type="buckets", id=bucket.id)
+        )
+        auth_api.create_authorization(
+            org_id=ORG, permissions=[read_buckets, write_buckets]
+        )
 
     def create_authorization(self, org_id: str) -> Authorization:
         """
@@ -346,18 +524,36 @@ class InfluxManagement:
             read_bucket = Permission(action="read", resource=resource)
             write_bucket = Permission(action="write", resource=resource)
             permissions = [read_bucket, write_bucket]
-            authorization = authorization.create_authorization(org_id=org_id, permissions=permissions)
+            authorization = authorization.create_authorization(
+                org_id=org_id, permissions=permissions
+            )
             logger.info("authorization created", authorization=authorization)
             return authorization
         except (ConnectionError, TimeoutError, OSError) as e:
-            logger.error("InfluxDB connection error in create_authorization", error=str(e), org_id=org_id)
-            raise InfluxConnectionError(f"Cannot reach InfluxDB to create authorization: {str(e)}") from e
+            logger.error(
+                "InfluxDB connection error in create_authorization",
+                error=str(e),
+                org_id=org_id,
+            )
+            raise InfluxConnectionError(
+                f"Cannot reach InfluxDB to create authorization: {str(e)}"
+            ) from e
         except InfluxDBError as e:
-            if "connection" in str(e).lower() or "refused" in str(e).lower() or "unavailable" in str(e).lower():
-                logger.error("InfluxDB unavailable in create_authorization", error=str(e), org_id=org_id)
-                raise InfluxConnectionError(f"InfluxDB service unavailable: {str(e)}") from e
+            if (
+                "connection" in str(e).lower()
+                or "refused" in str(e).lower()
+                or "unavailable" in str(e).lower()
+            ):
+                logger.error(
+                    "InfluxDB unavailable in create_authorization",
+                    error=str(e),
+                    org_id=org_id,
+                )
+                raise InfluxConnectionError(
+                    f"InfluxDB service unavailable: {str(e)}"
+                ) from e
             raise  # Re-raise other InfluxDB errors
-    
+
     def get_latest_values(self, user, bucket: str) -> dict:
         """
         Get latest power values from InfluxDB.
@@ -375,21 +571,40 @@ class InfluxManagement:
         """
         try:
             query_api = self._client.query_api()
-            tables = query_api.query(f"""from(bucket:"{bucket}")
+            tables = query_api.query(
+                f"""from(bucket:"{bucket}")
                                  |> range(start: -24h)
                                  |> filter(fn: (r) => r["_measurement"] == "grid")
                                  |> filter(fn: (r) => r["_field"] == "total_output_power")
                                  |> timedMovingAverage(every: 5m, period: 10m)
-                                 |> last()""", org=user.email)
+                                 |> last()""",
+                org=user.email,
+            )
             last = tables[0].records[0]
-            return ( last.get_time(), int(last.get_value()) )
+            return (last.get_time(), int(last.get_value()))
         except (ConnectionError, TimeoutError, OSError) as e:
-            logger.error("InfluxDB connection error in get_latest_values", error=str(e), bucket=bucket)
-            raise InfluxConnectionError(f"Cannot reach InfluxDB for query: {str(e)}") from e
+            logger.error(
+                "InfluxDB connection error in get_latest_values",
+                error=str(e),
+                bucket=bucket,
+            )
+            raise InfluxConnectionError(
+                f"Cannot reach InfluxDB for query: {str(e)}"
+            ) from e
         except InfluxDBError as e:
-            if "connection" in str(e).lower() or "refused" in str(e).lower() or "unavailable" in str(e).lower():
-                logger.error("InfluxDB unavailable in get_latest_values", error=str(e), bucket=bucket)
-                raise InfluxConnectionError(f"InfluxDB service unavailable: {str(e)}") from e
+            if (
+                "connection" in str(e).lower()
+                or "refused" in str(e).lower()
+                or "unavailable" in str(e).lower()
+            ):
+                logger.error(
+                    "InfluxDB unavailable in get_latest_values",
+                    error=str(e),
+                    bucket=bucket,
+                )
+                raise InfluxConnectionError(
+                    f"InfluxDB service unavailable: {str(e)}"
+                ) from e
             # For query errors (unauthorized, not found, etc), raise NoValuesException
             logger.error("No values in InfluxDB", error=str(e), bucket=bucket)
             raise NoValuesException(f"InfluxDB query failed: {str(e)}")
@@ -397,7 +612,9 @@ class InfluxManagement:
             logger.error("No values in InfluxDB", error=str(e), bucket=bucket)
             raise NoValuesException(f"InfluxDB query returned no data: {str(e)}")
 
-    def get_power_timeseries(self, user, bucket: str, time_range: str = "1h") -> list[dict]:
+    def get_power_timeseries(
+        self, user, bucket: str, time_range: str = "1h"
+    ) -> list[dict]:
         """
         Get time-series power data for dashboard graphs.
 
@@ -419,7 +636,7 @@ class InfluxManagement:
             "6h": "5m",
             "24h": "10m",
             "7d": "1h",
-            "30d": "4h"
+            "30d": "4h",
         }
 
         window = aggregation_map.get(time_range, "5m")
@@ -441,37 +658,62 @@ class InfluxManagement:
             data_points = []
             for table in tables:
                 for record in table.records:
-                    data_points.append({
-                        "time": record.get_time().isoformat(),
-                        "power": int(record.get_value()) if record.get_value() else 0
-                    })
+                    data_points.append(
+                        {
+                            "time": record.get_time().isoformat(),
+                            "power": int(record.get_value())
+                            if record.get_value()
+                            else 0,
+                        }
+                    )
 
-            logger.info("Retrieved time-series data",
-                       bucket=bucket,
-                       time_range=time_range,
-                       data_points=len(data_points))
+            logger.info(
+                "Retrieved time-series data",
+                bucket=bucket,
+                time_range=time_range,
+                data_points=len(data_points),
+            )
 
             return data_points
 
         except (ConnectionError, TimeoutError, OSError) as e:
-            logger.error("InfluxDB connection error in get_power_timeseries", error=str(e), bucket=bucket, time_range=time_range)
-            raise InfluxConnectionError(f"Cannot reach InfluxDB for query: {str(e)}") from e
+            logger.error(
+                "InfluxDB connection error in get_power_timeseries",
+                error=str(e),
+                bucket=bucket,
+                time_range=time_range,
+            )
+            raise InfluxConnectionError(
+                f"Cannot reach InfluxDB for query: {str(e)}"
+            ) from e
         except InfluxDBError as e:
-            if "connection" in str(e).lower() or "refused" in str(e).lower() or "unavailable" in str(e).lower():
-                logger.error("InfluxDB unavailable in get_power_timeseries", error=str(e), bucket=bucket, time_range=time_range)
-                raise InfluxConnectionError(f"InfluxDB service unavailable: {str(e)}") from e
+            if (
+                "connection" in str(e).lower()
+                or "refused" in str(e).lower()
+                or "unavailable" in str(e).lower()
+            ):
+                logger.error(
+                    "InfluxDB unavailable in get_power_timeseries",
+                    error=str(e),
+                    bucket=bucket,
+                    time_range=time_range,
+                )
+                raise InfluxConnectionError(
+                    f"InfluxDB service unavailable: {str(e)}"
+                ) from e
             # For query errors (unauthorized, not found, etc), raise NoValuesException
-            logger.error("Failed to retrieve time-series data",
-                        error=str(e),
-                        bucket=bucket,
-                        time_range=time_range)
+            logger.error(
+                "Failed to retrieve time-series data",
+                error=str(e),
+                bucket=bucket,
+                time_range=time_range,
+            )
             raise NoValuesException(f"InfluxDB time-series query failed: {str(e)}")
         except (IndexError, KeyError) as e:
-            logger.error("Failed to retrieve time-series data",
-                        error=str(e),
-                        bucket=bucket,
-                        time_range=time_range)
+            logger.error(
+                "Failed to retrieve time-series data",
+                error=str(e),
+                bucket=bucket,
+                time_range=time_range,
+            )
             raise NoValuesException(f"InfluxDB query returned no data: {str(e)}")
-
-
-

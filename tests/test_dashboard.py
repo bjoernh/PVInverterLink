@@ -183,15 +183,15 @@ async def test_dashboard_shows_inverter_metadata(
 
 
 @pytest.mark.asyncio
-async def test_dashboard_page_includes_chart_js(
+async def test_dashboard_page_includes_plotly(
     authenticated_client: AsyncClient,
     test_inverter: Inverter
 ):
-    """Test that dashboard includes Chart.js library."""
+    """Test that dashboard includes Plotly library."""
     response = await authenticated_client.get(f"/dashboard/{test_inverter.id}")
 
     assert response.status_code == 200
-    assert "chart.js" in response.text.lower()
+    assert "plotly" in response.text.lower()
 
 
 @pytest.mark.asyncio

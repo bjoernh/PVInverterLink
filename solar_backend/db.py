@@ -17,7 +17,7 @@ class Inverter(Base):
     __tablename__ = "inverter"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id = mapped_column(ForeignKey("user.id"))
-    users = relationship("User", back_populates="inverters")
+    users = relationship("User", back_populates="inverters", lazy="selectin")
     name: Mapped[str] = mapped_column(String)
     serial_logger: Mapped[str] = mapped_column(String, unique=True)
     influx_bucked_id: Mapped[Optional[str]]
@@ -34,7 +34,7 @@ class Inverter(Base):
 class User(SQLAlchemyBaseUserTable[int], Base):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    inverters = relationship("Inverter", back_populates="users")
+    inverters = relationship("Inverter", back_populates="users", lazy="selectin")
     first_name: Mapped[str]  = mapped_column(String(32))
     last_name: Mapped[str] = mapped_column(String(32))
     influx_url: Mapped[str] = mapped_column(String(64), default=settings.INFLUX_URL)
