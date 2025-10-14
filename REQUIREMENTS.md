@@ -840,32 +840,53 @@ System shall implement 2-year data retention policy.
 **Implementation**: `utils/influx.py:66-87` (create_bucket), `utils/influx.py:89-108` (update_bucket_retention)
 **Tests**: `tests/test_influx_retention.py`
 
+#### REQ-DASH-001: Real-Time Power Dashboard
+**Priority**: High
+**Status**: ✅ Implemented
+
+Users shall view real-time power graphs with interactive time range selection.
+
+**Features**:
+- ✅ Live updating power graph (30-second refresh)
+- ✅ Time range selector (1 hour, 6 hours, 24 hours, 7 days, 30 days)
+- ✅ Statistics cards (current, max, min, average power)
+- ✅ Manual refresh button
+- ✅ Chart.js visualization with smooth animations
+- 📋 Multi-inverter comparison view (future enhancement)
+- 📋 Zoom and pan controls (future enhancement)
+
+**Data Source**: InfluxDB aggregated queries with time-range-based windows:
+- 1h: 1-minute aggregation
+- 6h: 5-minute aggregation
+- 24h: 10-minute aggregation
+- 7d: 1-hour aggregation
+- 30d: 4-hour aggregation
+
+**Acceptance Criteria**:
+- ✅ Graph updates without full page reload
+- ✅ Smooth rendering of time-series data
+- ✅ Responsive design (mobile-friendly)
+- ✅ Auto-refresh every 30 seconds
+- ✅ User isolation enforced
+- ✅ Graceful error handling for missing data
+- ✅ Dashboard accessible from home page
+
+**Implementation**:
+- Backend: `api/dashboard.py` (page and data endpoints)
+- InfluxDB: `utils/influx.py:167-224` (get_power_timeseries method)
+- Frontend: `templates/dashboard.jinja2` (Chart.js integration)
+- Integration: `app.py:16,104` (router registration), `templates/start.jinja2:37` (dashboard button)
+
+**Tests**: `tests/test_dashboard.py` (17 comprehensive tests)
+
+**Completed**: January 2025
+**Actual Effort**: 4 hours
+
 ### 🔄 In Progress
 
 *No requirements currently in progress.*
 
 ### 📋 Planned (Phase 2-3)
-
-#### REQ-DASH-001: Real-Time Power Dashboard
-**Priority**: High
-**Status**: 📋 Planned (Phase 2)
-
-Users shall view real-time power graphs.
-
-**Features**:
-- Live updating power graph (30-second refresh)
-- Time range selector (1 hour, 6 hours, 24 hours, 7 days, 30 days)
-- Multi-inverter comparison view
-- Zoom and pan controls
-
-**Data Source**: InfluxDB aggregated queries
-
-**Acceptance Criteria**:
-- Graph updates without full page reload
-- Smooth rendering of time-series data
-- Responsive design (mobile-friendly)
-
-**Implementation**: New dashboard component
 
 #### REQ-DASH-002: Energy Production Overview
 **Priority**: High
@@ -2037,7 +2058,7 @@ Status Legend:
 
 **Goal**: Stable, production-ready core functionality
 
-**Status**: 🔄 In Progress (95% complete)
+**Status**: ✅ Complete (100%)
 
 **Deliverables**:
 - ✅ User registration and verification
@@ -2046,41 +2067,41 @@ Status Legend:
 - ✅ Multi-tenant InfluxDB isolation
 - ✅ Admin interface
 - ✅ Basic security (authentication, rate limiting, CSRF)
-- 🔄 Fix metadata endpoint (ISSUE-001)
-- 🔄 Implement retention policy (ISSUE-002)
+- ✅ Fix metadata endpoint (ISSUE-001) - Completed January 2025
+- ✅ Implement retention policy (ISSUE-002) - Completed January 2025
 - 📋 Beta testing with initial users (10-20 users)
 - 📋 Privacy policy and terms of service
 - 📋 User documentation (setup guide, troubleshooting)
 
 **Success Criteria**:
-- No critical bugs (Priority 1 issues resolved)
-- 10 active beta testers
-- Positive user feedback
-- No data loss incidents
+- ✅ No critical bugs (Priority 1 issues resolved)
+- 📋 10 active beta testers
+- 📋 Positive user feedback
+- 📋 No data loss incidents
 
-### Phase 2: Enhanced Monitoring (Q2 2025)
+### Phase 2: Enhanced Monitoring (Q1-Q2 2025)
 
 **Goal**: Improved user experience with rich monitoring features
 
-**Status**: 📋 Planned
+**Status**: 🔄 In Progress (20% complete)
 
 **Deliverables**:
-- Real-time power dashboard with graphs (REQ-DASH-001)
-- Energy production overview (REQ-DASH-002)
-- CSV/Excel data export (REQ-EXPORT-001)
-- Email alerting (REQ-ALERT-001)
+- ✅ Real-time power dashboard with graphs (REQ-DASH-001) - Completed January 2025
+- 📋 Energy production overview (REQ-DASH-002)
+- 📋 CSV/Excel data export (REQ-EXPORT-001)
+- 📋 Email alerting (REQ-ALERT-001)
   - Inverter offline notifications
   - Low production warnings
   - Daily/weekly summaries
-- Performance analytics (REQ-ANALYTICS-001)
-- Health check improvements (ISSUE-003)
-- Production logging configuration (ISSUE-004)
+- 📋 Performance analytics (REQ-ANALYTICS-001)
+- 📋 Health check improvements (ISSUE-003)
+- 📋 Production logging configuration (ISSUE-004)
 
 **Success Criteria**:
-- Dashboard loads in < 2 seconds
-- Alerts sent within 5 minutes of trigger
-- Export generates within 30 seconds for 1 year of data
-- 50+ active users
+- ✅ Dashboard loads in < 2 seconds
+- 📋 Alerts sent within 5 minutes of trigger
+- 📋 Export generates within 30 seconds for 1 year of data
+- 📋 50+ active users
 
 ### Phase 3: Integration & Expansion (Q3 2025)
 

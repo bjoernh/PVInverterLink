@@ -29,9 +29,11 @@ async def get_start(request: Request, user: User = Depends(current_active_user),
         inverters = await session.scalars(select(Inverter).where(Inverter.user_id == user.id))
         inverters = inverters.all()
 
+    # extend_current_powers handles InfluxDB connection errors gracefully
+    # by setting default values when InfluxDB is unavailable
     if inverters:
         await extend_current_powers(user, list(inverters))
-    
+
     return {"user": user, "inverters": inverters}
 
 @router.get("/test", response_class=HTMLResponse)

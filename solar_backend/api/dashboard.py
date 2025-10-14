@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from solar_backend.db import Inverter, User, get_async_session
 from solar_backend.users import current_active_user
-from solar_backend.utils.influx import InfluxManagement, NoValuesException
+from solar_backend.utils.influx import InfluxManagement, NoValuesException, InfluxConnectionError
 
 logger = structlog.get_logger()
 
@@ -158,6 +158,24 @@ async def get_dashboard_data(
             }
         })
 
+    except InfluxConnectionError as e:
+        logger.error(
+            "InfluxDB connection failed for dashboard",
+            inverter_id=inverter_id,
+            time_range=time_range,
+            error=str(e)
+        )
+        return JSONResponse({
+            "success": False,
+            "message": "InfluxDB-Dienst ist vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut oder kontaktieren Sie den Administrator.",
+            "data": [],
+            "stats": {"current": 0, "max": 0, "min": 0, "avg": 0},
+            "inverter": {
+                "id": inverter.id,
+                "name": inverter.name,
+                "serial": inverter.serial_logger
+            }
+        })
     except NoValuesException as e:
         logger.warning(
             "No data available for dashboard",
