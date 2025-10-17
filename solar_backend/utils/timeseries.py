@@ -163,11 +163,12 @@ async def get_power_timeseries(
     interval = config["interval"]
 
     try:
-        # Note: We can't use a parameter placeholder for INTERVAL in PostgreSQL,
-        # so we safely use the pre-validated interval string from our mapping
+        # Note: We can't use parameter placeholders for INTERVAL in PostgreSQL,
+        # so we safely use the pre-validated interval strings from our mapping.
+        # The values are validated against a whitelist, so this is safe from SQL injection.
         query = text(f"""
             SELECT
-                time_bucket(:bucket, time) AS bucket_time,
+                time_bucket(INTERVAL '{bucket}', time) AS bucket_time,
                 AVG(total_output_power)::int AS power
             FROM inverter_measurements
             WHERE user_id = :user_id
@@ -178,7 +179,6 @@ async def get_power_timeseries(
         """)
 
         result = await session.execute(query, {
-            "bucket": bucket,
             "user_id": user_id,
             "inverter_id": inverter_id
         })
