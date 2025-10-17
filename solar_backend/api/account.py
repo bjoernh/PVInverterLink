@@ -10,7 +10,6 @@ from solar_backend.db import User, Inverter, get_async_session
 from solar_backend.users import current_active_user, get_user_manager, auth_backend_user, get_jwt_strategy
 from solar_backend.limiter import limiter
 from solar_backend.config import WEB_DEV_TESTING, settings
-from solar_backend.utils.influx import InfluxManagement
 
 from fastapi_csrf_protect import CsrfProtect
 
@@ -90,7 +89,7 @@ async def post_change_password(
     user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
     csrf_protect: CsrfProtect = Depends()
 ):
-    """Change user password in both FastAPI and InfluxDB."""
+    """Change user password."""
     if user is None:
         return HTMLResponse(
             """<div class="alert alert-error">
@@ -133,32 +132,11 @@ async def post_change_password(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
         )
 
-    # Update FastAPI password
+    # Update password
     update_dict = {"password": new_password1}
     await user_manager.user_db.update(user, update_dict)
 
-    # Update InfluxDB password
-    if not WEB_DEV_TESTING and user.influx_org_id:
-        try:
-            async with InfluxManagement(db_url=settings.INFLUX_URL) as inflx:
-                inflx.connect(org=settings.INFLUX_OPERATOR_ORG)
-                inflx.update_user_password(user.email, new_password1)
-                logger.info("Password updated in both FastAPI and InfluxDB", user_id=user.id)
-        except Exception as e:
-            logger.error(
-                "Failed to update InfluxDB password",
-                error=str(e),
-                user_id=user.id,
-                user_email=user.email
-            )
-            return HTMLResponse(
-                """<div class="alert alert-warning">
-                    <span><i class="fa-solid fa-triangle-exclamation"></i> Passwort in FastAPI geändert, aber InfluxDB-Aktualisierung fehlgeschlagen. Bitte kontaktieren Sie den Administrator.</span>
-                </div>""",
-                status_code=status.HTTP_207_MULTI_STATUS
-            )
-    else:
-        logger.info("Password updated in FastAPI only (dev mode or no InfluxDB setup)", user_id=user.id)
+    logger.info("Password updated", user_id=user.id)
 
     return HTMLResponse(
         """<div class="alert alert-success">
@@ -200,41 +178,15 @@ async def post_delete_account(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
         )
 
-    # Get all inverters
+    # Delete user account and associated data
     async with db_session as session:
+        # Get all inverters (will be cascade deleted, but we log them)
         inverters = await session.scalars(select(Inverter).where(Inverter.user_id == user.id))
         inverters = inverters.all()
 
-        # Delete InfluxDB buckets and organization
-        if not WEB_DEV_TESTING and user.influx_org_id:
-            try:
-                async with InfluxManagement(db_url=settings.INFLUX_URL) as inflx:
-                    inflx.connect(org=settings.INFLUX_OPERATOR_ORG)
+        logger.info("Deleting user account", user_id=user.id, inverter_count=len(inverters))
 
-                    # Delete all inverter buckets
-                    for inverter in inverters:
-                        if inverter.influx_bucked_id:
-                            try:
-                                inflx.delete_bucket(inverter.influx_bucked_id)
-                                logger.info("Inverter bucket deleted", bucket_id=inverter.influx_bucked_id)
-                            except Exception as e:
-                                logger.error("Failed to delete inverter bucket", error=str(e), bucket_id=inverter.influx_bucked_id)
-
-                    # Delete user's organization
-                    try:
-                        inflx.delete_organization(user.influx_org_id)
-                        logger.info("User organization deleted", org_id=user.influx_org_id)
-                    except Exception as e:
-                        logger.error("Failed to delete user organization", error=str(e), org_id=user.influx_org_id)
-
-            except Exception as e:
-                logger.error("InfluxDB cleanup failed", error=str(e), user_id=user.id)
-
-        # Delete inverters from database
-        for inverter in inverters:
-            await session.delete(inverter)
-
-        # Delete user from database
+        # Delete user (inverters and measurements will be cascade deleted)
         await session.delete(user)
         await session.commit()
 
