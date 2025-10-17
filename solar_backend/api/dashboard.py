@@ -7,7 +7,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from solar_backend.db import Inverter, User, get_async_session
 from solar_backend.users import current_active_user
-from solar_backend.utils.influx import InfluxManagement, NoValuesException, InfluxConnectionError
+from solar_backend.utils.timeseries import (
+    get_power_timeseries,
+    get_today_energy_production,
+    get_today_maximum_power,
+    get_last_hour_average,
+    set_rls_context,
+    reset_rls_context,
+    NoDataException,
+    TimeSeriesException
+)
 
 logger = structlog.get_logger()
 
@@ -84,7 +93,7 @@ async def get_dashboard_data(
 ):
     """
     API endpoint to fetch time-series data for dashboard graph.
-    Returns JSON data for Chart.js consumption.
+    Returns JSON data for Plotly consumption.
 
     Args:
         inverter_id: ID of the inverter
@@ -114,119 +123,118 @@ async def get_dashboard_data(
                 detail="Inverter not found"
             )
 
-    # Validate time range
-    valid_ranges = ["1h", "6h", "24h", "7d", "30d"]
-    if time_range not in valid_ranges:
-        time_range = "24h"
+        # Validate time range
+        valid_ranges = ["1h", "6h", "24h", "7d", "30d"]
+        if time_range not in valid_ranges:
+            time_range = "24h"
 
-    try:
-        async with InfluxManagement(user.influx_url) as inflx:
-            inflx.connect(org=user.email, token=user.influx_token)
+        try:
+            # Set RLS context
+            await set_rls_context(session, user.id)
 
             # Get time-series data
-            data_points = inflx.get_power_timeseries(
-                user=user,
-                bucket=inverter.name,
+            data_points = await get_power_timeseries(
+                session=session,
+                user_id=user.id,
+                inverter_id=inverter.id,
                 time_range=time_range
             )
 
             # Get current power (latest value)
-            current = 0
-            if data_points:
-                powers = [d["power"] for d in data_points]
-                current = powers[-1] if powers else 0
+            current = data_points[-1]["power"] if data_points else 0
 
-            # Get today's maximum power (independent of time range)
+            # Get statistics
             try:
-                max_today = inflx.get_today_maximum_power(user=user, bucket=inverter.name)
+                max_today = await get_today_maximum_power(session, user.id, inverter.id)
             except Exception as e:
                 logger.warning("Failed to get today's maximum power", error=str(e))
                 max_today = 0
 
-            # Get today's energy production (kWh)
             try:
-                today_kwh = inflx.get_today_energy_production(user=user, bucket=inverter.name)
+                today_kwh = await get_today_energy_production(session, user.id, inverter.id)
             except Exception as e:
                 logger.warning("Failed to get today's energy production", error=str(e))
                 today_kwh = 0.0
 
-            # Get last hour average (always last hour, regardless of selected time range)
             try:
-                avg_last_hour = inflx.get_last_hour_average(user=user, bucket=inverter.name)
+                avg_last_hour = await get_last_hour_average(session, user.id, inverter.id)
             except Exception as e:
                 logger.warning("Failed to get last hour average", error=str(e))
                 avg_last_hour = 0
 
-        stats = {
-            "current": current,
-            "max": max_today,
-            "today_kwh": today_kwh,
-            "avg_last_hour": avg_last_hour
-        }
-
-        logger.info(
-            "Dashboard data retrieved",
-            inverter_id=inverter_id,
-            time_range=time_range,
-            data_points=len(data_points)
-        )
-
-        return JSONResponse({
-            "success": True,
-            "data": data_points,
-            "stats": stats,
-            "inverter": {
-                "id": inverter.id,
-                "name": inverter.name,
-                "serial": inverter.serial_logger
+            stats = {
+                "current": current,
+                "max": max_today,
+                "today_kwh": today_kwh,
+                "avg_last_hour": avg_last_hour
             }
-        })
 
-    except InfluxConnectionError as e:
-        logger.error(
-            "InfluxDB connection failed for dashboard",
-            inverter_id=inverter_id,
-            time_range=time_range,
-            error=str(e)
-        )
-        return JSONResponse({
-            "success": False,
-            "message": "InfluxDB-Dienst ist vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut oder kontaktieren Sie den Administrator.",
-            "data": [],
-            "stats": {"current": 0, "max": 0, "today_kwh": 0.0, "avg_last_hour": 0},
-            "inverter": {
-                "id": inverter.id,
-                "name": inverter.name,
-                "serial": inverter.serial_logger
-            }
-        })
-    except NoValuesException as e:
-        logger.warning(
-            "No data available for dashboard",
-            inverter_id=inverter_id,
-            time_range=time_range,
-            error=str(e)
-        )
-        return JSONResponse({
-            "success": False,
-            "message": "Keine Daten verfügbar für den gewählten Zeitraum",
-            "data": [],
-            "stats": {"current": 0, "max": 0, "today_kwh": 0.0, "avg_last_hour": 0},
-            "inverter": {
-                "id": inverter.id,
-                "name": inverter.name,
-                "serial": inverter.serial_logger
-            }
-        })
-    except Exception as e:
-        logger.error(
-            "Dashboard data retrieval failed",
-            inverter_id=inverter_id,
-            time_range=time_range,
-            error=str(e),
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Abrufen der Daten"
-        )
+            logger.info(
+                "Dashboard data retrieved",
+                inverter_id=inverter_id,
+                time_range=time_range,
+                data_points=len(data_points)
+            )
+
+            return JSONResponse({
+                "success": True,
+                "data": data_points,
+                "stats": stats,
+                "inverter": {
+                    "id": inverter.id,
+                    "name": inverter.name,
+                    "serial": inverter.serial_logger
+                }
+            })
+
+        except NoDataException as e:
+            logger.warning(
+                "No data available for dashboard",
+                inverter_id=inverter_id,
+                time_range=time_range,
+                error=str(e)
+            )
+            return JSONResponse({
+                "success": False,
+                "message": "Keine Daten verfügbar für den gewählten Zeitraum",
+                "data": [],
+                "stats": {"current": 0, "max": 0, "today_kwh": 0.0, "avg_last_hour": 0},
+                "inverter": {
+                    "id": inverter.id,
+                    "name": inverter.name,
+                    "serial": inverter.serial_logger
+                }
+            })
+        except TimeSeriesException as e:
+            logger.error(
+                "Time-series query failed for dashboard",
+                inverter_id=inverter_id,
+                time_range=time_range,
+                error=str(e)
+            )
+            return JSONResponse({
+                "success": False,
+                "message": "Fehler beim Abrufen der Daten",
+                "data": [],
+                "stats": {"current": 0, "max": 0, "today_kwh": 0.0, "avg_last_hour": 0},
+                "inverter": {
+                    "id": inverter.id,
+                    "name": inverter.name,
+                    "serial": inverter.serial_logger
+                }
+            })
+        except Exception as e:
+            logger.error(
+                "Dashboard data retrieval failed",
+                inverter_id=inverter_id,
+                time_range=time_range,
+                error=str(e),
+                exc_info=True
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Fehler beim Abrufen der Daten"
+            )
+        finally:
+            # Always reset RLS context
+            await reset_rls_context(session)
