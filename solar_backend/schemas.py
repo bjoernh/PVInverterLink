@@ -40,7 +40,6 @@ class Inverter:
     id: int
     name: str
     serial_logger: str
-    influx_bucked_id: str
     sw_version: str
     user: schemas.BaseUser[int]
     current_power: Optional[int] = None
