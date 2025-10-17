@@ -15,8 +15,6 @@ from solar_backend.schemas import InverterAdd, InverterAddMetadata
 from solar_backend.schemas import Inverter as InverterSchema
 from solar_backend.users import current_active_user, current_superuser_bearer
 from solar_backend.db import Inverter
-from solar_backend.inverter import create_influx_bucket, delete_influx_bucket
-from solar_backend.config import WEB_DEV_TESTING
 
 
 logger = structlog.get_logger()
@@ -79,37 +77,28 @@ async def post_add_inverter(
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
-    # Check if InfluxDB credentials are set (safety check)
-    if not WEB_DEV_TESTING and (not user.influx_token or not user.influx_org_id):
-        logger.error(
-            "User is verified but missing InfluxDB credentials",
-            user_id=user.id,
-            user_email=user.email,
-            has_token=bool(user.influx_token),
-            has_org_id=bool(user.influx_org_id)
-        )
-        return HTMLResponse(
-            "<p style='color:red;'>Ihr Konto ist nicht vollständig eingerichtet. Bitte kontaktieren Sie den Administrator.</p>",
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
-
-    # Create inverter object without bucket_id first
+    # Create inverter object (no InfluxDB bucket needed)
     new_inverter_obj = Inverter(
         user_id=user.id,
         name=inverter_to_add.name,
         serial_logger=inverter_to_add.serial,
-        influx_bucked_id=None,  # Will be set after InfluxDB bucket creation
         sw_version="-",
     )
 
-    # Insert into database first to ensure serial uniqueness
+    # Insert into database
     try:
         session.add(new_inverter_obj)
         await session.commit()
-        await session.refresh(new_inverter_obj)  # Get the ID
+        await session.refresh(new_inverter_obj)
+
+        logger.info(
+            "Inverter created",
+            inverter_id=new_inverter_obj.id,
+            user_id=user.id,
+            serial=inverter_to_add.serial
+        )
     except IntegrityError as e:
-        # Handles both PostgreSQL (asyncpg) and SQLite unique constraint violations
-        await session.rollback()  # Explicitly rollback after error
+        await session.rollback()
         logger.error(
             "Inverter serial already exists",
             serial=inverter_to_add.serial,
@@ -119,32 +108,6 @@ async def post_add_inverter(
             "<p style='color:red;'>Seriennummer existiert bereits</p>",
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
-
-    # After successful DB insert, create InfluxDB bucket
-    if not WEB_DEV_TESTING:
-        try:
-            bucket_id = await create_influx_bucket(user, inverter_to_add.name)
-            new_inverter_obj.influx_bucked_id = bucket_id
-            await session.commit()
-        except Exception as e:
-            # Rollback: delete the inverter we just created
-            logger.error(
-                "Failed to create InfluxDB bucket, rolling back inverter creation",
-                error=str(e),
-                user_id=user.id,
-                inverter_id=new_inverter_obj.id,
-                bucket_name=inverter_to_add.name,
-            )
-            await session.delete(new_inverter_obj)
-            await session.commit()
-            return HTMLResponse(
-                "<p style='color:red;'>Fehler: InfluxDB ist nicht verfügbar. Bitte kontaktieren Sie den Administrator.</p>",
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-    else:
-        # In dev/test mode, just set a dummy bucket_id
-        new_inverter_obj.influx_bucked_id = "dev-test"
-        await session.commit()
 
     return HTMLResponse("""
                         <div class="sm:mx-auto sm:w-full sm:max-w-sm">
@@ -159,66 +122,27 @@ async def delete_inverter(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_active_user),
 ):
-    """Delete a inverter"""
+    """Delete an inverter and its measurement data"""
     if user is None:
         return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
 
     inverter = await session.get(Inverter, inverter_id)
-    bucket_id = inverter.influx_bucked_id
+
+    # Verify ownership
+    if inverter.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+
     await session.delete(inverter)
-
-    logger.info(f"inverter {inverter_id} deleted")
-
-    if not WEB_DEV_TESTING:
-        try:
-            await delete_influx_bucket(user, bucket_id)
-        except Exception as e:
-            logger.error(
-                "Failed to delete InfluxDB bucket",
-                error=str(e),
-                user_id=user.id,
-                bucket_id=bucket_id,
-                inverter_id=inverter_id,
-            )
-            # Continue with database deletion even if InfluxDB fails
-            # The bucket can be cleaned up manually later
-
     await session.commit()
 
-    return ""
-
-
-@router.get("/influx_token")
-async def get_token(
-    serial: str,
-    request: Request,
-    user: User = Depends(current_superuser_bearer),
-    session: AsyncSession = Depends(get_async_session),
-):
-    """Get all information related to a inverter with given serial number"""
-    result = await session.execute(
-        select(
-            User.influx_token,
-            Inverter.influx_bucked_id,
-            Inverter.name,
-            Inverter.rated_power,
-            User.influx_org_id,
-        )
-        .join_from(User, Inverter)
-        .where(Inverter.serial_logger == serial)
+    logger.info(
+        "Inverter deleted",
+        inverter_id=inverter_id,
+        user_id=user.id
     )
-    row = result.first()
-    if row:
-        return {
-            "serial": serial,
-            "token": row.influx_token,
-            "bucket_id": row.influx_bucked_id,
-            "bucket_name": row.name,
-            "org_id": row.influx_org_id,
-            "is_metadata_complete": row.rated_power is not None,
-        }
-    else:
-        return HTMLResponse(status_code=status.HTTP_404_NOT_FOUND)
+    # Note: Measurements are automatically deleted via CASCADE constraint
+
+    return ""
 
 
 @router.post("/inverter_metadata/{serial_logger}")
