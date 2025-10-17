@@ -6,6 +6,7 @@ from fastapi_users.db import SQLAlchemyBaseUserTable, SQLAlchemyUserDatabase
 from sqlalchemy import ForeignKey, Integer, String, TIMESTAMP
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine, AsyncEngine, AsyncConnection
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqladmin import ModelView
 
 from solar_backend.config import settings, DEBUG
 
@@ -46,6 +47,16 @@ class InverterMeasurement(Base):
 
     def __repr__(self):
         return f"<Measurement(time={self.time}, inverter={self.inverter_id}, power={self.total_output_power})>"
+
+
+class InverterAdmin(ModelView, model=Inverter):
+    """Admin interface for Inverter model."""
+    column_list = [Inverter.id, Inverter.name, Inverter.serial_logger, Inverter.user_id]
+    name = "Inverter"
+    column_searchable_list = [Inverter.name, Inverter.serial_logger]
+    column_sortable_list = [Inverter.id, Inverter.name]
+    name_plural = "Inverters"
+    icon = "fa-solid fa-solar-panel"
 
 
 class User(SQLAlchemyBaseUserTable[int], Base):

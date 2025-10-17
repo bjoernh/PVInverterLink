@@ -10,8 +10,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-from solar_backend.db import User, create_db_and_tables, sessionmanager
-from solar_backend.inverter import InverterAdmin
+from solar_backend.db import User, create_db_and_tables, sessionmanager, InverterAdmin
 from solar_backend.users import UserAdmin
 from solar_backend.api import signup, login, start, inverter, healthcheck, account, dashboard, measurements
 from solar_backend.config import settings, WEB_DEV_TESTING
