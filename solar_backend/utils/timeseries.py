@@ -149,26 +149,30 @@ async def get_power_timeseries(
         NoDataException: If no data found
         TimeSeriesException: On query error
     """
-    # Map time range to bucket size
-    bucket_sizes = {
-        "1h": "1 minute",
-        "6h": "5 minutes",
-        "24h": "10 minutes",
-        "7d": "1 hour",
-        "30d": "4 hours"
+    # Map time range to bucket size and PostgreSQL interval
+    time_range_config = {
+        "1h": {"bucket": "1 minute", "interval": "1 hour"},
+        "6h": {"bucket": "5 minutes", "interval": "6 hours"},
+        "24h": {"bucket": "10 minutes", "interval": "24 hours"},
+        "7d": {"bucket": "1 hour", "interval": "7 days"},
+        "30d": {"bucket": "4 hours", "interval": "30 days"}
     }
 
-    bucket = bucket_sizes.get(time_range, "5 minutes")
+    config = time_range_config.get(time_range, {"bucket": "5 minutes", "interval": "24 hours"})
+    bucket = config["bucket"]
+    interval = config["interval"]
 
     try:
-        query = text("""
+        # Note: We can't use a parameter placeholder for INTERVAL in PostgreSQL,
+        # so we safely use the pre-validated interval string from our mapping
+        query = text(f"""
             SELECT
                 time_bucket(:bucket, time) AS bucket_time,
                 AVG(total_output_power)::int AS power
             FROM inverter_measurements
             WHERE user_id = :user_id
               AND inverter_id = :inverter_id
-              AND time > NOW() - INTERVAL :range
+              AND time > NOW() - INTERVAL '{interval}'
             GROUP BY bucket_time
             ORDER BY bucket_time ASC
         """)
@@ -176,8 +180,7 @@ async def get_power_timeseries(
         result = await session.execute(query, {
             "bucket": bucket,
             "user_id": user_id,
-            "inverter_id": inverter_id,
-            "range": time_range
+            "inverter_id": inverter_id
         })
 
         data_points = [
