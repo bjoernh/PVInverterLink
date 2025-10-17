@@ -10,7 +10,7 @@ from tests.factories import InverterAddFactory
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_create_inverter(client, test_user, mocker, without_influx, db_session):
+async def test_create_inverter(client, test_user, mocker, db_session):
     """Test creating a new inverter as authenticated user."""
     # Login first
     await client.post(
@@ -47,7 +47,7 @@ async def test_create_inverter(client, test_user, mocker, without_influx, db_ses
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_create_inverter_unauthenticated(client, without_influx):
+async def test_create_inverter_unauthenticated(client):
     """Test that unauthenticated user cannot create inverter."""
     inverter_data = InverterAddFactory()
     response = await client.post(
@@ -62,7 +62,7 @@ async def test_create_inverter_unauthenticated(client, without_influx):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_create_inverter_duplicate_serial(client, test_user, test_inverter, mocker, without_influx):
+async def test_create_inverter_duplicate_serial(client, test_user, test_inverter, mocker):
     """Test that creating inverter with duplicate serial fails."""
     # Login first
     await client.post(
@@ -82,7 +82,7 @@ async def test_create_inverter_duplicate_serial(client, test_user, test_inverter
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_list_user_inverters(client, test_user, test_inverter, without_influx, mocker):
+async def test_list_user_inverters(client, test_user, test_inverter, mocker):
     """Test listing inverters for authenticated user."""
     # Mock InfluxDB operations
     mocker.patch(
@@ -106,7 +106,7 @@ async def test_list_user_inverters(client, test_user, test_inverter, without_inf
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_delete_inverter(client, test_user, test_inverter, without_influx, db_session):
+async def test_delete_inverter(client, test_user, test_inverter, db_session):
     """Test deleting an inverter as owner."""
     # Login first
     await client.post(
@@ -130,7 +130,7 @@ async def test_delete_inverter(client, test_user, test_inverter, without_influx,
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_delete_inverter_unauthenticated(client, test_inverter, without_influx):
+async def test_delete_inverter_unauthenticated(client, test_inverter):
     """Test that unauthenticated user cannot delete inverter."""
     response = await client.delete(f"/inverter/{test_inverter.id}")
 
@@ -141,7 +141,7 @@ async def test_delete_inverter_unauthenticated(client, test_inverter, without_in
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_get_add_inverter_page(client, test_user, without_influx):
+async def test_get_add_inverter_page(client, test_user):
     """Test GET request to add inverter page."""
     # Login first
     await client.post(
@@ -225,7 +225,7 @@ async def test_influx_bucket_deleted_on_inverter_deletion(client, test_user, tes
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_create_multiple_inverters(client, test_user, mocker, without_influx, db_session):
+async def test_create_multiple_inverters(client, test_user, mocker, db_session):
     """Test creating multiple inverters for the same user."""
     # Login first
     await client.post(

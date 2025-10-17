@@ -10,7 +10,7 @@ from solar_backend.db import Inverter
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_user_cannot_delete_other_users_inverter(client, db_session, mocker, without_influx):
+async def test_user_cannot_delete_other_users_inverter(client, db_session, mocker):
     """Test that User A cannot delete User B's inverter."""
     from tests.helpers import create_user_in_db, create_inverter_in_db
 
@@ -66,7 +66,7 @@ async def test_user_cannot_delete_other_users_inverter(client, db_session, mocke
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_start_page_shows_only_user_inverters(client, db_session, mocker, without_influx):
+async def test_start_page_shows_only_user_inverters(client, db_session, mocker):
     """Test that start page only shows current user's inverters, not other users'."""
     from tests.helpers import create_user_in_db, create_inverter_in_db
 
@@ -118,7 +118,7 @@ async def test_start_page_shows_only_user_inverters(client, db_session, mocker, 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_user_cannot_create_inverter_for_another_user(client, db_session, mocker, without_influx):
+async def test_user_cannot_create_inverter_for_another_user(client, db_session, mocker):
     """Test that authenticated user can only create inverters for themselves."""
     from tests.helpers import create_user_in_db
     from tests.factories import InverterAddFactory
@@ -158,7 +158,7 @@ async def test_user_cannot_create_inverter_for_another_user(client, db_session, 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_influx_token_returns_correct_user_org(client, superuser_token, db_session, without_influx):
+async def test_influx_token_returns_correct_user_org(client, superuser_token, db_session):
     """Test that /influx_token returns credentials specific to the inverter's owner."""
     from tests.helpers import create_user_in_db, create_inverter_in_db
 
@@ -193,7 +193,7 @@ async def test_influx_token_returns_correct_user_org(client, superuser_token, db
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_multiple_users_have_isolated_inverter_lists(client, db_session, mocker, without_influx):
+async def test_multiple_users_have_isolated_inverter_lists(client, db_session, mocker):
     """Test complete isolation: multiple users with multiple inverters each."""
     from tests.helpers import create_user_in_db, create_inverter_in_db
 
@@ -270,7 +270,7 @@ async def test_multiple_users_have_isolated_inverter_lists(client, db_session, m
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_database_query_filters_by_user_id(db_session, without_influx):
+async def test_database_query_filters_by_user_id(db_session):
     """Test that database queries properly filter inverters by user_id."""
     from tests.helpers import create_user_in_db, create_inverter_in_db
 

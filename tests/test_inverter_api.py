@@ -7,7 +7,7 @@ from httpx import AsyncClient
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_get_influx_token_with_superuser(client, superuser, test_inverter, superuser_token, without_influx):
+async def test_get_influx_token_with_superuser(client, superuser, test_inverter, superuser_token):
     """Test getting inverter InfluxDB credentials with superuser auth."""
     response = await client.get(
         f"/influx_token?serial={test_inverter.serial_logger}",
@@ -26,7 +26,7 @@ async def test_get_influx_token_with_superuser(client, superuser, test_inverter,
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_get_influx_token_without_auth(client, test_inverter, without_influx):
+async def test_get_influx_token_without_auth(client, test_inverter):
     """Test that /influx_token requires authentication."""
     response = await client.get(f"/influx_token?serial={test_inverter.serial_logger}")
 
@@ -35,7 +35,7 @@ async def test_get_influx_token_without_auth(client, test_inverter, without_infl
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_get_influx_token_with_regular_user(client, test_user, test_inverter, bearer_token, without_influx):
+async def test_get_influx_token_with_regular_user(client, test_user, test_inverter, bearer_token):
     """Test that regular user (non-superuser) cannot access /influx_token."""
     response = await client.get(
         f"/influx_token?serial={test_inverter.serial_logger}",
@@ -48,7 +48,7 @@ async def test_get_influx_token_with_regular_user(client, test_user, test_invert
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_get_influx_token_nonexistent_serial(client, superuser, superuser_token, without_influx):
+async def test_get_influx_token_nonexistent_serial(client, superuser, superuser_token):
     """Test getting token for non-existent inverter serial."""
     response = await client.get(
         "/influx_token?serial=NONEXISTENT-SERIAL",
@@ -60,7 +60,7 @@ async def test_get_influx_token_nonexistent_serial(client, superuser, superuser_
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_get_influx_token_response_structure(client, superuser, test_inverter, superuser_token, without_influx):
+async def test_get_influx_token_response_structure(client, superuser, test_inverter, superuser_token):
     """Test that /influx_token response has correct structure."""
     response = await client.get(
         f"/influx_token?serial={test_inverter.serial_logger}",
@@ -86,7 +86,7 @@ async def test_get_influx_token_response_structure(client, superuser, test_inver
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_influx_token_contains_user_credentials(client, superuser, test_user, test_inverter, superuser_token, without_influx, db_session):
+async def test_influx_token_contains_user_credentials(client, superuser, test_user, test_inverter, superuser_token, db_session):
     """Test that returned token matches user's InfluxDB credentials."""
     response = await client.get(
         f"/influx_token?serial={test_inverter.serial_logger}",
@@ -104,7 +104,7 @@ async def test_influx_token_contains_user_credentials(client, superuser, test_us
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_post_inverter_metadata(client, superuser, test_inverter, superuser_token, without_influx):
+async def test_post_inverter_metadata(client, superuser, test_inverter, superuser_token):
     """Test posting metadata for an inverter."""
     # Note: The endpoint has incomplete implementation in the codebase (see api/inverter.py:100-112)
     # The SELECT query is commented out and returns None, causing ResponseValidationError
@@ -124,7 +124,7 @@ async def test_post_inverter_metadata(client, superuser, test_inverter, superuse
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_inverter_metadata_requires_superuser(client, test_user, test_inverter, bearer_token, without_influx):
+async def test_inverter_metadata_requires_superuser(client, test_user, test_inverter, bearer_token):
     """Test that posting metadata requires superuser auth."""
     response = await client.post(
         f"/inverter_metadata/{test_inverter.serial_logger}",
@@ -138,7 +138,7 @@ async def test_inverter_metadata_requires_superuser(client, test_user, test_inve
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_multiple_inverters_different_tokens(client, superuser, superuser_token, db_session, without_influx):
+async def test_multiple_inverters_different_tokens(client, superuser, superuser_token, db_session):
     """Test that different inverters belonging to different users have different tokens."""
     from tests.helpers import create_user_in_db, create_inverter_in_db
 

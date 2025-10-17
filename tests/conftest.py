@@ -16,8 +16,6 @@ import pytest_asyncio
 from solar_backend.db import get_async_session, sessionmanager
 from solar_backend.app import app
 from httpx import AsyncClient
-from solar_backend.api import inverter
-from solar_backend import users
 
 
 DB_TESTING_URI = "sqlite+aiosqlite://"
@@ -68,12 +66,6 @@ async def async_client(client):
 async def async_session(db_session):
     """Alias for db_session fixture for consistency with test naming."""
     return db_session
-
-
-@pytest.fixture(scope="function")
-def without_influx(mocker):
-    mocker.patch.object(inverter, 'WEB_DEV_TESTING', True)
-    mocker.patch.object(users, 'WEB_DEV_TESTING', True)
 
 
 @pytest_asyncio.fixture
@@ -127,7 +119,7 @@ async def test_inverter(db_session, test_user):
         serial_logger="TEST-123"
     )
     # Force load all attributes before session closes
-    _ = (inverter.id, inverter.name, inverter.serial_logger, inverter.influx_bucked_id)
+    _ = (inverter.id, inverter.name, inverter.serial_logger)
     # Make object transient to avoid session binding issues
     make_transient(inverter)
     return inverter

@@ -7,7 +7,7 @@ from httpx import AsyncClient
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_request_password_reset(client, test_user, mocker, without_influx):
+async def test_request_password_reset(client, test_user, mocker):
     """Test requesting a password reset email."""
     # Mock email sending
     mail_mock = mocker.AsyncMock()
@@ -27,7 +27,7 @@ async def test_request_password_reset(client, test_user, mocker, without_influx)
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_get_reset_password_page(client, test_user, mocker, without_influx):
+async def test_get_reset_password_page(client, test_user, mocker):
     """Test GET request to reset password page with token."""
     response = await client.get("/reset_passwort?token=some-token")
     assert response.status_code == 200
@@ -35,7 +35,7 @@ async def test_get_reset_password_page(client, test_user, mocker, without_influx
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_reset_password_with_valid_token(client, test_user, mocker, without_influx):
+async def test_reset_password_with_valid_token(client, test_user, mocker):
     """Test resetting password with a valid token."""
     # First request password reset to get token
     mail_mock = mocker.AsyncMock()
@@ -73,7 +73,7 @@ async def test_reset_password_with_valid_token(client, test_user, mocker, withou
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_reset_password_with_mismatched_passwords(client, test_user, mocker, without_influx):
+async def test_reset_password_with_mismatched_passwords(client, test_user, mocker):
     """Test password reset fails when passwords don't match."""
     # First request password reset to get token
     mail_mock = mocker.AsyncMock()
@@ -103,7 +103,7 @@ async def test_reset_password_with_mismatched_passwords(client, test_user, mocke
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_reset_password_with_invalid_token(client, without_influx):
+async def test_reset_password_with_invalid_token(client):
     """Test password reset fails with invalid token."""
     response = await client.post(
         "/reset_password",
@@ -120,7 +120,7 @@ async def test_reset_password_with_invalid_token(client, without_influx):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_reset_password_token_cannot_be_reused(client, test_user, mocker, without_influx):
+async def test_reset_password_token_cannot_be_reused(client, test_user, mocker):
     """Test that password reset token can only be used once."""
     # Request password reset
     mail_mock = mocker.AsyncMock()
@@ -161,7 +161,7 @@ async def test_reset_password_token_cannot_be_reused(client, test_user, mocker, 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_password_reset_email_content(client, test_user, mocker, without_influx):
+async def test_password_reset_email_content(client, test_user, mocker):
     """Test that password reset email contains correct URL."""
     mail_mock = mocker.AsyncMock()
     mail_mock.return_value = True

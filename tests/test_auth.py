@@ -8,7 +8,7 @@ from solar_backend.db import User
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_login_with_valid_credentials(client, test_user, without_influx):
+async def test_login_with_valid_credentials(client, test_user):
     """Test successful login with valid credentials."""
     response = await client.post(
         "/login",
@@ -21,7 +21,7 @@ async def test_login_with_valid_credentials(client, test_user, without_influx):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_login_with_invalid_password(client, test_user, without_influx):
+async def test_login_with_invalid_password(client, test_user):
     """Test login failure with wrong password."""
     response = await client.post(
         "/login",
@@ -33,7 +33,7 @@ async def test_login_with_invalid_password(client, test_user, without_influx):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_login_with_nonexistent_user(client, without_influx):
+async def test_login_with_nonexistent_user(client):
     """Test login failure with non-existent user."""
     response = await client.post(
         "/login",
@@ -45,7 +45,7 @@ async def test_login_with_nonexistent_user(client, without_influx):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_login_with_inactive_user(client, db_session, without_influx):
+async def test_login_with_inactive_user(client, db_session):
     """Test login failure with inactive user."""
     from tests.helpers import create_user_in_db
 
@@ -65,7 +65,7 @@ async def test_login_with_inactive_user(client, db_session, without_influx):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_logout(client, test_user, without_influx):
+async def test_logout(client, test_user):
     """Test user logout."""
     # First login
     login_response = await client.post(
@@ -82,7 +82,7 @@ async def test_logout(client, test_user, without_influx):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_logout_without_login(client, without_influx):
+async def test_logout_without_login(client):
     """Test logout when not logged in."""
     response = await client.get("/logout")
     # Should redirect to login
@@ -91,7 +91,7 @@ async def test_logout_without_login(client, without_influx):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_bearer_token_login(client, test_user, without_influx):
+async def test_bearer_token_login(client, test_user):
     """Test getting a bearer token via JWT endpoint."""
     response = await client.post(
         "/auth/jwt/login",
@@ -105,7 +105,7 @@ async def test_bearer_token_login(client, test_user, without_influx):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_bearer_token_authentication(client, bearer_token, without_influx):
+async def test_bearer_token_authentication(client, bearer_token):
     """Test accessing protected route with bearer token."""
     response = await client.get(
         "/authenticated-route",
@@ -119,7 +119,7 @@ async def test_bearer_token_authentication(client, bearer_token, without_influx)
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_protected_route_without_auth(client, without_influx):
+async def test_protected_route_without_auth(client):
     """Test accessing protected route without authentication."""
     response = await client.get("/authenticated-route")
     assert response.status_code == 401
@@ -127,7 +127,7 @@ async def test_protected_route_without_auth(client, without_influx):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_protected_route_with_invalid_token(client, without_influx):
+async def test_protected_route_with_invalid_token(client):
     """Test accessing protected route with invalid bearer token."""
     response = await client.get(
         "/authenticated-route",
@@ -138,7 +138,7 @@ async def test_protected_route_with_invalid_token(client, without_influx):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_start_page_requires_auth(client, without_influx):
+async def test_start_page_requires_auth(client):
     """Test that start page redirects when not authenticated."""
     response = await client.get("/")
     assert response.status_code == 303
@@ -147,7 +147,7 @@ async def test_start_page_requires_auth(client, without_influx):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_start_page_with_auth(client, test_user, without_influx):
+async def test_start_page_with_auth(client, test_user):
     """Test that authenticated user can access start page."""
     # Login first
     await client.post(
@@ -162,7 +162,7 @@ async def test_start_page_with_auth(client, test_user, without_influx):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_get_login_page(client, without_influx):
+async def test_get_login_page(client):
     """Test GET request to login page."""
     response = await client.get("/login")
     assert response.status_code == 200
