@@ -1,7 +1,7 @@
 """
 API endpoints for receiving measurement data from inverters/collectors.
-Replaces the InfluxDB write protocol with HTTP JSON API.
 """
+
 import structlog
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -20,8 +20,11 @@ router = APIRouter()
 
 class MeasurementData(BaseModel):
     """Measurement data from inverter/collector."""
+
     serial: str = Field(..., description="Serial number of the data logger")
-    timestamp: datetime = Field(..., description="Measurement timestamp (ISO 8601 with timezone)")
+    timestamp: datetime = Field(
+        ..., description="Measurement timestamp (ISO 8601 with timezone)"
+    )
     measurements: dict = Field(..., description="Measurement values")
 
     class Config:
@@ -29,9 +32,7 @@ class MeasurementData(BaseModel):
             "example": {
                 "serial": "ABC123456",
                 "timestamp": "2025-10-17T10:30:00Z",
-                "measurements": {
-                    "total_output_power": 5420
-                }
+                "measurements": {"total_output_power": 5420},
             }
         }
 
@@ -40,7 +41,7 @@ class MeasurementData(BaseModel):
 async def post_measurement(
     data: MeasurementData,
     user: User = Depends(current_superuser_bearer),
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
 ):
     """
     Receive measurement data from external inverters/collectors.
@@ -72,11 +73,11 @@ async def post_measurement(
         logger.warning(
             "Measurement received for unknown inverter",
             serial=data.serial,
-            collector_user_id=user.id
+            collector_user_id=user.id,
         )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Inverter with serial {data.serial} not found"
+            detail=f"Inverter with serial {data.serial} not found",
         )
 
     # Extract power from measurements
@@ -84,7 +85,7 @@ async def post_measurement(
     if total_output_power is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="measurements.total_output_power is required"
+            detail="measurements.total_output_power is required",
         )
 
     # Write to TimescaleDB
@@ -94,7 +95,7 @@ async def post_measurement(
             user_id=inverter.user_id,
             inverter_id=inverter.id,
             timestamp=data.timestamp,
-            total_output_power=int(total_output_power)
+            total_output_power=int(total_output_power),
         )
 
         logger.info(
@@ -102,14 +103,14 @@ async def post_measurement(
             serial=data.serial,
             inverter_id=inverter.id,
             user_id=inverter.user_id,
-            power=total_output_power
+            power=total_output_power,
         )
 
         return {
             "status": "ok",
             "inverter_id": inverter.id,
             "user_id": inverter.user_id,
-            "timestamp": data.timestamp.isoformat()
+            "timestamp": data.timestamp.isoformat(),
         }
 
     except TimeSeriesException as e:
@@ -117,9 +118,9 @@ async def post_measurement(
             "Failed to store measurement",
             error=str(e),
             serial=data.serial,
-            inverter_id=inverter.id
+            inverter_id=inverter.id,
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to store measurement"
+            detail="Failed to store measurement",
         )

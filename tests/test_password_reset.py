@@ -55,8 +55,8 @@ async def test_reset_password_with_valid_token(client, test_user, mocker):
         "/reset_password",
         data={
             "token": token,
-            "new_password1": "newpassword123",
-            "new_password2": "newpassword123"
+            "new_password1": "NewPassword123",
+            "new_password2": "NewPassword123"
         }
     )
 
@@ -66,7 +66,7 @@ async def test_reset_password_with_valid_token(client, test_user, mocker):
     # Verify can login with new password
     login_response = await client.post(
         "/login",
-        data={"username": "testuser@example.com", "password": "newpassword123"}
+        data={"username": "testuser@example.com", "password": "NewPassword123"}
     )
     assert login_response.status_code == 200
 
@@ -109,8 +109,8 @@ async def test_reset_password_with_invalid_token(client):
         "/reset_password",
         data={
             "token": "invalid-token-12345",
-            "new_password1": "newpassword123",
-            "new_password2": "newpassword123"
+            "new_password1": "NewPassword123",
+            "new_password2": "NewPassword123"
         }
     )
 
@@ -139,8 +139,8 @@ async def test_reset_password_token_cannot_be_reused(client, test_user, mocker):
         "/reset_password",
         data={
             "token": token,
-            "new_password1": "newpassword123",
-            "new_password2": "newpassword123"
+            "new_password1": "NewPassword123",
+            "new_password2": "NewPassword123"
         }
     )
     assert response1.status_code == 200
@@ -151,8 +151,8 @@ async def test_reset_password_token_cannot_be_reused(client, test_user, mocker):
         "/reset_password",
         data={
             "token": token,
-            "new_password1": "anotherpassword",
-            "new_password2": "anotherpassword"
+            "new_password1": "AnotherPassword456",
+            "new_password2": "AnotherPassword456"
         }
     )
     assert response2.status_code == 200

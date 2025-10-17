@@ -10,7 +10,7 @@ from solar_backend.db import Inverter
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_user_cannot_delete_other_users_inverter(client, db_session, mocker):
+async def test_user_cannot_delete_other_users_inverter(client, db_session):
     """Test that User A cannot delete User B's inverter."""
     from tests.helpers import create_user_in_db, create_inverter_in_db
 
@@ -42,31 +42,24 @@ async def test_user_cannot_delete_other_users_inverter(client, db_session, mocke
         data={"username": "user_a@example.com", "password": "testpassword123"}
     )
 
-    # Mock InfluxDB operations
-    mocker.patch('solar_backend.api.inverter.delete_influx_bucket', return_value=None)
-
     # Try to delete User B's inverter as User A
     response = await client.delete(f"/inverter/{inverter_b.id}")
 
-    # NOTE: Current implementation DOES NOT have authorization check on delete!
-    # This is a security issue that should be fixed in api/inverter.py
-    # The delete endpoint should verify that the authenticated user owns the inverter
-    # For now, this test documents the current (insecure) behavior
-    # TODO: Add authorization check and update this test to expect 403
-    assert response.status_code == 200  # Currently allows deletion (BUG!)
+    # Should return 403 Forbidden - User A cannot delete User B's inverter
+    assert response.status_code == 403
 
-    # Verify inverter was deleted (it should NOT have been)
+    # Verify inverter was NOT deleted
     async with db_session as session:
         result = await session.execute(
             select(Inverter).where(Inverter.id == inverter_b.id)
         )
         inverter = result.scalar_one_or_none()
-        assert inverter is None  # Currently deleted (SECURITY ISSUE!)
+        assert inverter is not None  # Inverter should still exist
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_start_page_shows_only_user_inverters(client, db_session, mocker):
+async def test_start_page_shows_only_user_inverters(client, db_session):
     """Test that start page only shows current user's inverters, not other users'."""
     from tests.helpers import create_user_in_db, create_inverter_in_db
 
@@ -95,9 +88,6 @@ async def test_start_page_shows_only_user_inverters(client, db_session, mocker):
         serial_logger="SERIAL-B"
     )
 
-    # Mock InfluxDB operations
-    mocker.patch('solar_backend.inverter.extend_current_powers', return_value=None)
-
     # Login as User A
     await client.post(
         "/login",
@@ -118,7 +108,7 @@ async def test_start_page_shows_only_user_inverters(client, db_session, mocker):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_user_cannot_create_inverter_for_another_user(client, db_session, mocker):
+async def test_user_cannot_create_inverter_for_another_user(client, db_session):
     """Test that authenticated user can only create inverters for themselves."""
     from tests.helpers import create_user_in_db
     from tests.factories import InverterAddFactory
@@ -134,9 +124,6 @@ async def test_user_cannot_create_inverter_for_another_user(client, db_session, 
         "/login",
         data={"username": "user_a@example.com", "password": "testpassword123"}
     )
-
-    # Mock InfluxDB
-    mocker.patch('solar_backend.api.inverter.create_influx_bucket', return_value="bucket-id")
 
     # Create inverter (should be automatically associated with logged-in user)
     inverter_data = InverterAddFactory()
@@ -158,42 +145,7 @@ async def test_user_cannot_create_inverter_for_another_user(client, db_session, 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_influx_token_returns_correct_user_org(client, superuser_token, db_session):
-    """Test that /influx_token returns credentials specific to the inverter's owner."""
-    from tests.helpers import create_user_in_db, create_inverter_in_db
-
-    # Create user with specific InfluxDB credentials
-    user = await create_user_in_db(
-        db_session,
-        email="testuser@example.com",
-        influx_org_id="org-123-456",
-        influx_token="token-xyz-789"
-    )
-
-    # Create inverter for this user
-    inverter = await create_inverter_in_db(
-        db_session,
-        user_id=user.id,
-        serial_logger="SERIAL-TEST"
-    )
-
-    # Get token via API
-    response = await client.get(
-        f"/influx_token?serial={inverter.serial_logger}",
-        headers={"Authorization": f"Bearer {superuser_token}"}
-    )
-
-    assert response.status_code == 200
-    data = response.json()
-
-    # Verify returned credentials match the user's credentials
-    assert data["org_id"] == "org-123-456"
-    assert data["token"] == "token-xyz-789"
-
-
-@pytest.mark.integration
-@pytest.mark.asyncio
-async def test_multiple_users_have_isolated_inverter_lists(client, db_session, mocker):
+async def test_multiple_users_have_isolated_inverter_lists(client, db_session):
     """Test complete isolation: multiple users with multiple inverters each."""
     from tests.helpers import create_user_in_db, create_inverter_in_db
 
@@ -232,9 +184,6 @@ async def test_multiple_users_have_isolated_inverter_lists(client, db_session, m
         name="User2 Inverter 2",
         serial_logger="U2-INV-2"
     )
-
-    # Mock InfluxDB
-    mocker.patch('solar_backend.inverter.extend_current_powers', return_value=None)
 
     # Login as User 1
     await client.post(

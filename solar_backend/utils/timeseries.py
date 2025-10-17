@@ -1,8 +1,7 @@
 """
 Time-series data utilities for TimescaleDB.
-
-Replaces solar_backend/utils/influx.py with PostgreSQL/TimescaleDB queries.
 """
+
 import structlog
 from datetime import datetime, timezone
 from typing import Optional
@@ -14,11 +13,13 @@ logger = structlog.get_logger()
 
 class TimeSeriesException(Exception):
     """Base exception for time-series operations."""
+
     pass
 
 
 class NoDataException(TimeSeriesException):
     """Raised when query returns no data."""
+
     pass
 
 
@@ -27,7 +28,7 @@ async def write_measurement(
     user_id: int,
     inverter_id: int,
     timestamp: datetime,
-    total_output_power: int
+    total_output_power: int,
 ) -> None:
     """
     Write a single measurement point to TimescaleDB.
@@ -49,19 +50,22 @@ async def write_measurement(
             ON CONFLICT DO NOTHING
         """)
 
-        await session.execute(stmt, {
-            "time": timestamp,
-            "user_id": user_id,
-            "inverter_id": inverter_id,
-            "power": total_output_power
-        })
+        await session.execute(
+            stmt,
+            {
+                "time": timestamp,
+                "user_id": user_id,
+                "inverter_id": inverter_id,
+                "power": total_output_power,
+            },
+        )
         await session.commit()
 
         logger.debug(
             "Measurement written",
             user_id=user_id,
             inverter_id=inverter_id,
-            power=total_output_power
+            power=total_output_power,
         )
     except Exception as e:
         await session.rollback()
@@ -69,15 +73,13 @@ async def write_measurement(
             "Failed to write measurement",
             error=str(e),
             user_id=user_id,
-            inverter_id=inverter_id
+            inverter_id=inverter_id,
         )
         raise TimeSeriesException(f"Failed to write measurement: {str(e)}") from e
 
 
 async def get_latest_value(
-    session: AsyncSession,
-    user_id: int,
-    inverter_id: int
+    session: AsyncSession, user_id: int, inverter_id: int
 ) -> tuple[datetime, int]:
     """
     Get the latest power measurement for an inverter.
@@ -104,10 +106,9 @@ async def get_latest_value(
             LIMIT 1
         """)
 
-        result = await session.execute(query, {
-            "user_id": user_id,
-            "inverter_id": inverter_id
-        })
+        result = await session.execute(
+            query, {"user_id": user_id, "inverter_id": inverter_id}
+        )
 
         row = result.first()
         if not row:
@@ -122,16 +123,13 @@ async def get_latest_value(
             "Failed to get latest value",
             error=str(e),
             user_id=user_id,
-            inverter_id=inverter_id
+            inverter_id=inverter_id,
         )
         raise TimeSeriesException(f"Failed to query latest value: {str(e)}") from e
 
 
 async def get_power_timeseries(
-    session: AsyncSession,
-    user_id: int,
-    inverter_id: int,
-    time_range: str = "24h"
+    session: AsyncSession, user_id: int, inverter_id: int, time_range: str = "24h"
 ) -> list[dict]:
     """
     Get time-series power data with automatic time bucketing.
@@ -155,10 +153,12 @@ async def get_power_timeseries(
         "6h": {"bucket": "5 minutes", "interval": "6 hours"},
         "24h": {"bucket": "10 minutes", "interval": "24 hours"},
         "7d": {"bucket": "1 hour", "interval": "7 days"},
-        "30d": {"bucket": "4 hours", "interval": "30 days"}
+        "30d": {"bucket": "4 hours", "interval": "30 days"},
     }
 
-    config = time_range_config.get(time_range, {"bucket": "5 minutes", "interval": "24 hours"})
+    config = time_range_config.get(
+        time_range, {"bucket": "5 minutes", "interval": "24 hours"}
+    )
     bucket = config["bucket"]
     interval = config["interval"]
 
@@ -178,15 +178,14 @@ async def get_power_timeseries(
             ORDER BY bucket_time ASC
         """)
 
-        result = await session.execute(query, {
-            "user_id": user_id,
-            "inverter_id": inverter_id
-        })
+        result = await session.execute(
+            query, {"user_id": user_id, "inverter_id": inverter_id}
+        )
 
         data_points = [
             {
                 "time": row.bucket_time.isoformat(),
-                "power": row.power if row.power is not None else 0
+                "power": row.power if row.power is not None else 0,
             }
             for row in result
         ]
@@ -196,7 +195,7 @@ async def get_power_timeseries(
                 "No time-series data found",
                 user_id=user_id,
                 inverter_id=inverter_id,
-                time_range=time_range
+                time_range=time_range,
             )
             raise NoDataException(f"No data for time range {time_range}")
 
@@ -205,7 +204,7 @@ async def get_power_timeseries(
             user_id=user_id,
             inverter_id=inverter_id,
             time_range=time_range,
-            data_points=len(data_points)
+            data_points=len(data_points),
         )
 
         return data_points
@@ -218,15 +217,13 @@ async def get_power_timeseries(
             error=str(e),
             user_id=user_id,
             inverter_id=inverter_id,
-            time_range=time_range
+            time_range=time_range,
         )
         raise TimeSeriesException(f"Failed to query time-series: {str(e)}") from e
 
 
 async def get_today_energy_production(
-    session: AsyncSession,
-    user_id: int,
-    inverter_id: int
+    session: AsyncSession, user_id: int, inverter_id: int
 ) -> float:
     """
     Calculate today's energy production in kWh using trapezoidal integration.
@@ -261,10 +258,9 @@ async def get_today_energy_production(
             WHERE time_diff_seconds IS NOT NULL
         """)
 
-        result = await session.execute(query, {
-            "user_id": user_id,
-            "inverter_id": inverter_id
-        })
+        result = await session.execute(
+            query, {"user_id": user_id, "inverter_id": inverter_id}
+        )
 
         row = result.first()
         energy_kwh = float(row.energy_kwh) if row and row.energy_kwh else 0.0
@@ -273,7 +269,7 @@ async def get_today_energy_production(
             "Calculated today's energy production",
             user_id=user_id,
             inverter_id=inverter_id,
-            energy_kwh=energy_kwh
+            energy_kwh=energy_kwh,
         )
 
         return energy_kwh
@@ -283,15 +279,13 @@ async def get_today_energy_production(
             "Failed to calculate energy production, returning 0",
             error=str(e),
             user_id=user_id,
-            inverter_id=inverter_id
+            inverter_id=inverter_id,
         )
         return 0.0
 
 
 async def get_today_maximum_power(
-    session: AsyncSession,
-    user_id: int,
-    inverter_id: int
+    session: AsyncSession, user_id: int, inverter_id: int
 ) -> int:
     """
     Get maximum power for today.
@@ -313,10 +307,9 @@ async def get_today_maximum_power(
               AND time >= DATE_TRUNC('day', NOW())
         """)
 
-        result = await session.execute(query, {
-            "user_id": user_id,
-            "inverter_id": inverter_id
-        })
+        result = await session.execute(
+            query, {"user_id": user_id, "inverter_id": inverter_id}
+        )
 
         row = result.first()
         max_power = int(row.max_power) if row and row.max_power else 0
@@ -328,15 +321,13 @@ async def get_today_maximum_power(
             "Failed to get max power, returning 0",
             error=str(e),
             user_id=user_id,
-            inverter_id=inverter_id
+            inverter_id=inverter_id,
         )
         return 0
 
 
 async def get_last_hour_average(
-    session: AsyncSession,
-    user_id: int,
-    inverter_id: int
+    session: AsyncSession, user_id: int, inverter_id: int
 ) -> int:
     """
     Get average power for the last hour.
@@ -358,10 +349,9 @@ async def get_last_hour_average(
               AND time > NOW() - INTERVAL '1 hour'
         """)
 
-        result = await session.execute(query, {
-            "user_id": user_id,
-            "inverter_id": inverter_id
-        })
+        result = await session.execute(
+            query, {"user_id": user_id, "inverter_id": inverter_id}
+        )
 
         row = result.first()
         avg_power = int(row.avg_power) if row and row.avg_power else 0
@@ -373,7 +363,7 @@ async def get_last_hour_average(
             "Failed to get hourly average, returning 0",
             error=str(e),
             user_id=user_id,
-            inverter_id=inverter_id
+            inverter_id=inverter_id,
         )
         return 0
 
@@ -382,15 +372,33 @@ async def set_rls_context(session: AsyncSession, user_id: int) -> None:
     """
     Set Row-Level Security context for the session.
 
+    Skips setting RLS context for SQLite (used in tests).
+
     Args:
         session: Database session
         user_id: User ID to set in RLS context
     """
+    # Skip RLS context for SQLite (used in tests)
+    db_url = str(session.bind.url) if session.bind else ""
+    if "sqlite" in db_url.lower():
+        logger.debug("Skipping RLS context for SQLite", user_id=user_id)
+        return
+
     await session.execute(text(f"SET app.current_user_id = {user_id}"))
     logger.debug("RLS context set", user_id=user_id)
 
 
 async def reset_rls_context(session: AsyncSession) -> None:
-    """Reset Row-Level Security context."""
+    """
+    Reset Row-Level Security context.
+
+    Skips resetting RLS context for SQLite (used in tests).
+    """
+    # Skip RLS context for SQLite (used in tests)
+    db_url = str(session.bind.url) if session.bind else ""
+    if "sqlite" in db_url.lower():
+        logger.debug("Skipping RLS context reset for SQLite")
+        return
+
     await session.execute(text("RESET app.current_user_id"))
     logger.debug("RLS context reset")

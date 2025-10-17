@@ -166,3 +166,34 @@ def disable_rate_limiter(mocker, request):
     if 'enable_rate_limiter' in request.keywords:
         return
     mocker.patch("solar_backend.limiter.limiter.enabled", False)
+
+
+@pytest.fixture
+def without_influx(mocker):
+    """
+    Mock InfluxDB/TimescaleDB operations for tests that don't need real time-series data.
+
+    This fixture is kept for backwards compatibility with tests that used it during
+    the InfluxDB era. It now returns empty data for time-series queries.
+    """
+    # Mock time-series query functions to return empty/default data
+    mocker.patch(
+        'solar_backend.utils.timeseries.get_latest_value',
+        side_effect=lambda *args, **kwargs: (None, 0)
+    )
+    mocker.patch(
+        'solar_backend.utils.timeseries.get_power_timeseries',
+        return_value=[]
+    )
+    mocker.patch(
+        'solar_backend.utils.timeseries.get_today_energy_production',
+        return_value=0.0
+    )
+    mocker.patch(
+        'solar_backend.utils.timeseries.get_today_maximum_power',
+        return_value=0
+    )
+    mocker.patch(
+        'solar_backend.utils.timeseries.get_last_hour_average',
+        return_value=0
+    )

@@ -6,7 +6,7 @@ import structlog
 from fastapi_users import BaseUserManager
 
 
-from fastapi import APIRouter, Depends, Request, status, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi_htmx import htmx
 
@@ -126,10 +126,13 @@ async def delete_inverter(
     if user is None:
         return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
 
+    # Store user_id before any session operations to avoid detachment issues
+    user_id = user.id
+
     inverter = await session.get(Inverter, inverter_id)
 
     # Verify ownership
-    if inverter.user_id != user.id:
+    if inverter.user_id != user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
     await session.delete(inverter)
@@ -138,7 +141,7 @@ async def delete_inverter(
     logger.info(
         "Inverter deleted",
         inverter_id=inverter_id,
-        user_id=user.id
+        user_id=user_id
     )
     # Note: Measurements are automatically deleted via CASCADE constraint
 

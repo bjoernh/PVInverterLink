@@ -10,18 +10,12 @@ from tests.factories import InverterAddFactory
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_create_inverter(client, test_user, mocker, db_session):
+async def test_create_inverter(client, test_user, db_session):
     """Test creating a new inverter as authenticated user."""
     # Login first
     await client.post(
         "/login",
         data={"username": "testuser@example.com", "password": "testpassword123"}
-    )
-
-    # Mock InfluxDB bucket creation
-    mock_bucket = mocker.patch(
-        'solar_backend.api.inverter.create_influx_bucket',
-        return_value="mock-bucket-id"
     )
 
     # Create inverter
@@ -62,7 +56,7 @@ async def test_create_inverter_unauthenticated(client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_create_inverter_duplicate_serial(client, test_user, test_inverter, mocker):
+async def test_create_inverter_duplicate_serial(client, test_user, test_inverter):
     """Test that creating inverter with duplicate serial fails."""
     # Login first
     await client.post(
@@ -82,14 +76,8 @@ async def test_create_inverter_duplicate_serial(client, test_user, test_inverter
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_list_user_inverters(client, test_user, test_inverter, mocker):
+async def test_list_user_inverters(client, test_user, test_inverter):
     """Test listing inverters for authenticated user."""
-    # Mock InfluxDB operations
-    mocker.patch(
-        'solar_backend.inverter.extend_current_powers',
-        return_value=None
-    )
-
     # Login first
     await client.post(
         "/login",
@@ -155,88 +143,12 @@ async def test_get_add_inverter_page(client, test_user):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_influx_bucket_created_on_inverter_creation(client, test_user, mocker):
-    """Test that InfluxDB bucket is created when inverter is created."""
-    # Store user ID before it potentially becomes detached
-    user_id = test_user.id
-
-    # Login first
-    await client.post(
-        "/login",
-        data={"username": "testuser@example.com", "password": "testpassword123"}
-    )
-
-    # Mock InfluxDB bucket creation (don't use without_influx so function is actually called)
-    mock_bucket = mocker.patch(
-        'solar_backend.api.inverter.create_influx_bucket',
-        return_value="new-bucket-id"
-    )
-
-    # Create inverter
-    inverter_data = InverterAddFactory()
-    response = await client.post(
-        "/inverter",
-        json={"name": inverter_data.name, "serial": inverter_data.serial}
-    )
-
-    assert response.status_code == 200
-    # Check that create_influx_bucket was called once
-    mock_bucket.assert_called_once()
-    # Verify the bucket name (second argument) matches inverter name
-    assert mock_bucket.call_args[0][1] == inverter_data.name
-    # Verify first argument is a User object (without accessing its attributes to avoid DetachedInstanceError)
-    from solar_backend.db import User
-    assert isinstance(mock_bucket.call_args[0][0], User)
-
-
-@pytest.mark.integration
-@pytest.mark.asyncio
-async def test_influx_bucket_deleted_on_inverter_deletion(client, test_user, test_inverter, mocker):
-    """Test that InfluxDB bucket is deleted when inverter is deleted."""
-    # Store values before they potentially become detached
-    user_id = test_user.id
-    bucket_id = test_inverter.influx_bucked_id
-    inverter_id = test_inverter.id
-
-    # Login first
-    await client.post(
-        "/login",
-        data={"username": "testuser@example.com", "password": "testpassword123"}
-    )
-
-    # Mock InfluxDB bucket deletion (don't use without_influx)
-    mock_delete = mocker.patch(
-        'solar_backend.api.inverter.delete_influx_bucket',
-        return_value=None
-    )
-
-    # Delete inverter
-    response = await client.delete(f"/inverter/{inverter_id}")
-
-    assert response.status_code == 200
-    # Check that delete_influx_bucket was called once
-    mock_delete.assert_called_once()
-    # Verify the bucket ID (second argument) matches
-    assert mock_delete.call_args[0][1] == bucket_id
-    # Verify first argument is a User object (without accessing its attributes to avoid DetachedInstanceError)
-    from solar_backend.db import User
-    assert isinstance(mock_delete.call_args[0][0], User)
-
-
-@pytest.mark.integration
-@pytest.mark.asyncio
-async def test_create_multiple_inverters(client, test_user, mocker, db_session):
+async def test_create_multiple_inverters(client, test_user, db_session):
     """Test creating multiple inverters for the same user."""
     # Login first
     await client.post(
         "/login",
         data={"username": "testuser@example.com", "password": "testpassword123"}
-    )
-
-    # Mock InfluxDB operations
-    mocker.patch(
-        'solar_backend.api.inverter.create_influx_bucket',
-        return_value="mock-bucket-id"
     )
 
     # Create first inverter

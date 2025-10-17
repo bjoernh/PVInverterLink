@@ -8,15 +8,13 @@ from solar_backend.db import sessionmanager, get_async_session
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_concurrent_inverter_creation_with_same_serial(mocker):
+async def test_concurrent_inverter_creation_with_same_serial():
     """Test that concurrent requests with same serial only create one inverter"""
     async def get_db_override_isolated():
         async with sessionmanager.session() as session:
             yield session
 
     app.dependency_overrides[get_async_session] = get_db_override_isolated
-
-    mocker.patch('solar_backend.api.inverter.create_influx_bucket', return_value="bucket-id")
 
     async with sessionmanager.session() as session:
         user = await create_user_in_db(session, email="test@test.com")
@@ -28,11 +26,11 @@ async def test_concurrent_inverter_creation_with_same_serial(mocker):
 
             # Create 10 concurrent requests
             results = await asyncio.gather(*[create_inverter() for _ in range(10)])
-    
+
             # Only one should succeed (200), others should get 422
             success_count = sum(1 for r in results if r.status_code == 200)
             failure_count = sum(1 for r in results if r.status_code == 422)
-    
+
             assert success_count == 1
             assert failure_count == 9
 
