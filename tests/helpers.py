@@ -32,9 +32,6 @@ async def create_user_in_db(session, **kwargs) -> User:
         "is_active": True,
         "is_superuser": False,
         "is_verified": True,
-        "influx_url": "http://localhost:8086",
-        "influx_org_id": "test-org-id",
-        "influx_token": "test-token",
     }
     defaults.update(kwargs)
 
@@ -67,7 +64,6 @@ async def create_inverter_in_db(session, user_id: int, **kwargs) -> Inverter:
         "name": "Test Inverter",
         "serial_logger": "TEST-SERIAL-123",
         "sw_version": "v1.0",
-        "influx_bucked_id": "test-bucket-id",
         "user_id": user_id,
         "rated_power": 5000,
         "number_of_mppts": 2,
@@ -158,30 +154,3 @@ async def register_and_verify_user(client: AsyncClient, mocker, user_data: dict 
     assert verify_response.status_code == 200
 
     return test_user, token
-
-
-def mock_influx_operations(mocker):
-    """
-    Mock all InfluxDB operations for testing without InfluxDB.
-
-    Args:
-        mocker: pytest-mock fixture
-
-    Returns:
-        Dict of mocked functions
-    """
-    mocks = {
-        'create_bucket': mocker.patch(
-            'solar_backend.inverter.create_influx_bucket',
-            return_value="mock-bucket-id"
-        ),
-        'delete_bucket': mocker.patch(
-            'solar_backend.inverter.delete_influx_bucket',
-            return_value=None
-        ),
-        'get_latest_values': mocker.patch(
-            'solar_backend.utils.influx.InfluxManagement.get_latest_values',
-            return_value=(None, 0)
-        ),
-    }
-    return mocks
