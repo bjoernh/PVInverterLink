@@ -11,17 +11,17 @@ services:
     environment:
       - ENV_FILE=backend.env
 
-  influxdb:
-    image: "influxdb:2.7-alpine"
-    ports:
-      - 8086:8086
-    volumes:
-      - influxdb:/var/lib/influxdb2:rw
-    env_file:
-      - influxdb.env
+  # influxdb:
+  #   image: "influxdb:2.7-alpine"
+  #   ports:
+  #     - 8086:8086
+  #   volumes:
+  #     - influxdb:/var/lib/influxdb2:rw
+  #   env_file:
+  #     - influxdb.env
 
   db:
-    image: postgres:16-alpine
+    image: timescale/timescaledb:latest-pg16
     restart: always
     environment:
       POSTGRES_USER: deyehard
@@ -37,4 +37,4 @@ services:
 
 volumes:
   pgdata:
-  influxdb:
+  # influxdb:
