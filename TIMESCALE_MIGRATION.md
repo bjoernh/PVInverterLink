@@ -130,6 +130,10 @@ uv run alembic upgrade head
 
 ---
 
+## Phase 2: Database Schema Changes (1 hour) ✅ COMPLETED
+
+**Note**: Compression was disabled due to incompatibility with Row-Level Security in TimescaleDB 2.22.1. RLS is prioritized for multi-tenant data isolation security.
+
 ## Phase 2: Database Schema Changes (1 hour)
 
 ### Step 2.1: Create Alembic Migration
