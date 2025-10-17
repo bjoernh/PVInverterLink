@@ -122,23 +122,47 @@ async def get_dashboard_data(
     try:
         async with InfluxManagement(user.influx_url) as inflx:
             inflx.connect(org=user.email, token=user.influx_token)
+
+            # Get time-series data
             data_points = inflx.get_power_timeseries(
                 user=user,
                 bucket=inverter.name,
                 time_range=time_range
             )
 
-        # Calculate statistics
-        if data_points:
-            powers = [d["power"] for d in data_points]
-            stats = {
-                "current": powers[-1] if powers else 0,
-                "max": max(powers) if powers else 0,
-                "min": min(powers) if powers else 0,
-                "avg": int(sum(powers) / len(powers)) if powers else 0
-            }
-        else:
-            stats = {"current": 0, "max": 0, "min": 0, "avg": 0}
+            # Get current power (latest value)
+            current = 0
+            if data_points:
+                powers = [d["power"] for d in data_points]
+                current = powers[-1] if powers else 0
+
+            # Get today's maximum power (independent of time range)
+            try:
+                max_today = inflx.get_today_maximum_power(user=user, bucket=inverter.name)
+            except Exception as e:
+                logger.warning("Failed to get today's maximum power", error=str(e))
+                max_today = 0
+
+            # Get today's energy production (kWh)
+            try:
+                today_kwh = inflx.get_today_energy_production(user=user, bucket=inverter.name)
+            except Exception as e:
+                logger.warning("Failed to get today's energy production", error=str(e))
+                today_kwh = 0.0
+
+            # Get last hour average (always last hour, regardless of selected time range)
+            try:
+                avg_last_hour = inflx.get_last_hour_average(user=user, bucket=inverter.name)
+            except Exception as e:
+                logger.warning("Failed to get last hour average", error=str(e))
+                avg_last_hour = 0
+
+        stats = {
+            "current": current,
+            "max": max_today,
+            "today_kwh": today_kwh,
+            "avg_last_hour": avg_last_hour
+        }
 
         logger.info(
             "Dashboard data retrieved",
@@ -169,7 +193,7 @@ async def get_dashboard_data(
             "success": False,
             "message": "InfluxDB-Dienst ist vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut oder kontaktieren Sie den Administrator.",
             "data": [],
-            "stats": {"current": 0, "max": 0, "min": 0, "avg": 0},
+            "stats": {"current": 0, "max": 0, "today_kwh": 0.0, "avg_last_hour": 0},
             "inverter": {
                 "id": inverter.id,
                 "name": inverter.name,
@@ -187,7 +211,7 @@ async def get_dashboard_data(
             "success": False,
             "message": "Keine Daten verfügbar für den gewählten Zeitraum",
             "data": [],
-            "stats": {"current": 0, "max": 0, "min": 0, "avg": 0},
+            "stats": {"current": 0, "max": 0, "today_kwh": 0.0, "avg_last_hour": 0},
             "inverter": {
                 "id": inverter.id,
                 "name": inverter.name,

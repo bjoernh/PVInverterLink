@@ -19,8 +19,14 @@
         </div>
     </div>
 
+    <!-- Today's Metrics Section Header -->
+    <div class="mb-4">
+        <h2 class="text-lg font-semibold text-gray-700">Heutige Metriken</h2>
+        <p class="text-sm text-gray-500">Aktuelle Messwerte von heute</p>
+    </div>
+
     <!-- Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
         <div class="card bg-base-100 shadow-md">
             <div class="card-body p-4">
                 <h3 class="text-sm font-medium text-gray-500">Aktuell</h3>
@@ -29,22 +35,28 @@
         </div>
         <div class="card bg-base-100 shadow-md">
             <div class="card-body p-4">
-                <h3 class="text-sm font-medium text-gray-500">Maximum</h3>
+                <h3 class="text-sm font-medium text-gray-500">Maximum heute</h3>
                 <p id="stat-max" class="text-2xl font-bold">-- W</p>
             </div>
         </div>
         <div class="card bg-base-100 shadow-md">
             <div class="card-body p-4">
-                <h3 class="text-sm font-medium text-gray-500">Minimum</h3>
-                <p id="stat-min" class="text-2xl font-bold">-- W</p>
+                <h3 class="text-sm font-medium text-gray-500">Produktion Heute</h3>
+                <p id="stat-today-kwh" class="text-2xl font-bold">-- kWh</p>
             </div>
         </div>
         <div class="card bg-base-100 shadow-md">
             <div class="card-body p-4">
-                <h3 class="text-sm font-medium text-gray-500">Durchschnitt</h3>
-                <p id="stat-avg" class="text-2xl font-bold">-- W</p>
+                <h3 class="text-sm font-medium text-gray-500">Durchschnitt (letzte Stunde)</h3>
+                <p id="stat-avg-hour" class="text-2xl font-bold">-- W</p>
             </div>
         </div>
+    </div>
+
+    <!-- Historic Data Section Header -->
+    <div class="mb-4 mt-8">
+        <h2 class="text-lg font-semibold text-gray-700">Detaillierter Verlauf</h2>
+        <p class="text-sm text-gray-500">Historische Daten über den gewählten Zeitraum</p>
     </div>
 
     <!-- Time Range Selector -->
@@ -211,8 +223,8 @@
                 // Update statistics
                 document.getElementById('stat-current').textContent = result.stats.current + ' W';
                 document.getElementById('stat-max').textContent = result.stats.max + ' W';
-                document.getElementById('stat-min').textContent = result.stats.min + ' W';
-                document.getElementById('stat-avg').textContent = result.stats.avg + ' W';
+                document.getElementById('stat-today-kwh').textContent = result.stats.today_kwh.toFixed(2) + ' kWh';
+                document.getElementById('stat-avg-hour').textContent = result.stats.avg_last_hour + ' W';
 
                 // Update last update time
                 const now = new Date();

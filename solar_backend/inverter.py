@@ -66,6 +66,70 @@ async def extend_current_powers(user: User, inverters: list[Inverter]):
             i.last_update = "Dienst vorübergehend nicht verfügbar"
 
 
+async def extend_summary_values(user: User, inverters: list[Inverter]) -> dict:
+    """
+    Calculate aggregated values from all inverters.
+
+    Args:
+        user: User object
+        inverters: List of inverter objects
+
+    Returns:
+        Dictionary with keys:
+            - total_power: Sum of current power from all inverters (int or "-")
+            - total_production_today: Sum of today's energy production from all inverters (float or "-")
+
+    Note:
+        If InfluxDB is unavailable, returns "-" for values instead of failing.
+    """
+    summary = {
+        "total_power": "-",
+        "total_production_today": "-"
+    }
+
+    try:
+        async with InfluxManagement(user.influx_url) as inflx:
+            inflx.connect(org=user.email, token=user.influx_token)
+
+            total_power = 0
+            total_production = 0.0
+            power_available = False
+            production_available = False
+
+            for inverter in inverters:
+                # Get current power
+                try:
+                    _, power = inflx.get_latest_values(user, inverter.name)
+                    if isinstance(power, (int, float)) and power >= 0:
+                        total_power += power
+                        power_available = True
+                except (NoValuesException, InfluxConnectionError):
+                    logger.debug(f"Could not get power for inverter {inverter.name}")
+                    pass
+
+                # Get today's energy production
+                try:
+                    energy = inflx.get_today_energy_production(user, inverter.name)
+                    if isinstance(energy, (int, float)) and energy >= 0:
+                        total_production += energy
+                        production_available = True
+                except (NoValuesException, InfluxConnectionError):
+                    logger.debug(f"Could not get production for inverter {inverter.name}")
+                    pass
+
+            # Set values only if we got at least some data
+            if power_available:
+                summary["total_power"] = int(total_power)
+            if production_available:
+                summary["total_production_today"] = round(total_production, 2)
+
+    except InfluxConnectionError as e:
+        logger.warning("InfluxDB connection failed in extend_summary_values", error=str(e), user_id=user.id)
+        # Return "-" for all values on connection error
+
+    return summary
+
+
 
 class InverterAdmin(ModelView, model=Inverter):
     async def on_model_change(self, data, model, is_created):

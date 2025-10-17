@@ -10,7 +10,7 @@ from solar_backend.db import Inverter, User, get_async_session
 
 from sqlalchemy import select
 from solar_backend.users import current_active_user
-from solar_backend.inverter import extend_current_powers
+from solar_backend.inverter import extend_current_powers, extend_summary_values
 from solar_backend.schemas import UserCreate
 from fastapi_users import models, exceptions
 
@@ -31,10 +31,17 @@ async def get_start(request: Request, user: User = Depends(current_active_user),
 
     # extend_current_powers handles InfluxDB connection errors gracefully
     # by setting default values when InfluxDB is unavailable
-    if inverters:
-        await extend_current_powers(user, list(inverters))
+    summary = {
+        "total_power": "-",
+        "total_production_today": "-"
+    }
 
-    return {"user": user, "inverters": inverters}
+    if inverters:
+        inverters = list(inverters)
+        await extend_current_powers(user, inverters)
+        summary = await extend_summary_values(user, inverters)
+
+    return {"user": user, "inverters": inverters, "summary": summary}
 
 @router.get("/test", response_class=HTMLResponse)
 @htmx("test", "test")

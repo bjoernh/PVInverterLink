@@ -63,7 +63,7 @@ async def test_dashboard_shows_friendly_error_when_influx_down(
         assert "InfluxDB" in data["message"]
         assert "vorübergehend nicht verfügbar" in data["message"]
         assert data["data"] == []
-        assert data["stats"] == {"current": 0, "max": 0, "min": 0, "avg": 0}
+        assert data["stats"] == {"current": 0, "max": 0, "today_kwh": 0.0, "avg_last_hour": 0}
 
 
 @pytest.mark.asyncio

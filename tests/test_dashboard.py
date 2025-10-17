@@ -100,8 +100,8 @@ async def test_dashboard_api_data_endpoint(
     # Check stats structure
     assert "current" in data["stats"]
     assert "max" in data["stats"]
-    assert "min" in data["stats"]
-    assert "avg" in data["stats"]
+    assert "today_kwh" in data["stats"]
+    assert "avg_last_hour" in data["stats"]
 
     # Check inverter info
     assert data["inverter"]["id"] == test_inverter.id
@@ -219,9 +219,9 @@ async def test_dashboard_has_statistics_cards(
     assert response.status_code == 200
     # Check for stat labels
     assert "Aktuell" in response.text
-    assert "Maximum" in response.text
-    assert "Minimum" in response.text
-    assert "Durchschnitt" in response.text
+    assert "Maximum heute" in response.text
+    assert "Produktion Heute" in response.text
+    assert "Durchschnitt (letzte Stunde)" in response.text
 
 
 @pytest.mark.asyncio

@@ -102,11 +102,18 @@ class InfluxManagement:
         try:
             if not username:
                 self._client = InfluxDBClient(
-                    url=self.db_url, token=token if token else self.token, org=org
+                    url=self.db_url,
+                    token=token if token else self.token,
+                    org=org,
+                    enable_gzip=False
                 )
             else:
                 self._client = InfluxDBClient(
-                    url=self.db_url, username=username, password=password, org=org
+                    url=self.db_url,
+                    username=username,
+                    password=password,
+                    org=org,
+                    enable_gzip=False
                 )
 
             # Test the connection
@@ -717,3 +724,254 @@ class InfluxManagement:
                 time_range=time_range,
             )
             raise NoValuesException(f"InfluxDB query returned no data: {str(e)}")
+
+    def get_today_energy_production(self, user, bucket: str) -> float:
+        """
+        Get total energy production for today (from midnight to now).
+
+        Args:
+            user: User object with email for org lookup
+            bucket: Bucket name to query
+
+        Returns:
+            Total energy produced today in kWh
+
+        Raises:
+            InfluxConnectionError: If InfluxDB is not reachable
+            NoValuesException: If no data found in query
+        """
+        try:
+            query_api = self._client.query_api()
+
+            # Query from start of today (midnight server local time) to now
+            # Use integral() to calculate energy (area under power curve)
+            # integral() returns Watt-seconds, convert to kWh
+            query = f"""
+                from(bucket:"{bucket}")
+                |> range(start: today())
+                |> filter(fn: (r) => r["_measurement"] == "grid")
+                |> filter(fn: (r) => r["_field"] == "total_output_power")
+                |> integral(unit: 1s)
+                |> map(fn: (r) => ({{ r with _value: r._value / 3600000.0 }}))
+                |> last()
+            """
+
+            tables = query_api.query(query, org=user.email)
+
+            if tables and len(tables) > 0 and len(tables[0].records) > 0:
+                energy_kwh = tables[0].records[0].get_value()
+                logger.info(
+                    "Retrieved today's energy production",
+                    bucket=bucket,
+                    energy_kwh=energy_kwh,
+                )
+                return float(energy_kwh) if energy_kwh else 0.0
+            else:
+                logger.info(
+                    "No energy data for today",
+                    bucket=bucket,
+                )
+                return 0.0
+
+        except (ConnectionError, TimeoutError, OSError) as e:
+            logger.error(
+                "InfluxDB connection error in get_today_energy_production",
+                error=str(e),
+                bucket=bucket,
+            )
+            raise InfluxConnectionError(
+                f"Cannot reach InfluxDB for query: {str(e)}"
+            ) from e
+        except InfluxDBError as e:
+            if (
+                "connection" in str(e).lower()
+                or "refused" in str(e).lower()
+                or "unavailable" in str(e).lower()
+            ):
+                logger.error(
+                    "InfluxDB unavailable in get_today_energy_production",
+                    error=str(e),
+                    bucket=bucket,
+                )
+                raise InfluxConnectionError(
+                    f"InfluxDB service unavailable: {str(e)}"
+                ) from e
+            # For query errors, log but return 0 instead of raising
+            logger.warning(
+                "No energy data for today",
+                error=str(e),
+                bucket=bucket,
+            )
+            return 0.0
+        except Exception as e:
+            logger.warning(
+                "Failed to retrieve today's energy production",
+                error=str(e),
+                bucket=bucket,
+            )
+            return 0.0
+
+    def get_last_hour_average(self, user, bucket: str) -> int:
+        """
+        Get average power for the last hour.
+
+        Args:
+            user: User object with email for org lookup
+            bucket: Bucket name to query
+
+        Returns:
+            Average power in Watts for the last hour
+
+        Raises:
+            InfluxConnectionError: If InfluxDB is not reachable
+            NoValuesException: If no data found in query
+        """
+        try:
+            query_api = self._client.query_api()
+
+            # Query last hour and calculate mean
+            query = f"""
+                from(bucket:"{bucket}")
+                |> range(start: -1h)
+                |> filter(fn: (r) => r["_measurement"] == "grid")
+                |> filter(fn: (r) => r["_field"] == "total_output_power")
+                |> mean()
+            """
+
+            tables = query_api.query(query, org=user.email)
+
+            if tables and len(tables) > 0 and len(tables[0].records) > 0:
+                avg_power = tables[0].records[0].get_value()
+                logger.info(
+                    "Retrieved last hour average power",
+                    bucket=bucket,
+                    avg_power=avg_power,
+                )
+                return int(avg_power) if avg_power else 0
+            else:
+                logger.info(
+                    "No data for last hour average",
+                    bucket=bucket,
+                )
+                return 0
+
+        except (ConnectionError, TimeoutError, OSError) as e:
+            logger.error(
+                "InfluxDB connection error in get_last_hour_average",
+                error=str(e),
+                bucket=bucket,
+            )
+            raise InfluxConnectionError(
+                f"Cannot reach InfluxDB for query: {str(e)}"
+            ) from e
+        except InfluxDBError as e:
+            if (
+                "connection" in str(e).lower()
+                or "refused" in str(e).lower()
+                or "unavailable" in str(e).lower()
+            ):
+                logger.error(
+                    "InfluxDB unavailable in get_last_hour_average",
+                    error=str(e),
+                    bucket=bucket,
+                )
+                raise InfluxConnectionError(
+                    f"InfluxDB service unavailable: {str(e)}"
+                ) from e
+            # For query errors, log but return 0 instead of raising
+            logger.warning(
+                "No data for last hour average",
+                error=str(e),
+                bucket=bucket,
+            )
+            return 0
+        except Exception as e:
+            logger.warning(
+                "Failed to retrieve last hour average",
+                error=str(e),
+                bucket=bucket,
+            )
+            return 0
+
+    def get_today_maximum_power(self, user, bucket: str) -> int:
+        """
+        Get maximum power for today (from midnight to now).
+
+        Args:
+            user: User object with email for org lookup
+            bucket: Bucket name to query
+
+        Returns:
+            Maximum power in Watts for today
+
+        Raises:
+            InfluxConnectionError: If InfluxDB is not reachable
+            NoValuesException: If no data found in query
+        """
+        try:
+            query_api = self._client.query_api()
+
+            # Query from start of today (midnight server local time) to now
+            # Get maximum value
+            query = f"""
+                from(bucket:"{bucket}")
+                |> range(start: today())
+                |> filter(fn: (r) => r["_measurement"] == "grid")
+                |> filter(fn: (r) => r["_field"] == "total_output_power")
+                |> max()
+            """
+
+            tables = query_api.query(query, org=user.email)
+
+            if tables and len(tables) > 0 and len(tables[0].records) > 0:
+                max_power = tables[0].records[0].get_value()
+                logger.info(
+                    "Retrieved today's maximum power",
+                    bucket=bucket,
+                    max_power=max_power,
+                )
+                return int(max_power) if max_power else 0
+            else:
+                logger.info(
+                    "No data for today's maximum power",
+                    bucket=bucket,
+                )
+                return 0
+
+        except (ConnectionError, TimeoutError, OSError) as e:
+            logger.error(
+                "InfluxDB connection error in get_today_maximum_power",
+                error=str(e),
+                bucket=bucket,
+            )
+            raise InfluxConnectionError(
+                f"Cannot reach InfluxDB for query: {str(e)}"
+            ) from e
+        except InfluxDBError as e:
+            if (
+                "connection" in str(e).lower()
+                or "refused" in str(e).lower()
+                or "unavailable" in str(e).lower()
+            ):
+                logger.error(
+                    "InfluxDB unavailable in get_today_maximum_power",
+                    error=str(e),
+                    bucket=bucket,
+                )
+                raise InfluxConnectionError(
+                    f"InfluxDB service unavailable: {str(e)}"
+                ) from e
+            # For query errors, log but return 0 instead of raising
+            logger.warning(
+                "No data for today's maximum power",
+                error=str(e),
+                bucket=bucket,
+            )
+            return 0
+        except Exception as e:
+            logger.warning(
+                "Failed to retrieve today's maximum power",
+                error=str(e),
+                bucket=bucket,
+            )
+            return 0
