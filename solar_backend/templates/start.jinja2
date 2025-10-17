@@ -77,10 +77,6 @@
 
                     </div>
                     <p>Seriennummer: {{ inverter.serial_logger }}</p>
-                    <div class="card-actions justify-end">
-                    <a href="/dashboard/{{ inverter.id }}" class="btn btn-primary">Dashboard</a>
-                    <button class="btn btn-secondary" hx-delete="/inverter/{{ inverter.id }}" hs-swap="delete" hx-target="#card-{{ inverter.id }}" hx-confirm="Soll der Wechselrichter wirklich gelöscht werden, alle gespeicherten Daten werden gelöscht?">Entfernen</button>
-                    </div>
                 </div>
             </div>
 
@@ -111,8 +107,8 @@
 
         {% endfor %}
 
-        {# Add new inverter card or verification warning #}
-        {% if user.is_verified %}
+        {# Add new inverter card only shown when user has no inverters #}
+        {% if user.is_verified and inverters|length == 0 %}
         <div id="add_new" class="card bg-base-100 shadow-xl">
                     <div class="card-body">
                         <h2 class="card-title">Neuen Wechselrichter hinzufügen</h2>
@@ -121,7 +117,7 @@
                         </div>
                     </div>
                 </div>
-        {% else %}
+        {% elif not user.is_verified %}
         <div id="verification_warning" class="card bg-warning text-warning-content shadow-xl">
                     <div class="card-body">
                         <h2 class="card-title">
