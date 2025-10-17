@@ -98,7 +98,7 @@ async def post_measurement(
             total_output_power=int(total_output_power),
         )
 
-        logger.info(
+        logger.debug(
             "Measurement stored",
             serial=data.serial,
             inverter_id=inverter.id,

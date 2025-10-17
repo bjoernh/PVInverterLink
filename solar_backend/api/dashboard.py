@@ -15,7 +15,7 @@ from solar_backend.utils.timeseries import (
     set_rls_context,
     reset_rls_context,
     NoDataException,
-    TimeSeriesException
+    TimeSeriesException,
 )
 
 logger = structlog.get_logger()
@@ -30,7 +30,7 @@ async def get_dashboard(
     request: Request,
     time_range: str = "24h",
     user: User = Depends(current_active_user),
-    db_session: AsyncSession = Depends(get_async_session)
+    db_session: AsyncSession = Depends(get_async_session),
 ):
     """
     Display real-time power dashboard for a specific inverter.
@@ -51,8 +51,7 @@ async def get_dashboard(
         # Verify inverter belongs to user
         result = await session.execute(
             select(Inverter).where(
-                Inverter.id == inverter_id,
-                Inverter.user_id == user.id
+                Inverter.id == inverter_id, Inverter.user_id == user.id
             )
         )
         inverter = result.scalar_one_or_none()
@@ -60,7 +59,7 @@ async def get_dashboard(
         if not inverter:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Inverter nicht gefunden oder keine Berechtigung"
+                detail="Inverter nicht gefunden oder keine Berechtigung",
             )
 
     # Validate time range
@@ -73,14 +72,14 @@ async def get_dashboard(
         inverter_id=inverter_id,
         inverter_name=inverter.name,
         time_range=time_range,
-        user_id=user.id
+        user_id=user.id,
     )
 
     return {
         "user": user,
         "inverter": inverter,
         "time_range": time_range,
-        "valid_ranges": valid_ranges
+        "valid_ranges": valid_ranges,
     }
 
 
@@ -89,7 +88,7 @@ async def get_dashboard_data(
     inverter_id: int,
     time_range: str = "24h",
     user: User = Depends(current_active_user),
-    db_session: AsyncSession = Depends(get_async_session)
+    db_session: AsyncSession = Depends(get_async_session),
 ):
     """
     API endpoint to fetch time-series data for dashboard graph.
@@ -111,16 +110,14 @@ async def get_dashboard_data(
         # Verify inverter belongs to user
         result = await session.execute(
             select(Inverter).where(
-                Inverter.id == inverter_id,
-                Inverter.user_id == user.id
+                Inverter.id == inverter_id, Inverter.user_id == user.id
             )
         )
         inverter = result.scalar_one_or_none()
 
         if not inverter:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Inverter not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Inverter not found"
             )
 
         # Validate time range
@@ -137,7 +134,7 @@ async def get_dashboard_data(
                 session=session,
                 user_id=user.id,
                 inverter_id=inverter.id,
-                time_range=time_range
+                time_range=time_range,
             )
 
             # Get current power (latest value)
@@ -151,13 +148,17 @@ async def get_dashboard_data(
                 max_today = 0
 
             try:
-                today_kwh = await get_today_energy_production(session, user.id, inverter.id)
+                today_kwh = await get_today_energy_production(
+                    session, user.id, inverter.id
+                )
             except Exception as e:
                 logger.warning("Failed to get today's energy production", error=str(e))
                 today_kwh = 0.0
 
             try:
-                avg_last_hour = await get_last_hour_average(session, user.id, inverter.id)
+                avg_last_hour = await get_last_hour_average(
+                    session, user.id, inverter.id
+                )
             except Exception as e:
                 logger.warning("Failed to get last hour average", error=str(e))
                 avg_last_hour = 0
@@ -166,74 +167,90 @@ async def get_dashboard_data(
                 "current": current,
                 "max": max_today,
                 "today_kwh": today_kwh,
-                "avg_last_hour": avg_last_hour
+                "avg_last_hour": avg_last_hour,
             }
 
             logger.info(
                 "Dashboard data retrieved",
                 inverter_id=inverter_id,
                 time_range=time_range,
-                data_points=len(data_points)
+                data_points=len(data_points),
             )
 
-            return JSONResponse({
-                "success": True,
-                "data": data_points,
-                "stats": stats,
-                "inverter": {
-                    "id": inverter.id,
-                    "name": inverter.name,
-                    "serial": inverter.serial_logger
+            return JSONResponse(
+                {
+                    "success": True,
+                    "data": data_points,
+                    "stats": stats,
+                    "inverter": {
+                        "id": inverter.id,
+                        "name": inverter.name,
+                        "serial": inverter.serial_logger,
+                    },
                 }
-            })
+            )
 
         except NoDataException as e:
             logger.warning(
                 "No data available for dashboard",
                 inverter_id=inverter_id,
                 time_range=time_range,
-                error=str(e)
+                error=str(e),
             )
-            return JSONResponse({
-                "success": False,
-                "message": "Keine Daten verfügbar für den gewählten Zeitraum",
-                "data": [],
-                "stats": {"current": 0, "max": 0, "today_kwh": 0.0, "avg_last_hour": 0},
-                "inverter": {
-                    "id": inverter.id,
-                    "name": inverter.name,
-                    "serial": inverter.serial_logger
+            return JSONResponse(
+                {
+                    "success": False,
+                    "message": "Keine Daten verfügbar für den gewählten Zeitraum",
+                    "data": [],
+                    "stats": {
+                        "current": 0,
+                        "max": 0,
+                        "today_kwh": 0.0,
+                        "avg_last_hour": 0,
+                    },
+                    "inverter": {
+                        "id": inverter.id,
+                        "name": inverter.name,
+                        "serial": inverter.serial_logger,
+                    },
                 }
-            })
+            )
         except TimeSeriesException as e:
             logger.error(
                 "Time-series query failed for dashboard",
                 inverter_id=inverter_id,
                 time_range=time_range,
-                error=str(e)
+                error=str(e),
             )
-            return JSONResponse({
-                "success": False,
-                "message": "Fehler beim Abrufen der Daten",
-                "data": [],
-                "stats": {"current": 0, "max": 0, "today_kwh": 0.0, "avg_last_hour": 0},
-                "inverter": {
-                    "id": inverter.id,
-                    "name": inverter.name,
-                    "serial": inverter.serial_logger
+            return JSONResponse(
+                {
+                    "success": False,
+                    "message": "Fehler beim Abrufen der Daten",
+                    "data": [],
+                    "stats": {
+                        "current": 0,
+                        "max": 0,
+                        "today_kwh": 0.0,
+                        "avg_last_hour": 0,
+                    },
+                    "inverter": {
+                        "id": inverter.id,
+                        "name": inverter.name,
+                        "serial": inverter.serial_logger,
+                    },
                 }
-            })
+            )
         except Exception as e:
             logger.error(
                 "Dashboard data retrieval failed",
                 inverter_id=inverter_id,
                 time_range=time_range,
                 error=str(e),
-                exc_info=True
+                exc_info=True,
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Fehler beim Abrufen der Daten"
+                detail="Fehler beim Abrufen der Daten",
             )
         finally:
             # Always reset RLS context
