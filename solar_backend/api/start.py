@@ -1,6 +1,8 @@
 import structlog
+from datetime import datetime, timezone
 from pprint import pprint
 from pydantic import ValidationError
+import humanize
 
 from fastapi import APIRouter, Depends, Request, status
 
@@ -10,11 +12,21 @@ from solar_backend.db import Inverter, User, get_async_session
 
 from sqlalchemy import select
 from solar_backend.users import current_active_user
-from solar_backend.inverter import extend_current_powers, extend_summary_values
+from solar_backend.utils.timeseries import (
+    get_latest_value,
+    get_today_energy_production,
+    set_rls_context,
+    reset_rls_context,
+    NoDataException,
+    TimeSeriesException
+)
 from solar_backend.schemas import UserCreate
 from fastapi_users import models, exceptions
 
 logger = structlog.get_logger()
+
+# Activate German locale for humanize
+_t = humanize.i18n.activate("de_DE")
 
 router = APIRouter()
 
@@ -26,20 +38,60 @@ async def get_start(request: Request, user: User = Depends(current_active_user),
         return RedirectResponse('/login', status_code=status.HTTP_303_SEE_OTHER)
 
     async with db_session as session:
-        inverters = await session.scalars(select(Inverter).where(Inverter.user_id == user.id))
-        inverters = inverters.all()
+        # Set RLS context
+        await set_rls_context(session, user.id)
 
-    # extend_current_powers handles InfluxDB connection errors gracefully
-    # by setting default values when InfluxDB is unavailable
-    summary = {
-        "total_power": "-",
-        "total_production_today": "-"
-    }
+        try:
+            result = await session.execute(select(Inverter).where(Inverter.user_id == user.id))
+            inverters = list(result.scalars().all())
 
-    if inverters:
-        inverters = list(inverters)
-        await extend_current_powers(user, inverters)
-        summary = await extend_summary_values(user, inverters)
+            # Extend with current power and last update
+            for inverter in inverters:
+                try:
+                    time, power = await get_latest_value(session, user.id, inverter.id)
+                    inverter.current_power = power
+                    inverter.last_update = humanize.naturaltime(datetime.now(timezone.utc) - time)
+                except NoDataException:
+                    inverter.current_power = "-"
+                    inverter.last_update = "Keine aktuellen Werte"
+                except TimeSeriesException as e:
+                    logger.warning("Failed to get latest value", error=str(e), inverter_id=inverter.id)
+                    inverter.current_power = "-"
+                    inverter.last_update = "Dienst vorübergehend nicht verfügbar"
+
+            # Calculate summary values
+            summary = {
+                "total_power": "-",
+                "total_production_today": "-"
+            }
+
+            total_power = 0
+            total_production = 0.0
+            power_available = False
+            production_available = False
+
+            for inverter in inverters:
+                # Get current power
+                if isinstance(inverter.current_power, int) and inverter.current_power >= 0:
+                    total_power += inverter.current_power
+                    power_available = True
+
+                # Get today's energy
+                try:
+                    energy = await get_today_energy_production(session, user.id, inverter.id)
+                    if energy >= 0:
+                        total_production += energy
+                        production_available = True
+                except Exception as e:
+                    logger.debug(f"Could not get production for inverter {inverter.name}", error=str(e))
+
+            if power_available:
+                summary["total_power"] = int(total_power)
+            if production_available:
+                summary["total_production_today"] = round(total_production, 2)
+
+        finally:
+            await reset_rls_context(session)
 
     return {"user": user, "inverters": inverters, "summary": summary}
 
