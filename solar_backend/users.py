@@ -13,7 +13,6 @@ from sqladmin import ModelView
 from sqlalchemy import update
 from solar_backend.db import User, get_user_db
 from solar_backend.config import DEBUG, settings, WEB_DEV_TESTING
-from solar_backend.utils.influx import InfluxManagement
 from solar_backend.utils.email import send_verify_mail, send_reset_passwort_mail
 
 logger = structlog.get_logger()
@@ -21,9 +20,6 @@ logger = structlog.get_logger()
 
 from fastapi_users.exceptions import InvalidPasswordException
 from solar_backend.schemas import UserCreate
-
-
-from solar_backend.utils.crypto import CryptoManager
 
 
 class UserManager(IntegerIDMixin, BaseUserManager[User, int], ModelView):
@@ -58,44 +54,8 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int], ModelView):
     
     async def on_after_verify(self, user: User, request: Optional[Request] = None):
         logger.info(f"User {user.id} is verified.", user=user)
-        if not WEB_DEV_TESTING and user.tmp_pass:
-            try:
-                crypto = CryptoManager(settings.ENCRYPTION_KEY)
-                decrypted_pass = crypto.decrypt(user.tmp_pass)
-
-                if not decrypted_pass:
-                    logger.error(
-                        "Failed to decrypt temporary password for InfluxDB setup.",
-                        user_id=user.id
-                    )
-                    # Clear tmp_pass to prevent retries with a bad token
-                    await self.user_db.update(user, {"tmp_pass": ""})
-                    return
-
-                async with InfluxManagement(db_url=settings.INFLUX_URL) as inflx:
-                    inflx.connect(org=settings.INFLUX_OPERATOR_ORG)
-                    _inflx_user, org, token = inflx.create_influx_user_and_org(
-                        f"{user.email}", decrypted_pass
-                    )
-                    logger.info(f"Influx setup for user {user.first_name} {user.last_name} completed")
-                    update_dict = {
-                        "influx_org_id": org.id,
-                        "influx_token": token,
-                        "tmp_pass": ""  # Clear the temporary password
-                    }
-                    await self.user_db.update(user, update_dict)
-
-            except Exception as e:
-                logger.error(
-                    "Failed to create InfluxDB user/org during verification",
-                    error=str(e),
-                    user_id=user.id,
-                    user_email=user.email
-                )
-                # Clear tmp_pass even if InfluxDB setup fails
-                await self.user_db.update(user, {"tmp_pass": ""})
-                # User verification still succeeds, but InfluxDB setup failed
-                # Admin needs to check INFLUX_OPERATOR_TOKEN and manually set up user
+        # InfluxDB provisioning no longer needed
+        # User can immediately start adding inverters
             
 
     async def on_after_forgot_password(
