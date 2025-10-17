@@ -70,13 +70,16 @@ async def post_signup(
     
     try:
         await user_manager.create(user)
+    except exceptions.InvalidPasswordException as e:
+        logger.warning("Password validation failed during signup", error=str(e.reason))
+        return {"result": False, "error": e.reason}
     except exceptions.UserAlreadyExists:
         return {"result": False, "error": "Email Adresse ist bereits mit einem Account registriert"}
     except SMTPRecipientsRefused:
         await user_manager.delete(user)
         return {"result": False, "error": "Email kann nicht zugestellt werden"}
 
-            
+
     return {"result": result ,"email": email}
 
 @router.get("/verify", response_class=HTMLResponse)
