@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Deye Hard Backend is a FastAPI-based solar inverter management system that integrates with InfluxDB for time-series data storage. The application manages users and their solar inverters, providing authentication, data collection, and visualization capabilities.
+Deye Hard Backend is a FastAPI-based solar inverter management system using TimescaleDB (PostgreSQL extension) for time-series data storage. The application manages users and their solar inverters, providing authentication, data collection, and visualization capabilities with multi-tenant data isolation.
 
 ## Technology Stack
 
 - **Web Framework**: FastAPI with HTMX for dynamic frontend
-- **Database**: PostgreSQL (primary), InfluxDB 2.x (time-series data)
+- **Database**: PostgreSQL + TimescaleDB (time-series extension)
 - **ORM**: SQLAlchemy 2.x with async support
 - **Migrations**: Alembic
 - **Authentication**: fastapi-users with JWT (Bearer + Cookie transport)
@@ -45,7 +45,7 @@ uv run pytest -v
 
 ### Docker Development
 ```bash
-# Start all services (backend, postgres, influxdb)
+# Start all services (backend, timescale db)
 docker-compose up -d
 
 # View logs
@@ -78,11 +78,10 @@ uv run alembic history
 ### Core Module Structure
 
 - `solar_backend/app.py` - FastAPI application setup, middleware, router registration, admin interface
-- `solar_backend/db.py` - Database models (User, Inverter), SQLAlchemy session management
+- `solar_backend/db.py` - Database models (User, Inverter, InverterMeasurement), SQLAlchemy session management, admin views
 - `solar_backend/users.py` - User management, authentication backends, UserManager lifecycle hooks
 - `solar_backend/config.py` - Pydantic settings, environment configuration loading
 - `solar_backend/schemas.py` - Pydantic models for API request/response validation
-- `solar_backend/inverter.py` - Inverter-specific business logic, InfluxDB bucket management
 
 ### API Routers
 
@@ -91,50 +90,56 @@ Located in `solar_backend/api/`:
 - `login.py` - Authentication endpoints
 - `start.py` - Main dashboard/homepage
 - `inverter.py` - Inverter CRUD operations
+- `dashboard.py` - Dashboard data and time-series queries
+- `measurements.py` - Measurement data ingestion endpoint
+- `account.py` - Account management (password, email, deletion)
 - `healthcheck.py` - Service health monitoring
 
 ### Utilities
 
-- `utils/influx.py` - InfluxDB management class for user/org/bucket creation and queries
+- `utils/timeseries.py` - TimescaleDB utilities for time-series data operations
 - `utils/email.py` - Email sending for verification and password reset
 - `utils/admin_auth.py` - Admin panel authentication backend
 
-### Multi-Tenant InfluxDB Architecture
+### Multi-Tenant TimescaleDB Architecture
 
-The application implements per-user InfluxDB isolation:
+The application implements per-user data isolation using TimescaleDB:
 
-1. **User Registration Flow** (see `users.py:UserManager`):
-   - User registers via fastapi-users
-   - On email verification (`on_after_verify`), system creates:
-     - Dedicated InfluxDB user
-     - Private InfluxDB organization (named after user email)
-     - User-specific authorization token
-   - Credentials stored in `User` model (`influx_org_id`, `influx_token`)
+1. **Time-Series Storage**:
+   - All measurement data stored in `inverter_measurements` table
+   - Multi-dimensional partitioning by time (7-day chunks) and user_id (4 space partitions)
+   - Automatic compression after 7 days (disabled when RLS is enabled)
+   - 2-year retention policy
 
-2. **Inverter Registration Flow** (see `api/inverter.py`, `inverter.py`):
-   - Authenticated user adds inverter with name and serial number
-   - System creates dedicated InfluxDB bucket for that inverter
-   - Bucket ID stored in `Inverter.influx_bucked_id`
-   - Each inverter writes to its own bucket within user's org
+2. **Data Isolation**:
+   - Row-Level Security (RLS) enforces user isolation at database level
+   - Application sets `app.current_user_id` session variable before queries
+   - Queries automatically filtered by RLS policy
+   - CASCADE deletion: deleting a user automatically deletes all inverters and measurements
 
-3. **Data Access Pattern**:
-   - External inverters call `/influx_token?serial=XXX` (requires superuser auth)
-   - Returns user's InfluxDB token, bucket ID, org ID for writing data
-   - Queries use user-scoped credentials for data isolation
+3. **Data Ingestion**:
+   - External inverters POST measurements to `/api/measurements`
+   - Requires superuser Bearer token authentication
+   - Data routed to correct user partition by inverter serial number
+   - Measurements stored with (time, user_id, inverter_id) as composite primary key
 
 ### Database Models
 
 **User** (`db.py`):
 - Extends `SQLAlchemyBaseUserTable` from fastapi-users
-- Stores InfluxDB org ID and token for multi-tenant data isolation
 - Has one-to-many relationship with Inverter
-- `tmp_pass` holds password temporarily until email verification
+- `tmp_pass` field exists but is legacy (can be removed in future cleanup)
 
 **Inverter** (`db.py`):
-- Linked to User via `user_id` foreign key
+- Linked to User via `user_id` foreign key with CASCADE deletion
 - `serial_logger` is unique identifier for physical device
-- `influx_bucked_id` links to dedicated InfluxDB bucket
 - Optional metadata: `sw_version`, `rated_power`, `number_of_mppts`
+
+**InverterMeasurement** (`db.py`):
+- TimescaleDB hypertable for time-series data
+- Composite primary key: (time, user_id, inverter_id)
+- Foreign keys to User and Inverter with CASCADE deletion
+- Fields: `time` (timestamptz), `user_id`, `inverter_id`, `total_output_power`
 
 ### Authentication Architecture
 
@@ -145,7 +150,7 @@ Two parallel authentication backends exist (see `users.py`):
    - Provides `current_active_user` dependency
 
 2. **Bearer token** (`auth_backend_bearer`):
-   - Used for API routes (e.g., `/influx_token`)
+   - Used for API routes (e.g., `/api/measurements`)
    - Provides `current_active_user_bearer`, `current_superuser_bearer` dependencies
    - Token URL: `auth/jwt/login`
 
@@ -155,36 +160,53 @@ Both use same JWT strategy with 2-day lifetime.
 
 - Environment file path set via `ENV_FILE` environment variable
 - Config loaded from `solar_backend/backend.env` by default
-- Required variables: `DATABASE_URL`, `AUTH_SECRET`, `INFLUX_URL`, `INFLUX_OPERATOR_TOKEN`
-- InfluxDB setup requires operator token (see README.md for initial setup)
-- `WEB_DEV_TESTING` flag in `config.py` disables InfluxDB operations for local dev
+- Required variables: `DATABASE_URL`, `AUTH_SECRET`, `ENCRYPTION_KEY`, `BASE_URL`
+- Optional: `FASTMAIL` config for email functionality
+- `WEB_DEV_TESTING` flag in `config.py` is legacy (previously for InfluxDB, can be removed)
 - `COOKIE_SECURE` should be True in production, False for local development
 
 ### Testing
 
 - Tests use SQLite in-memory database (`sqlite+aiosqlite://`)
 - `conftest.py` provides fixtures for async test client and database setup
-- `without_influx` fixture mocks InfluxDB operations via `WEB_DEV_TESTING`
 - All tests use function-scoped database recreation for isolation
 - HTMX templates must be initialized in test setup
+- Test data created using helpers in `tests/helpers.py`
 
-## Initial InfluxDB Setup
+## Working with Time-Series Data
 
-InfluxDB requires a one-time operator token setup (detailed in README.md):
+### TimescaleDB Setup
+
+TimescaleDB is automatically enabled in the PostgreSQL container:
 
 ```bash
-docker-compose up -d influxdb
-docker exec -it <influxdb_container> sh
+# Start database
+docker-compose up -d db
 
-# Inside container
-influx config create --config-name wtf --host-url http://localhost:8086 --org wtf --token <init_admin_token> --active
-influx auth create --org wtf --operator
-
-# Copy generated token to backend.env
-echo 'INFLUX_OPERATOR_TOKEN="<generated_token>"' >> backend.env
+# Verify TimescaleDB extension
+docker-compose exec db psql -U deyehard -d deyehard -c "CREATE EXTENSION IF NOT EXISTS timescaledb;"
+docker-compose exec db psql -U deyehard -d deyehard -c "\dx"
 ```
 
-This operator token allows the backend to create per-user organizations and tokens.
+### Row-Level Security Pattern
+
+Always set RLS context before querying time-series data:
+
+```python
+from solar_backend.utils.timeseries import set_rls_context, reset_rls_context
+
+async with session:
+    try:
+        # Set RLS context
+        await set_rls_context(session, user.id)
+
+        # Perform queries - automatically filtered by user_id
+        data = await get_power_timeseries(session, user.id, inverter.id, "24h")
+
+    finally:
+        # Always reset RLS context
+        await reset_rls_context(session)
+```
 
 ## Common Patterns
 
@@ -202,12 +224,18 @@ This operator token allows the backend to create per-user organizations and toke
 3. Review generated migration in `alembic/versions/`
 4. Apply: `uv run alembic upgrade head`
 
-### Working with InfluxDB
+### Working with Time-Series Queries
 
-- Always use user's `influx_token` and `influx_org_id` for queries (multi-tenant isolation)
-- InfluxDB connection pattern: `InfluxManagement(user.influx_url).connect(org=user.email, token=user.influx_token)`
-- Bucket operations should always link to user's organization
-- Use `WEB_DEV_TESTING=True` to bypass InfluxDB during local development
+- Always include `user_id` in queries for partition pruning
+- Set RLS context using `set_rls_context(session, user_id)` before queries
+- Reset RLS context with `reset_rls_context(session)` after queries
+- Use utilities in `utils/timeseries.py` for common operations:
+  - `write_measurement()` - Insert measurement data
+  - `get_latest_value()` - Get most recent measurement
+  - `get_power_timeseries()` - Get time-bucketed data
+  - `get_today_energy_production()` - Calculate daily kWh
+  - `get_today_maximum_power()` - Get peak power for today
+  - `get_last_hour_average()` - Get recent average power
 
 ### HTMX Error Handling
 
