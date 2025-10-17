@@ -31,9 +31,6 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://deyehard:dev-testing-ok@localhost:5432/deyehard"  # Default for local dev
     AUTH_SECRET: str = "development-secret-key-change-in-production"  # Default for local dev
     ENCRYPTION_KEY: str = "6DLfBB4KnMuChUJZsMHWz2kJTtNRNTTtoTCCbH7CYyw="
-    INFLUX_URL: str | None = None  # Optional - will be removed in migration
-    INFLUX_OPERATOR_TOKEN: str | None = None  # Optional - will be removed in migration
-    INFLUX_OPERATOR_ORG: str = "wtf"
     BASE_URL: AnyHttpUrl = "http://localhost:8001"  # Default for local dev
     FASTMAIL: ConnectionConfig | None = None  # Optional for local dev
     COOKIE_SECURE: bool = False  # False for local dev, True in production
@@ -42,6 +39,6 @@ settings = Settings()
 
 fastmail = FastMail(settings.FASTMAIL) if settings.FASTMAIL else None
 
-WEB_DEV_TESTING = False  # setting to true will disable influx user, org and bucket creation for developing
+WEB_DEV_TESTING = False  # Legacy flag - can be removed in future cleanup
 
 DEBUG = False  # turn on echo mode of sqlalchemy
