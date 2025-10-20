@@ -10,6 +10,7 @@ from solar_backend.db import User, Inverter, get_async_session
 from solar_backend.users import current_active_user, get_user_manager, auth_backend_user, get_jwt_strategy
 from solar_backend.limiter import limiter
 from solar_backend.config import WEB_DEV_TESTING, settings
+from solar_backend.utils.api_keys import generate_api_key
 
 from fastapi_csrf_protect import CsrfProtect
 
@@ -201,4 +202,78 @@ async def post_delete_account(
             <span><i class="fa-solid fa-circle-check"></i> Konto erfolgreich gelöscht. Auf Wiedersehen!</span>
         </div>""",
         headers=dict(response.headers)
+    )
+
+
+@router.post("/account/generate-api-key", response_class=HTMLResponse)
+@limiter.limit("5/hour")
+async def post_generate_api_key(
+    request: Request,
+    user: User = Depends(current_active_user),
+    user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
+    csrf_protect: CsrfProtect = Depends()
+):
+    """Generate a new API key for the user."""
+    if user is None:
+        return HTMLResponse(
+            """<div class="alert alert-error">
+                <span><i class="fa-solid fa-circle-xmark"></i> Nicht angemeldet</span>
+            </div>""",
+            status_code=status.HTTP_401_UNAUTHORIZED
+        )
+
+    # Generate new API key
+    new_api_key = generate_api_key()
+
+    # Update user with new API key
+    update_dict = {"api_key": new_api_key}
+    await user_manager.user_db.update(user, update_dict)
+
+    logger.info("API key generated", user_id=user.id)
+
+    # Return the new key displayed to the user
+    return HTMLResponse(
+        f"""<div class="alert alert-success">
+            <span><i class="fa-solid fa-circle-check"></i> Neuer API-Schlüssel generiert!</span>
+        </div>
+        <div class="card bg-base-100 shadow-xl mt-4">
+            <div class="card-body">
+                <p class="text-sm text-gray-600">Ihr neuer API-Schlüssel:</p>
+                <div class="flex items-center gap-2 mt-2">
+                    <code class="bg-gray-100 px-3 py-2 rounded font-mono text-sm flex-1">{new_api_key}</code>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard.writeText('{new_api_key}')">
+                        <i class="fa-solid fa-copy"></i>
+                    </button>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Der alte Schlüssel funktioniert nicht mehr.</p>
+            </div>
+        </div>"""
+    )
+
+
+@router.get("/account/api-key", response_class=HTMLResponse)
+async def get_api_key(
+    user: User = Depends(current_active_user),
+):
+    """Get the current API key for display."""
+    if user is None:
+        return HTMLResponse(
+            """<div class="alert alert-error">
+                <span><i class="fa-solid fa-circle-xmark"></i> Nicht angemeldet</span>
+            </div>""",
+            status_code=status.HTTP_401_UNAUTHORIZED
+        )
+
+    if not user.api_key:
+        return HTMLResponse(
+            """<div class="text-gray-500 text-sm">Kein API-Schlüssel generiert</div>"""
+        )
+
+    return HTMLResponse(
+        f"""<div class="flex items-center gap-2">
+            <code class="bg-gray-100 px-3 py-2 rounded font-mono text-sm flex-1">{user.api_key}</code>
+            <button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard.writeText('{user.api_key}')">
+                <i class="fa-solid fa-copy"></i>
+            </button>
+        </div>"""
     )

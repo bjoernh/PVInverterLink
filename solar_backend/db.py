@@ -66,6 +66,7 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     first_name: Mapped[str]  = mapped_column(String(32))
     last_name: Mapped[str] = mapped_column(String(32))
     tmp_pass: Mapped[Optional[str]]
+    api_key: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, unique=True)
 
     def __repr__(self):
         return f"{self.id} - {self.first_name} {self.last_name}"

@@ -5,6 +5,27 @@
       <h2 class="mt-10 text-3xl font-bold leading-9 tracking-tight">Konto Verwalten</h2>
     </div>
 
+    <!-- API Key Section -->
+    <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-2xl">
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h3 class="card-title">API-Schlüssel für OpenDTU</h3>
+          <p class="text-sm text-gray-600 mb-4">Nutzen Sie einen API-Schlüssel um Messdaten von OpenDTU zu senden:</p>
+          <div id="api-key-display" class="mb-4">
+            <div hx-get="/account/api-key" hx-trigger="load">
+              <div class="skeleton h-10 w-full"></div>
+            </div>
+          </div>
+          <div id="api-key-alert"></div>
+          <form class="space-y-4" hx-post="/account/generate-api-key" hx-target="#api-key-display" hx-swap="innerHTML swap:1s" hx-confirm="Möchten Sie einen neuen API-Schlüssel generieren? Der alte Schlüssel funktioniert dann nicht mehr.">
+            <div>
+              <button type="submit" class="btn btn-primary">Neuen API-Schlüssel generieren</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
     <!-- Change Email Section -->
     <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-2xl">
       <div class="card bg-base-100 shadow-xl">

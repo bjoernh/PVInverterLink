@@ -108,20 +108,22 @@ class MeasurementData(BaseModel):
         }
 
 
-async def validate_api_key(x_api_key: str = Header(None)):
-    """Validate static API key for measurements endpoint."""
-    if settings.API_KEY is None:
-        # If no API key is configured, reject all requests
-        logger.debug("API key not configured - rejecting request")
+async def validate_api_key(
+    x_api_key: str = Header(None),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Validate per-user API key by looking up the inverter serial.
+
+    This is a placeholder validator that will be called within the endpoint
+    to validate API keys on a per-inverter basis.
+    """
+    if not x_api_key:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="API key not configured"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing API key"
         )
 
-    if x_api_key != settings.API_KEY:
-        logger.debug("Invalid API key provided")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key"
-        )
+    return x_api_key
 
 
 @router.post("/api/opendtu/measurements", status_code=status.HTTP_201_CREATED)
@@ -136,9 +138,12 @@ async def post_opendtu_measurement(
     This endpoint receives data from OpenDTU (Data Transfer Unit) which may monitor
     multiple inverters. Each inverter's data is stored separately.
 
+    Authentication is per-user: the API key in the header must match the api_key
+    of the user who owns the inverter(s) in the payload.
+
     Args:
         data: Measurement data containing timestamp, DTU serial, and array of inverters
-        x_api_key: Static API key for authentication
+        x_api_key: User's API key for authentication
         session: Database session
 
     Returns:
@@ -146,6 +151,7 @@ async def post_opendtu_measurement(
 
     Raises:
         207: Multi-Status if some inverters succeeded and others failed
+        401: Unauthorized (API key doesn't match inverter owner)
         404: All inverters not found
         500: Database write error
     """
@@ -178,9 +184,30 @@ async def post_opendtu_measurement(
                 error_count += 1
                 continue
 
+            # Get the user who owns this inverter
+            user = inverter.users
+
+            # Validate API key matches the inverter's owner
+            if not user.api_key or user.api_key != x_api_key:
+                logger.warning(
+                    "Unauthorized API key for inverter",
+                    serial=inverter_data.serial,
+                    user_id=user.id,
+                    dtu_serial=data.dtu_serial,
+                )
+                results.append(
+                    {
+                        "serial": inverter_data.serial,
+                        "status": "error",
+                        "error": "Unauthorized",
+                    }
+                )
+                error_count += 1
+                continue
+
             # Store IDs before write operation to avoid session detachment issues
             inverter_id = inverter.id
-            user_id = inverter.user_id
+            user_id = user.id
 
             # Use power_ac as total_output_power (convert W to W, already in watts)
             total_output_power = int(inverter_data.measurements.power_ac)

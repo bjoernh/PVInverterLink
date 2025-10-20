@@ -11,6 +11,15 @@ from httpx import AsyncClient
 async def test_post_measurement_with_api_key(client, test_user, db_session):
     """Test posting measurement data using API key authentication."""
     from tests.helpers import create_inverter_in_db
+    from solar_backend.utils.api_keys import generate_api_key
+    from sqlalchemy import update
+
+    # Generate and assign API key to test user
+    test_api_key = generate_api_key()
+    await db_session.execute(
+        update(test_user.__class__).where(test_user.__class__.id == test_user.id).values(api_key=test_api_key)
+    )
+    await db_session.commit()
 
     # Create an inverter in the database for the test
     await create_inverter_in_db(
@@ -22,7 +31,7 @@ async def test_post_measurement_with_api_key(client, test_user, db_session):
         number_of_mppts=2,
     )
 
-    # Test with API key - this should work if API_KEY is set in settings
+    # Test with API key - this should work with the user's API key
     response = await client.post(
         "/api/opendtu/measurements",
         json={
@@ -58,7 +67,7 @@ async def test_post_measurement_with_api_key(client, test_user, db_session):
                 }
             ]
         },
-        headers={"X-API-Key": "test-api-key-here"},
+        headers={"X-API-Key": test_api_key},
     )
 
     assert response.status_code == 201
@@ -131,6 +140,15 @@ async def test_post_measurement_without_api_key(client, test_user, db_session):
 async def test_post_measurement_multiple_inverters(client, test_user, db_session):
     """Test posting measurement data with multiple inverters."""
     from tests.helpers import create_inverter_in_db
+    from solar_backend.utils.api_keys import generate_api_key
+    from sqlalchemy import update
+
+    # Generate and assign API key to test user
+    test_api_key = generate_api_key()
+    await db_session.execute(
+        update(test_user.__class__).where(test_user.__class__.id == test_user.id).values(api_key=test_api_key)
+    )
+    await db_session.commit()
 
     # Create two inverters for the test
     await create_inverter_in_db(
@@ -187,7 +205,7 @@ async def test_post_measurement_multiple_inverters(client, test_user, db_session
                 }
             ]
         },
-        headers={"X-API-Key": "test-api-key-here"},
+        headers={"X-API-Key": test_api_key},
     )
 
     assert response.status_code == 201
@@ -202,6 +220,15 @@ async def test_post_measurement_multiple_inverters(client, test_user, db_session
 async def test_post_measurement_mixed_results(client, test_user, db_session):
     """Test posting measurement data where some inverters are found and others not."""
     from tests.helpers import create_inverter_in_db
+    from solar_backend.utils.api_keys import generate_api_key
+    from sqlalchemy import update
+
+    # Generate and assign API key to test user
+    test_api_key = generate_api_key()
+    await db_session.execute(
+        update(test_user.__class__).where(test_user.__class__.id == test_user.id).values(api_key=test_api_key)
+    )
+    await db_session.commit()
 
     # Create only one inverter
     await create_inverter_in_db(
@@ -252,7 +279,7 @@ async def test_post_measurement_mixed_results(client, test_user, db_session):
                 }
             ]
         },
-        headers={"X-API-Key": "test-api-key-here"},
+        headers={"X-API-Key": test_api_key},
     )
 
     # Should return 207 Multi-Status when some succeed and some fail
