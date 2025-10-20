@@ -101,7 +101,7 @@ app.include_router(start.router)
 app.include_router(inverter.router)
 app.include_router(account.router)
 app.include_router(dashboard.router)
-app.include_router(measurements.router, tags=["measurements"])
+app.include_router(measurements.router, tags=["measurements", "opendtu"])
 app.include_router(healthcheck.router)
 
 admin.add_view(UserAdmin)
