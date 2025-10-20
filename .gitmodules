@@ -1,0 +1,3 @@
+[submodule "collector"]
+	path = collector
+	url = ssh://git@git.64b.de:2222/bjoern/inverter-collector.git

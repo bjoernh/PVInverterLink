@@ -20,7 +20,7 @@ class UserFactory(factory.Factory):
 @pytest.mark.integration
 @pytest.mark.smoke
 @pytest.mark.asyncio
-async def test_register(client, mocker, without_influx):
+async def test_register(client, mocker):
     response = await client.get("/")
     assert response.status_code == 303
     

@@ -27,11 +27,15 @@ class InverterAdd:
 
 
 @dataclass
+class InverterAddMetadata:
+        rated_power: int
+        number_of_mppts: int
+
+@dataclass
 class Inverter:
     id: int
     name: str
     serial_logger: str
-    influx_bucked_id: str
     sw_version: str
     user: schemas.BaseUser[int]
     current_power: Optional[int] = None

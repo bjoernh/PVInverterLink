@@ -1,0 +1,332 @@
+{% extends "base.jinja2" %}
+{% block title %}{{ inverter.name }} - Dashboard{% endblock %}
+{% block content %}
+
+<div class="container mx-auto px-4 py-6">
+    <!-- Header with inverter info -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold">{{ inverter.name }}</h1>
+                <p class="text-sm text-gray-500">Seriennummer: {{ inverter.serial_logger }}</p>
+            </div>
+            <a href="/" class="btn btn-ghost">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Zurück
+            </a>
+        </div>
+    </div>
+
+    <!-- Today's Metrics Section Header -->
+    <div class="mb-4">
+        <h2 class="text-lg font-semibold text-gray-700">Heutige Metriken</h2>
+        <p class="text-sm text-gray-500">Aktuelle Messwerte von heute</p>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body p-4">
+                <h3 class="text-sm font-medium text-gray-500">Aktuell</h3>
+                <p id="stat-current" class="text-2xl font-bold">-- W</p>
+            </div>
+        </div>
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body p-4">
+                <h3 class="text-sm font-medium text-gray-500">Maximum heute</h3>
+                <p id="stat-max" class="text-2xl font-bold">-- W</p>
+            </div>
+        </div>
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body p-4">
+                <h3 class="text-sm font-medium text-gray-500">Produktion Heute</h3>
+                <p id="stat-today-kwh" class="text-2xl font-bold">-- kWh</p>
+            </div>
+        </div>
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body p-4">
+                <h3 class="text-sm font-medium text-gray-500">Durchschnitt (letzte Stunde)</h3>
+                <p id="stat-avg-hour" class="text-2xl font-bold">-- W</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historic Data Section Header -->
+    <div class="mb-4 mt-8">
+        <h2 class="text-lg font-semibold text-gray-700">Detaillierter Verlauf</h2>
+        <p class="text-sm text-gray-500">Historische Daten über den gewählten Zeitraum</p>
+    </div>
+
+    <!-- Time Range Selector -->
+    <div class="card bg-base-100 shadow-md mb-6">
+        <div class="card-body">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="card-title">Leistungsverlauf</h2>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-500">Letztes Update: <span id="last-update">--</span></span>
+                    <button id="refresh-btn" class="btn btn-circle btn-sm btn-ghost" onclick="loadDashboardData()">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Time Range Buttons -->
+            <div class="btn-group mb-4 flex-wrap">
+                {% for range in valid_ranges %}
+                <button class="btn btn-sm time-range-btn {% if range == time_range %}btn-active{% endif %}"
+                        data-range="{{ range }}"
+                        onclick="changeTimeRange('{{ range }}')">
+                    {{ range.upper() }}
+                </button>
+                {% endfor %}
+            </div>
+
+            <!-- Chart Container -->
+            <div id="powerChart" class="relative" style="height: 400px;"></div>
+
+            <!-- Loading/Error States -->
+            <div id="loading-state" class="text-center py-8 hidden">
+                <span class="loading loading-spinner loading-lg"></span>
+                <p class="mt-2 text-gray-500">Daten werden geladen...</p>
+            </div>
+            <div id="error-state" class="alert alert-warning hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span id="error-message">Keine Daten verfügbar</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Info Card -->
+    {% if inverter.rated_power or inverter.number_of_mppts %}
+    <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+            <h2 class="card-title">Wechselrichter-Informationen</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% if inverter.rated_power %}
+                <div>
+                    <span class="text-sm text-gray-500">Nennleistung:</span>
+                    <p class="text-lg font-medium">{{ inverter.rated_power }} W</p>
+                </div>
+                {% endif %}
+                {% if inverter.number_of_mppts %}
+                <div>
+                    <span class="text-sm text-gray-500">Anzahl MPPTs:</span>
+                    <p class="text-lg font-medium">{{ inverter.number_of_mppts }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    (function() {
+        const inverterId = {{ inverter.id }};
+        let currentTimeRange = '{{ time_range }}';
+        let autoRefreshInterval = null;
+        let chartInitialized = false;
+
+        // Initialize Plotly chart
+        function initChart() {
+            const chartDiv = document.getElementById('powerChart');
+            if (!chartDiv || chartInitialized) return;
+
+            const layout = {
+                title: '',
+                xaxis: {
+                    title: '',
+                    type: 'date',
+                    showgrid: false
+                },
+                yaxis: {
+                    title: 'Leistung (W)',
+                    rangemode: 'tozero',
+                    ticksuffix: ' W'
+                },
+                hovermode: 'x unified',
+                showlegend: false,
+                margin: {
+                    l: 60,
+                    r: 30,
+                    t: 30,
+                    b: 50
+                },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            };
+
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false,
+                modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+                toImageButtonOptions: {
+                    format: 'png',
+                    filename: 'solar_power_' + new Date().toISOString().split('T')[0],
+                    height: 600,
+                    width: 1200,
+                    scale: 2
+                }
+            };
+
+            const trace = {
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tozeroy',
+                line: {
+                    color: 'rgb(59, 130, 246)',
+                    width: 2,
+                    shape: 'spline'
+                },
+                fillcolor: 'rgba(59, 130, 246, 0.1)',
+                name: 'Leistung'
+            };
+
+            Plotly.newPlot('powerChart', [trace], layout, config);
+            chartInitialized = true;
+        }
+
+    // Load dashboard data from API
+    async function loadDashboardData() {
+        const loadingState = document.getElementById('loading-state');
+        const errorState = document.getElementById('error-state');
+        const chartDiv = document.getElementById('powerChart');
+
+        // Show loading state
+        loadingState.classList.remove('hidden');
+        errorState.classList.add('hidden');
+        chartDiv.classList.add('opacity-50');
+
+        try {
+            const response = await fetch(`/api/dashboard/${inverterId}/data?time_range=${currentTimeRange}`);
+            const result = await response.json();
+
+            if (result.success && result.data.length > 0) {
+                // Update chart with Plotly
+                const timestamps = result.data.map(d => d.time);
+                const values = result.data.map(d => d.power);
+
+                Plotly.update('powerChart', {
+                    x: [timestamps],
+                    y: [values]
+                }, {}, [0]);
+
+                // Update statistics
+                document.getElementById('stat-current').textContent = result.stats.current + ' W';
+                document.getElementById('stat-max').textContent = result.stats.max + ' W';
+                document.getElementById('stat-today-kwh').textContent = result.stats.today_kwh.toFixed(2) + ' kWh';
+                document.getElementById('stat-avg-hour').textContent = result.stats.avg_last_hour + ' W';
+
+                // Update last update time
+                const now = new Date();
+                document.getElementById('last-update').textContent = now.toLocaleTimeString('de-DE');
+
+                // Hide error, show chart
+                errorState.classList.add('hidden');
+                chartDiv.classList.remove('opacity-50');
+            } else {
+                // Show error message
+                document.getElementById('error-message').textContent = result.message || 'Keine Daten verfügbar';
+                errorState.classList.remove('hidden');
+                chartDiv.classList.add('opacity-50');
+            }
+        } catch (error) {
+            console.error('Failed to load dashboard data:', error);
+            document.getElementById('error-message').textContent = 'Fehler beim Laden der Daten';
+            errorState.classList.remove('hidden');
+            chartDiv.classList.add('opacity-50');
+        } finally {
+            loadingState.classList.add('hidden');
+        }
+    }
+
+        // Change time range
+        function changeTimeRange(range) {
+            currentTimeRange = range;
+
+            // Update active button
+            document.querySelectorAll('.time-range-btn').forEach(btn => {
+                if (btn.dataset.range === range) {
+                    btn.classList.add('btn-active');
+                } else {
+                    btn.classList.remove('btn-active');
+                }
+            });
+
+            // Reload data
+            loadDashboardData();
+
+            // Update URL without page reload
+            const url = new URL(window.location);
+            url.searchParams.set('time_range', range);
+            window.history.pushState({}, '', url);
+        }
+
+        // Start auto-refresh
+        function startAutoRefresh() {
+            stopAutoRefresh(); // Clear any existing interval
+            autoRefreshInterval = setInterval(() => {
+                loadDashboardData();
+            }, 30000); // 30 seconds
+        }
+
+        // Stop auto-refresh
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+
+        // Initialize dashboard
+        function initializeDashboard() {
+            chartInitialized = false;
+            initChart();
+            loadDashboardData();
+            startAutoRefresh();
+        }
+
+        // Expose changeTimeRange to global scope for onclick handlers
+        window.changeTimeRange = changeTimeRange;
+        window.loadDashboardData = loadDashboardData;
+
+        // Initialize on page load (direct navigation)
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeDashboard);
+        } else {
+            // DOM already loaded (HTMX swap)
+            initializeDashboard();
+        }
+
+        // Re-initialize when content is swapped by HTMX
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.querySelector('#powerChart')) {
+                chartInitialized = false;
+                stopAutoRefresh();
+                initializeDashboard();
+            }
+        });
+
+        // Stop auto-refresh when navigating away
+        window.addEventListener('beforeunload', stopAutoRefresh);
+
+        // Stop auto-refresh on HTMX navigation
+        document.body.addEventListener('htmx:beforeRequest', function(evt) {
+            // Only stop if we're navigating away from dashboard
+            if (!evt.detail.path || !evt.detail.path.includes('/dashboard/')) {
+                stopAutoRefresh();
+            }
+        });
+    })();
+</script>
+
+{% endblock %}

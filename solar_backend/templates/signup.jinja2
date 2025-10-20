@@ -17,7 +17,18 @@
           <input name="email" type="email" placeholder="Email" class="input input-bordered w-full max-w-xs" />
         </div>
         <div>
-          <input name="password" type="password"  minlength="8" placeholder="Passwort" class="input input-bordered w-full max-w-xs" />
+          <input
+            name="password"
+            type="password"
+            minlength="8"
+            placeholder="Passwort"
+            class="input input-bordered w-full max-w-xs"
+            hx-post="/validate-password"
+            hx-trigger="blur"
+            hx-target="#password-validation"
+            hx-swap="innerHTML"
+          />
+          <div id="password-validation"></div>
         </div>
         <div>
           <button type="submit" class="btn btn-active btn-ac">Registrieren</button>

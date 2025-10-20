@@ -1,10 +1,12 @@
 from typing import AsyncGenerator, List, Optional, AsyncIterator
 import contextlib
+from datetime import datetime
 from fastapi import Depends
 from fastapi_users.db import SQLAlchemyBaseUserTable, SQLAlchemyUserDatabase
-from sqlalchemy import ForeignKey, Integer, String
+from sqlalchemy import ForeignKey, Integer, String, TIMESTAMP
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine, AsyncEngine, AsyncConnection
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqladmin import ModelView
 
 from solar_backend.config import settings, DEBUG
 
@@ -17,30 +19,54 @@ class Inverter(Base):
     __tablename__ = "inverter"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id = mapped_column(ForeignKey("user.id"))
-    users = relationship("User", back_populates="inverters")
+    users = relationship("User", back_populates="inverters", lazy="selectin")
     name: Mapped[str] = mapped_column(String)
     serial_logger: Mapped[str] = mapped_column(String, unique=True)
-    influx_bucked_id: Mapped[Optional[str]]
     sw_version: Mapped[Optional[str]] = mapped_column(String)
     rated_power: Mapped[Optional[int]] = mapped_column(Integer)
     number_of_mppts: Mapped[Optional[int]] = mapped_column(Integer)
-    
+
     def __repr__(self):
         return f"{self.id} - {self.name}"
-    
+
     class Config:
         orm_mode = True
+
+class InverterMeasurement(Base):
+    """Time-series measurement data for inverters stored in TimescaleDB hypertable."""
+    __tablename__ = "inverter_measurements"
+
+    time: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), primary_key=True, nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), primary_key=True, nullable=False)
+    inverter_id: Mapped[int] = mapped_column(ForeignKey("inverter.id", ondelete="CASCADE"), primary_key=True, nullable=False)
+    total_output_power: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Relationships (optional, for ORM convenience)
+    user = relationship("User", lazy="noload")
+    inverter = relationship("Inverter", lazy="noload")
+
+    def __repr__(self):
+        return f"<Measurement(time={self.time}, inverter={self.inverter_id}, power={self.total_output_power})>"
+
+
+class InverterAdmin(ModelView, model=Inverter):
+    """Admin interface for Inverter model."""
+    column_list = [Inverter.id, Inverter.name, Inverter.serial_logger, Inverter.user_id]
+    name = "Inverter"
+    column_searchable_list = [Inverter.name, Inverter.serial_logger]
+    column_sortable_list = [Inverter.id, Inverter.name]
+    name_plural = "Inverters"
+    icon = "fa-solid fa-solar-panel"
+
 
 class User(SQLAlchemyBaseUserTable[int], Base):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    inverters = relationship("Inverter", back_populates="users")
+    inverters = relationship("Inverter", back_populates="users", lazy="selectin")
     first_name: Mapped[str]  = mapped_column(String(32))
     last_name: Mapped[str] = mapped_column(String(32))
-    influx_url: Mapped[str] = mapped_column(String(64), default=settings.INFLUX_URL)
-    influx_org_id: Mapped[Optional[str]]
-    influx_token: Mapped[Optional[str]]
-    
+    tmp_pass: Mapped[Optional[str]]
+
     def __repr__(self):
         return f"{self.id} - {self.first_name} {self.last_name}"
 
@@ -48,6 +74,12 @@ class DatabaseSessionManager:
     def __init__(self):
         self._engine: AsyncEngine | None = None
         self._sessionmaker: async_sessionmaker | None = None
+
+    @property
+    def engine(self) -> AsyncEngine:
+        if self._engine is None:
+            raise Exception("DatabaseSessionManager is not initialized")
+        return self._engine
 
     def init(self, host: str):
         self._engine = create_async_engine(host, echo=DEBUG)
@@ -96,12 +128,8 @@ class DatabaseSessionManager:
 sessionmanager = DatabaseSessionManager()
 
 
-engine = create_async_engine(settings.DATABASE_URL)
-async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
-
-
 async def create_db_and_tables():
-    async with engine.begin() as conn:
+    async with sessionmanager.connect() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
 

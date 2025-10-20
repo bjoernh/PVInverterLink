@@ -1,3 +1,11 @@
+*.DS_Store
+
+collector-rust
+
+.vscode/
+
+WARP.md
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

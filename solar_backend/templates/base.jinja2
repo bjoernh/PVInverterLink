@@ -22,16 +22,23 @@
 
   <header class="navbar bg-base-100">
     <div class="navbar-start">
+      {% if user %}
       <div class="dropdown">
         <label tabindex="0" class="btn btn-ghost btn-circle">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" /></svg>
         </label>
         <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
           <li><a href="/" hx-push-url="true">Home</a></li>
-          <li><a href="/add_inverter" hx-push-url="true">Hinzufügen</a></li>
+          {% if user.is_verified %}
+          <li><a href="/inverters" hx-push-url="true">Wechselrichter</a></li>
+          {% else %}
+          <li class="disabled"><a class="text-base-300">Wechselrichter (Email verifizieren)</a></li>
+          {% endif %}
+          <li><a href="/account" hx-push-url="true">Konto Verwalten</a></li>
           <li><a href="/logout" hx-push-url="true">Logout</a></li>
         </ul>
       </div>
+      {% endif %}
     </div>
     <div class="navbar-center">
       <a href="/" hx-push-url="true" class="btn btn-ghost normal-case text-xl">Deye Hard</a>
@@ -51,17 +58,17 @@
     {% endblock %}
     </main>
   {% block footer %}
-  <footer class="footer items-center p-4 bg-neutral text-neutral-content flex justify-evenly">
+  <footer class="footer items-center mt-6 p-4 bg-neutral text-neutral-content flex justify-evenly">
   <aside class="items-center flex-auto">
       <p>Made with ❤️ by<img src="https://wtf-eg.de/images/wtf_logo_white.svg" alt="WTF Logo"></p>
-      
-    </aside> 
+
+    </aside>
     <nav class="md:place-self-center">
       <div class="flex-auto">
     <a href="https://chaos.social/@HackerGeno"><i class="fa-brands fa-mastodon fa-2x"></i></a>
     <a href="https://github.com/wtf-eg/project"><i class="fa-brands fa-github fa-2x"></i></a>
       </div>
-    </nav>  
+    </nav>
   </footer>
         {% endblock %}
     </div>
@@ -69,5 +76,6 @@
     <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
     <script src="https://unpkg.com/htmx.org/dist/ext/response-targets.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/theme-change@2.0.2/index.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 </body>
 </html>
