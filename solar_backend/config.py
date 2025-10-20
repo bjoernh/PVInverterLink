@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     FASTMAIL: ConnectionConfig | None = None  # Optional for local dev
     COOKIE_SECURE: bool = False  # False for local dev, True in production
     API_KEY: str | None = None  # Static API key for measurements endpoint
+    TZ: str = "Europe/Berlin"  # Default timezone for time display (Docker convention)
 
 
 settings = Settings()

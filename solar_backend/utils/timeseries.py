@@ -7,6 +7,9 @@ from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from zoneinfo import ZoneInfo
+
+from solar_backend.config import settings
 
 logger = structlog.get_logger()
 
@@ -182,9 +185,12 @@ async def get_power_timeseries(
             query, {"user_id": user_id, "inverter_id": inverter_id}
         )
 
+        # Get configured timezone
+        tz = ZoneInfo(settings.TZ)
+
         data_points = [
             {
-                "time": row.bucket_time.isoformat(),
+                "time": row.bucket_time.astimezone(tz).isoformat(),
                 "power": row.power if row.power is not None else 0,
             }
             for row in result
