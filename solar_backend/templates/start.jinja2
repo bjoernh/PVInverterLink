@@ -59,7 +59,10 @@
         <!-- Responsive grid: 1 col on mobile, 2 on tablet, 3 on desktop -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {% for inverter in inverters %}
-            <div id="card-{{ inverter.id }}" class="card bg-base-100 shadow-xl card-normal">
+            <div id="card-{{ inverter.id }}" class="card bg-base-100 shadow-xl card-normal hover:shadow-2xl transition-shadow cursor-pointer"
+                 hx-get="/dashboard/{{ inverter.id }}"
+                 hx-target="body"
+                 hx-push-url="true">
                 <div class="card-body">
                     <h1 class="card-title">{{ inverter.name }}</h1>
                     <div class="stats shadow stats-vertical">
