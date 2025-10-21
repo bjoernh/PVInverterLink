@@ -18,6 +18,23 @@ Deye Hard Backend is a FastAPI-based solar inverter management system using Time
 - **Package Manager**: uv
 - **Python Version**: 3.13+
 
+## Best Practices for AI Agents
+
+### Git Commands
+**IMPORTANT**: Always use `git --no-pager` when running git commands to avoid getting stuck in interactive pager output.
+
+Examples:
+```bash
+# Good - non-interactive output
+git --no-pager log --oneline -5
+git --no-pager diff
+git --no-pager show HEAD
+
+# Bad - may get stuck in pager
+git log
+git diff
+```
+
 ## Development Commands
 
 ### Local Development
