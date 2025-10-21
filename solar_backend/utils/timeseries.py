@@ -408,3 +408,96 @@ async def reset_rls_context(session: AsyncSession) -> None:
 
     await session.execute(text("RESET app.current_user_id"))
     logger.debug("RLS context reset")
+
+
+async def get_raw_measurements(
+    session: AsyncSession,
+    user_id: int,
+    inverter_id: int,
+    start_date: datetime,
+    end_date: datetime,
+) -> list[dict]:
+    """
+    Get raw measurement data for a custom date range (no bucketing).
+
+    Args:
+        session: Database session with RLS context set
+        user_id: User ID (for partition pruning)
+        inverter_id: Inverter ID
+        start_date: Start datetime (inclusive)
+        end_date: End datetime (inclusive)
+
+    Returns:
+        List of dicts with 'time' (ISO string) and 'power' (int)
+
+    Raises:
+        NoDataException: If no data found
+        TimeSeriesException: On query error
+    """
+    try:
+        query = text("""
+            SELECT time, total_output_power
+            FROM inverter_measurements
+            WHERE user_id = :user_id
+              AND inverter_id = :inverter_id
+              AND time >= :start_date
+              AND time <= :end_date
+            ORDER BY time ASC
+        """)
+
+        result = await session.execute(
+            query,
+            {
+                "user_id": user_id,
+                "inverter_id": inverter_id,
+                "start_date": start_date,
+                "end_date": end_date,
+            },
+        )
+
+        # Get configured timezone
+        tz = ZoneInfo(settings.TZ)
+
+        data_points = [
+            {
+                "time": row.time.astimezone(tz).isoformat(),
+                "power": row.total_output_power if row.total_output_power is not None else 0,
+            }
+            for row in result
+        ]
+
+        if not data_points:
+            logger.warning(
+                "No raw measurements found",
+                user_id=user_id,
+                inverter_id=inverter_id,
+                start_date=start_date,
+                end_date=end_date,
+            )
+            raise NoDataException(
+                f"No measurements found between {start_date} and {end_date}"
+            )
+
+        logger.info(
+            "Retrieved raw measurements",
+            user_id=user_id,
+            inverter_id=inverter_id,
+            start_date=start_date,
+            end_date=end_date,
+            data_points=len(data_points),
+        )
+
+        return data_points
+
+    except NoDataException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to get raw measurements",
+            error=str(e),
+            user_id=user_id,
+            inverter_id=inverter_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        raise TimeSeriesException(f"Failed to query raw measurements: {str(e)}") from e

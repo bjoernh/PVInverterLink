@@ -3,6 +3,7 @@ from pathlib import Path
 import os
 
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi_htmx import htmx_init
 from sqladmin import Admin
@@ -12,7 +13,7 @@ from slowapi.errors import RateLimitExceeded
 
 from solar_backend.db import User, create_db_and_tables, sessionmanager, InverterAdmin
 from solar_backend.users import UserAdmin
-from solar_backend.api import signup, login, start, inverter, healthcheck, account, dashboard, measurements
+from solar_backend.api import signup, login, start, inverter, healthcheck, account, dashboard, measurements, export
 from solar_backend.config import settings, WEB_DEV_TESTING
 from solar_backend.users import auth_backend_bearer, fastapi_users_bearer, current_active_user_bearer
 from solar_backend.utils.admin_auth import authentication_backend
@@ -40,6 +41,13 @@ app = FastAPI(title="Deye Hard API",
                 "displayRequestDuration": True,
                 },
 )
+
+# Mount static files for CSS and other assets
+static_dir = Path(__file__).parent / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+else:
+    logger.warning(f"Static directory not found at {static_dir}")
 
 if not WEB_DEV_TESTING:
     @app.exception_handler(CsrfProtectError)
@@ -101,6 +109,7 @@ app.include_router(start.router)
 app.include_router(inverter.router)
 app.include_router(account.router)
 app.include_router(dashboard.router)
+app.include_router(export.router)
 app.include_router(measurements.router, tags=["measurements", "opendtu"])
 app.include_router(healthcheck.router)
 

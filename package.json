@@ -1,0 +1,14 @@
+{
+  "name": "solar-backend",
+  "version": "0.1.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "tailwind:build": "tailwindcss -i ./solar_backend/static/style.css -o ./solar_backend/static/output.css",
+    "tailwind:watch": "tailwindcss -i ./solar_backend/static/style.css -o ./solar_backend/static/output.css --watch"
+  },
+  "dependencies": {
+    "tailwindcss": "^3.4.1",
+    "daisyui": "^4.11.1"
+  }
+}

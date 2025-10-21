@@ -1,0 +1,226 @@
+{% extends "base.jinja2" %}
+{% block title %}Messdaten exportieren - {{ inverter.name }}{% endblock %}
+{% block content %}
+
+<div class="container mx-auto px-4 py-6">
+    <!-- Header with inverter info -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold">Messdaten exportieren</h1>
+                <p class="text-sm text-gray-500">{{ inverter.name }} ({{ inverter.serial_logger }})</p>
+            </div>
+            <a href="/" class="btn btn-ghost">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Zurück
+            </a>
+        </div>
+    </div>
+
+    <!-- Export Form Card -->
+    <div class="card bg-base-100 shadow-md mb-6">
+        <div class="card-body">
+            <h2 class="card-title mb-4">Zeitraum wählen</h2>
+
+            <div class="form-control w-full">
+                <label class="label">
+                    <span class="label-text">Startdatum</span>
+                </label>
+                <input
+                    type="date"
+                    id="start_date"
+                    value="{{ start_date }}"
+                    class="input input-bordered w-full" />
+            </div>
+
+            <div class="form-control w-full mt-4">
+                <label class="label">
+                    <span class="label-text">Enddatum</span>
+                </label>
+                <input
+                    type="date"
+                    id="end_date"
+                    value="{{ end_date }}"
+                    class="input input-bordered w-full" />
+            </div>
+
+            <!-- Validation error -->
+            <div id="error-message" class="alert alert-error hidden mt-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l-2-2m0 0l-2-2m2 2l2-2m-2 2l-2 2m8-8l2 2m0 0l2 2m-2-2l-2 2m2-2l2-2M9 7a4 4 0 100 8 4 4 0 000-8zm6 0a4 4 0 110 8 4 4 0 01-8 0" />
+                </svg>
+                <span id="error-text">Fehler bei der Validierung</span>
+            </div>
+
+            <!-- Info message -->
+            <div class="alert alert-info mt-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Es werden alle Rohmessdaten für den gewählten Zeitraum exportiert</span>
+            </div>
+
+            <!-- Export buttons -->
+            <div class="flex gap-2 mt-6">
+                <button
+                    onclick="downloadCSV()"
+                    id="download-btn"
+                    class="btn btn-primary flex-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    CSV herunterladen
+                </button>
+                <button
+                    onclick="resetDates()"
+                    class="btn btn-ghost">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Zurücksetzen
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Card -->
+    <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+            <h2 class="card-title">Exportformat</h2>
+            <ul class="list-disc list-inside space-y-2 text-sm">
+                <li><strong>Format:</strong> CSV (Comma-Separated Values)</li>
+                <li><strong>Daten:</strong> Rohmessdaten mit Zeitstempel und Leistung in Watt</li>
+                <li><strong>Metadaten:</strong> Wechselrichter-Informationen und Statistiken im Header</li>
+                <li><strong>Zeitzone:</strong> {{ settings.TZ }}</li>
+                <li><strong>Encoding:</strong> UTF-8</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Inverter Info Card -->
+    <div class="card bg-base-100 shadow-md mt-6">
+        <div class="card-body">
+            <h2 class="card-title">Wechselrichter-Informationen</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <span class="text-sm text-gray-500">Name:</span>
+                    <p class="text-lg font-medium">{{ inverter.name }}</p>
+                </div>
+                <div>
+                    <span class="text-sm text-gray-500">Seriennummer:</span>
+                    <p class="text-lg font-medium">{{ inverter.serial_logger }}</p>
+                </div>
+                {% if inverter.rated_power %}
+                <div>
+                    <span class="text-sm text-gray-500">Nennleistung:</span>
+                    <p class="text-lg font-medium">{{ inverter.rated_power }} W</p>
+                </div>
+                {% endif %}
+                {% if inverter.number_of_mppts %}
+                <div>
+                    <span class="text-sm text-gray-500">Anzahl MPPTs:</span>
+                    <p class="text-lg font-medium">{{ inverter.number_of_mppts }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const inverterId = {{ inverter.id }};
+        const defaultStartDate = '{{ start_date }}';
+        const defaultEndDate = '{{ end_date }}';
+
+        // Initialize default dates
+        function initializeDates() {
+            document.getElementById('start_date').value = defaultStartDate;
+            document.getElementById('end_date').value = defaultEndDate;
+        }
+
+        // Validate and download CSV
+        async function downloadCSV() {
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+            const errorMessage = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+            const downloadBtn = document.getElementById('download-btn');
+
+            // Clear previous error
+            errorMessage.classList.add('hidden');
+
+            // Validate dates
+            if (!startDate || !endDate) {
+                errorText.textContent = 'Bitte geben Sie Start- und Enddatum an';
+                errorMessage.classList.remove('hidden');
+                return;
+            }
+
+            if (new Date(startDate) > new Date(endDate)) {
+                errorText.textContent = 'Startdatum muss vor Enddatum liegen';
+                errorMessage.classList.remove('hidden');
+                return;
+            }
+
+            // Show loading state
+            downloadBtn.disabled = true;
+            downloadBtn.classList.add('loading');
+
+            try {
+                const response = await fetch(
+                    `/api/export/${inverterId}/csv?start_date=${startDate}&end_date=${endDate}`
+                );
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    errorText.textContent = error.detail || 'Fehler beim Download';
+                    errorMessage.classList.remove('hidden');
+                    return;
+                }
+
+                // Trigger download
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = response.headers.get('content-disposition')
+                    .split('filename="')[1]
+                    .split('"')[0] || `measurements_${startDate}_${endDate}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+            } catch (error) {
+                console.error('Download error:', error);
+                errorText.textContent = 'Fehler beim Herunterladen der Datei';
+                errorMessage.classList.remove('hidden');
+            } finally {
+                downloadBtn.disabled = false;
+                downloadBtn.classList.remove('loading');
+            }
+        }
+
+        // Reset to default dates
+        function resetDates() {
+            initializeDates();
+            document.getElementById('error-message').classList.add('hidden');
+        }
+
+        // Expose to global scope
+        window.downloadCSV = downloadCSV;
+        window.resetDates = resetDates;
+
+        // Initialize on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeDates);
+        } else {
+            initializeDates();
+        }
+    })();
+</script>
+
+{% endblock %}
