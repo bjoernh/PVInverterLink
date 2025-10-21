@@ -4,6 +4,7 @@ Time-series data utilities for TimescaleDB.
 
 import structlog
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Optional
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,45 @@ from zoneinfo import ZoneInfo
 from solar_backend.config import settings
 
 logger = structlog.get_logger()
+
+
+class TimeRange(str, Enum):
+    """Time range options with their corresponding bucket sizes."""
+
+    ONE_HOUR = "1 hour"
+    SIX_HOURS = "6 hours"
+    TWENTY_FOUR_HOURS = "24 hours"
+    SEVEN_DAYS = "7 days"
+    THIRTY_DAYS = "30 days"
+
+    @property
+    def bucket(self) -> str:
+        """Get the bucket size for this time range."""
+        buckets = {
+            self.ONE_HOUR: "1 minute",
+            self.SIX_HOURS: "1 minutes",
+            self.TWENTY_FOUR_HOURS: "5 minutes",
+            self.SEVEN_DAYS: "15 minutes",
+            self.THIRTY_DAYS: "1 hour",
+        }
+        return buckets[self]
+
+    @property
+    def label(self) -> str:
+        """Get the short display label for this time range."""
+        labels = {
+            self.ONE_HOUR: "1H",
+            self.SIX_HOURS: "6H",
+            self.TWENTY_FOUR_HOURS: "24H",
+            self.SEVEN_DAYS: "7D",
+            self.THIRTY_DAYS: "30D",
+        }
+        return labels[self]
+
+    @classmethod
+    def default(cls) -> "TimeRange":
+        """Get the default time range."""
+        return cls.TWENTY_FOUR_HOURS
 
 
 class TimeSeriesException(Exception):
@@ -132,7 +172,10 @@ async def get_latest_value(
 
 
 async def get_power_timeseries(
-    session: AsyncSession, user_id: int, inverter_id: int, time_range: str = "24h"
+    session: AsyncSession,
+    user_id: int,
+    inverter_id: int,
+    time_range: TimeRange | str = TimeRange.TWENTY_FOUR_HOURS,
 ) -> list[dict]:
     """
     Get time-series power data with automatic time bucketing.
@@ -141,7 +184,7 @@ async def get_power_timeseries(
         session: Database session with RLS context set
         user_id: User ID (for partition pruning)
         inverter_id: Inverter ID
-        time_range: Time range (1h, 6h, 24h, 7d, 30d)
+        time_range: Time range (TimeRange enum or string value)
 
     Returns:
         List of dicts with 'time' (ISO string) and 'power' (int)
@@ -150,20 +193,16 @@ async def get_power_timeseries(
         NoDataException: If no data found
         TimeSeriesException: On query error
     """
-    # Map time range to bucket size and PostgreSQL interval
-    time_range_config = {
-        "1h": {"bucket": "1 minute", "interval": "1 hour"},
-        "6h": {"bucket": "5 minutes", "interval": "6 hours"},
-        "24h": {"bucket": "10 minutes", "interval": "24 hours"},
-        "7d": {"bucket": "1 hour", "interval": "7 days"},
-        "30d": {"bucket": "4 hours", "interval": "30 days"},
-    }
+    # Convert string to enum if needed
+    if isinstance(time_range, str):
+        try:
+            time_range = TimeRange(time_range)
+        except ValueError:
+            logger.warning(f"Invalid time range '{time_range}', using default")
+            time_range = TimeRange.default()
 
-    config = time_range_config.get(
-        time_range, {"bucket": "5 minutes", "interval": "24 hours"}
-    )
-    bucket = config["bucket"]
-    interval = config["interval"]
+    bucket = time_range.bucket
+    interval = time_range.value
 
     try:
         # Note: We can't use parameter placeholders for INTERVAL in PostgreSQL,
@@ -461,7 +500,9 @@ async def get_raw_measurements(
         data_points = [
             {
                 "time": row.time.astimezone(tz).isoformat(),
-                "power": row.total_output_power if row.total_output_power is not None else 0,
+                "power": row.total_output_power
+                if row.total_output_power is not None
+                else 0,
             }
             for row in result
         ]

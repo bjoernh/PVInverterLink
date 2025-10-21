@@ -88,7 +88,7 @@
                 <button class="btn btn-sm time-range-btn {% if range == time_range %}btn-active{% endif %}"
                         data-range="{{ range }}"
                         onclick="changeTimeRange('{{ range }}')">
-                    {{ range.upper() }}
+                    {{ range_labels[range] }}
                 </button>
                 {% endfor %}
             </div>

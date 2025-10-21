@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from solar_backend.db import Inverter, User, get_async_session
 from solar_backend.users import current_active_user
 from solar_backend.utils.timeseries import (
+    TimeRange,
     get_power_timeseries,
     get_today_energy_production,
     get_today_maximum_power,
@@ -28,7 +29,7 @@ router = APIRouter()
 async def get_dashboard(
     inverter_id: int,
     request: Request,
-    time_range: str = "24h",
+    time_range: str = "24 hours",
     user: User = Depends(current_active_user),
     db_session: AsyncSession = Depends(get_async_session),
 ):
@@ -37,7 +38,7 @@ async def get_dashboard(
 
     Args:
         inverter_id: ID of the inverter to display
-        time_range: Time range for graph (1h, 6h, 24h, 7d, 30d)
+        time_range: Time range for graph (1 hour, 6 hours, 24 hours, 7 days, 30 days)
         user: Current authenticated user
         db_session: Database session
 
@@ -62,10 +63,12 @@ async def get_dashboard(
                 detail="Inverter nicht gefunden oder keine Berechtigung",
             )
 
-    # Validate time range
-    valid_ranges = ["1h", "6h", "24h", "7d", "30d"]
-    if time_range not in valid_ranges:
-        time_range = "24h"
+    # Validate and convert time range
+    try:
+        time_range_enum = TimeRange(time_range)
+    except ValueError:
+        time_range_enum = TimeRange.default()
+        time_range = time_range_enum.value
 
     logger.info(
         "Dashboard accessed",
@@ -79,14 +82,15 @@ async def get_dashboard(
         "user": user,
         "inverter": inverter,
         "time_range": time_range,
-        "valid_ranges": valid_ranges,
+        "valid_ranges": [tr.value for tr in TimeRange],
+        "range_labels": {tr.value: tr.label for tr in TimeRange},
     }
 
 
 @router.get("/api/dashboard/{inverter_id}/data")
 async def get_dashboard_data(
     inverter_id: int,
-    time_range: str = "24h",
+    time_range: str = "24 hours",
     user: User = Depends(current_active_user),
     db_session: AsyncSession = Depends(get_async_session),
 ):
@@ -96,7 +100,7 @@ async def get_dashboard_data(
 
     Args:
         inverter_id: ID of the inverter
-        time_range: Time range (1h, 6h, 24h, 7d, 30d)
+        time_range: Time range (1 hour, 6 hours, 24 hours, 7 days, 30 days)
         user: Current authenticated user
         db_session: Database session
 
@@ -120,10 +124,12 @@ async def get_dashboard_data(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Inverter not found"
             )
 
-        # Validate time range
-        valid_ranges = ["1h", "6h", "24h", "7d", "30d"]
-        if time_range not in valid_ranges:
-            time_range = "24h"
+        # Validate and convert time range
+        try:
+            time_range_enum = TimeRange(time_range)
+        except ValueError:
+            time_range_enum = TimeRange.default()
+            time_range = time_range_enum.value
 
         try:
             # Set RLS context
