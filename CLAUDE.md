@@ -43,6 +43,17 @@ uv run pytest -v
 # No need to manually set ENV_FILE environment variable
 ```
 
+### Tailwind CSS Development
+```bash
+# Rebuild Tailwind CSS after adding new classes to templates
+npm run tailwind:build
+
+# Watch for changes and rebuild automatically (recommended for development)
+npm run tailwind:watch
+```
+
+**Note**: When you add new Tailwind CSS classes to templates (e.g., `overflow-hidden`, `flex-wrap`), you must rebuild the CSS by running `npm run tailwind:build`. The DaisyUI plugin is included and will be compiled together. After rebuilding, reload the page in your browser to see the changes.
+
 ### Docker Development
 ```bash
 # Start all services (backend, timescale db)

@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body{
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.link{
+  text-decoration: underline;
+}
+
+/* Fix horizontal overflow on stats component for mobile */
+.stats.overflow-hidden {
+  overflow: hidden !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+.card-body .stats {
+  width: 100%;
+  max-width: 100%;
+}
+
+.card-body .stats .stat {
+  flex: 0 0 auto;
+  min-width: 0;
+}
