@@ -207,7 +207,6 @@ POSTGRES_PASSWORD=CHANGE_THIS_PASSWORD
 # Security (generate strong random values)
 AUTH_SECRET=GENERATE_32_CHAR_RANDOM_STRING
 ENCRYPTION_KEY=GENERATE_FERNET_KEY_BASE64
-API_KEY=GENERATE_RANDOM_API_KEY
 
 # Application
 BASE_URL=http://test.yourdomain.com
@@ -227,7 +226,6 @@ OTEL_SERVICE_NAME=solar-backend-test
 # Collector
 COLLECTOR_PORT=10000
 COLLECTOR_BACKEND_URL=http://backend-test:80
-COLLECTOR_API_KEY=SAME_AS_API_KEY_ABOVE
 ```
 
 **Generate secure secrets:**
@@ -238,9 +236,6 @@ openssl rand -hex 32
 
 # Generate ENCRYPTION_KEY (Fernet key)
 python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-
-# Generate API_KEY
-openssl rand -hex 32
 ```
 
 ### Step 2: Deploy Testing Stack
@@ -375,7 +370,6 @@ docker compose -f docker-compose.test.yml logs -f collector-test
 ```bash
 # Test measurement endpoint
 curl -X POST http://test.yourdomain.com/api/opendtu/measurements \
-  -H "X-API-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "timestamp": "2025-10-22T12:00:00+02:00",
@@ -419,7 +413,6 @@ DATABASE_URL=postgresql+asyncpg://deyehard:DIFFERENT_PASSWORD@db-staging:5432/de
 POSTGRES_PASSWORD=DIFFERENT_PASSWORD
 AUTH_SECRET=DIFFERENT_32_CHAR_RANDOM_STRING
 ENCRYPTION_KEY=DIFFERENT_FERNET_KEY
-API_KEY=DIFFERENT_API_KEY
 BASE_URL=http://staging.yourdomain.com
 OTEL_SERVICE_NAME=solar-backend-staging
 ```
@@ -475,7 +468,6 @@ DATABASE_URL=postgresql+asyncpg://deyehard:STRONG_PROD_PASSWORD@db-prod:5432/dey
 POSTGRES_PASSWORD=STRONG_PROD_PASSWORD
 AUTH_SECRET=STRONG_PROD_SECRET_32_CHARS
 ENCRYPTION_KEY=STRONG_PROD_FERNET_KEY
-API_KEY=STRONG_PROD_API_KEY
 BASE_URL=https://yourdomain.com  # Note: HTTPS
 COOKIE_SECURE=True  # Required for production
 OTEL_SERVICE_NAME=solar-backend-production

@@ -495,8 +495,8 @@ docker logs collector-prod | grep -i error
 **Solutions:**
 
 1. **Authentication failing:**
-   - Verify `API_KEY` matches in .env.prod and collector
    - Check collector logs for auth errors
+   - Verify collector can connect to backend API
 
 2. **Database insert failing:**
    - Check database logs

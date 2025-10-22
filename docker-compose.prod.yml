@@ -133,7 +133,6 @@ services:
     environment:
       - PORT=10000
       - BACKEND_URL=http://backend-prod:80
-      # API_KEY from .env.prod
       - RUST_LOG=info
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector-prod:4317
       - OTEL_SERVICE_NAME=collector-production

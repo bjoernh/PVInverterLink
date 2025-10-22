@@ -100,7 +100,6 @@ services:
     environment:
       - PORT=10000
       - BACKEND_URL=http://backend-test:80
-      # API_KEY from .env.test
       - RUST_LOG=info
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector-test:4317
       - OTEL_SERVICE_NAME=collector-test

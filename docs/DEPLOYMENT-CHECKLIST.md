@@ -55,7 +55,6 @@ Use this checklist before deploying to each environment to ensure all requiremen
 - [ ] Strong passwords generated:
   - [ ] `POSTGRES_PASSWORD` (openssl rand -hex 16)
   - [ ] `AUTH_SECRET` (openssl rand -hex 32)
-  - [ ] `API_KEY` (openssl rand -hex 32)
 - [ ] `ENCRYPTION_KEY` generated: `python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
 - [ ] `BASE_URL` set to `http://test.yourdomain.com`
 - [ ] `COOKIE_SECURE` set to `False` (HTTP mode)
@@ -88,7 +87,6 @@ Use this checklist before deploying to each environment to ensure all requiremen
 - [ ] **Different** passwords from test environment:
   - [ ] `POSTGRES_PASSWORD` (new random password)
   - [ ] `AUTH_SECRET` (new random secret)
-  - [ ] `API_KEY` (new random key)
   - [ ] `ENCRYPTION_KEY` (new Fernet key)
 - [ ] `BASE_URL` set to `http://staging.yourdomain.com`
 - [ ] `COOKIE_SECURE` set to `False` (HTTP mode)
@@ -120,7 +118,6 @@ Use this checklist before deploying to each environment to ensure all requiremen
 - [ ] **Strong, unique passwords** (minimum 20 characters):
   - [ ] `POSTGRES_PASSWORD`
   - [ ] `AUTH_SECRET`
-  - [ ] `API_KEY`
   - [ ] `ENCRYPTION_KEY`
   - [ ] `CLICKHOUSE_PASSWORD`
 - [ ] All passwords **different** from test and staging
@@ -266,7 +263,6 @@ Use this checklist before deploying to each environment to ensure all requiremen
 
 ### Monthly
 
-- [ ] Rotate API keys (if policy requires)
 - [ ] Review user access
 - [ ] Analyze performance trends
 - [ ] Update dependencies
