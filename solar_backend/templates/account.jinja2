@@ -1,14 +1,14 @@
 {% extends "base.jinja2" %}
 {% block title %}Konto Verwalten{% endblock %}
 {% block content %}
-    <div class="sm:mx-auto sm:w-full sm:max-w-2xl">
+    <div class="mx-auto w-full px-2 md:px-4 py-4 md:py-6 max-w-2xl">
       <h2 class="mt-10 text-3xl font-bold leading-9 tracking-tight">Konto Verwalten</h2>
     </div>
 
     <!-- API Key Section -->
-    <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-2xl">
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
+    <div class="mx-auto w-full px-2 md:px-4 max-w-2xl">
+      <div class="card bg-base-100 shadow-xl mt-10">
+        <div class="card-body p-2 md:p-6">
           <h3 class="card-title">API-Schlüssel für OpenDTU</h3>
           <p class="text-sm text-gray-600 mb-4">Nutzen Sie einen API-Schlüssel um Messdaten von OpenDTU zu senden:</p>
           <div id="api-key-display" class="mb-4">
@@ -27,9 +27,9 @@
     </div>
 
     <!-- Change Email Section -->
-    <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-2xl">
+    <div class="mt-10 mx-auto w-full px-2 md:px-4 max-w-2xl">
       <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
+        <div class="card-body p-2 md:p-6">
           <h3 class="card-title">E-Mail-Adresse ändern</h3>
           <div id="email-alert"></div>
           <form class="space-y-4" hx-post="/account/change-email" hx-target="#email-alert" hx-ext="response-targets" hx-target-422="#email-alert" hx-target-401="#email-alert">
@@ -56,7 +56,7 @@
     <!-- Change Password Section -->
     <div class="mt-6 sm:mx-auto sm:w-full sm:max-w-2xl">
       <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
+        <div class="card-body p-2 md:p-6">
           <h3 class="card-title">Passwort ändern</h3>
           <div id="password-alert"></div>
           <form class="space-y-4" hx-post="/account/change-password" hx-target="#password-alert" hx-ext="response-targets" hx-target-422="#password-alert" hx-target-401="#password-alert" hx-target-207="#password-alert">
@@ -92,7 +92,7 @@
     <!-- Delete Account Section -->
     <div class="mt-6 mb-10 sm:mx-auto sm:w-full sm:max-w-2xl">
       <div class="card bg-base-100 shadow-xl border-2 border-error">
-        <div class="card-body">
+        <div class="card-body p-2 md:p-6">
           <h3 class="card-title text-error">Konto löschen</h3>
           <div class="alert alert-warning">
             <span><i class="fa-solid fa-triangle-exclamation"></i> <strong>Achtung:</strong> Diese Aktion kann nicht rückgängig gemacht werden! Alle Ihre Wechselrichter und gespeicherten Daten werden dauerhaft gelöscht.</span>
