@@ -1,7 +1,7 @@
 {% extends "base.jinja2" %}
 {% block title %}Wechselrichter Verwaltung{% endblock %}
 {% block content %}
-    <div class="mx-auto w-full px-4 max-w-7xl">
+    <div class="mx-auto w-full px-2 md:px-4 py-4 md:py-6 max-w-7xl">
         <div class="sm:mx-auto sm:w-full">
             <h2 class="mt-10 text-3xl font-bold leading-9 tracking-tight">Wechselrichter Verwaltung</h2>
         </div>
@@ -21,7 +21,7 @@
 
         <!-- Add New Inverter Section -->
         <div class="card bg-base-100 shadow-xl mt-6" hx-ext="response-targets">
-            <div class="card-body">
+            <div class="card-body p-2 md:p-6">
                 <h3 class="card-title">Neuen Wechselrichter hinzufügen</h3>
                 <form id="add-form" class="flex flex-col gap-4"
                       hx-post="/inverter"
