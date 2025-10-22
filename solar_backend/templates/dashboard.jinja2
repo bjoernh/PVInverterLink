@@ -40,7 +40,7 @@
     </div>
 
     <!-- Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 p-4 overflow-hidden">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 overflow-hidden">
         <div class="card bg-base-100 shadow-md">
             <div class="card-body p-4">
                 <h3 class="text-sm font-medium text-gray-500">Aktuell</h3>
@@ -75,7 +75,7 @@
 
     <!-- Time Range Selector -->
     <div class="card bg-base-100 shadow-md mb-6">
-        <div class="card-body">
+        <div class="card-body p-2 md:p-6">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="card-title">Leistungsverlauf</h2>
                 <div class="flex items-center gap-2">
@@ -99,8 +99,8 @@
                 {% endfor %}
             </div>
 
-            <!-- Chart Container -->
-            <div id="powerChart" class="relative" style="height: 400px;"></div>
+            <!-- Chart Container - Responsive height -->
+            <div id="powerChart" class="relative w-full" style="height: 350px;" data-mobile-height="350px" data-desktop-height="500px"></div>
 
             <!-- Loading/Error States -->
             <div id="loading-state" class="text-center py-8 hidden">
@@ -119,7 +119,7 @@
     <!-- Additional Info Card -->
     {% if inverter.rated_power or inverter.number_of_mppts %}
     <div class="card bg-base-100 shadow-md">
-        <div class="card-body">
+        <div class="card-body p-2 md:p-6">
             <h2 class="card-title">Wechselrichter-Informationen</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {% if inverter.rated_power %}
