@@ -40,13 +40,15 @@ class InverterMeasurement(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), primary_key=True, nullable=False)
     inverter_id: Mapped[int] = mapped_column(ForeignKey("inverter.id", ondelete="CASCADE"), primary_key=True, nullable=False)
     total_output_power: Mapped[int] = mapped_column(Integer, nullable=False)
+    yield_day_wh: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # Daily yield in Wh, aggregated from DC channels
+    yield_total_kwh: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # Total lifetime yield in kWh, aggregated from DC channels
 
     # Relationships (optional, for ORM convenience)
     user = relationship("User", lazy="noload")
     inverter = relationship("Inverter", lazy="noload")
 
     def __repr__(self):
-        return f"<Measurement(time={self.time}, inverter={self.inverter_id}, power={self.total_output_power})>"
+        return f"<Measurement(time={self.time}, inverter={self.inverter_id}, power={self.total_output_power}, yield_day={self.yield_day_wh}Wh)>"
 
 
 class DCChannelMeasurement(Base):

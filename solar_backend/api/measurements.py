@@ -212,18 +212,16 @@ async def post_opendtu_measurement(
             # Use power_ac as total_output_power (convert W to W, already in watts)
             total_output_power = int(inverter_data.measurements.power_ac)
 
-            # Write AC measurement to TimescaleDB
-            await write_measurement(
-                session=session,
-                user_id=user_id,
-                inverter_id=inverter_id,
-                timestamp=data.timestamp,
-                total_output_power=total_output_power,
-            )
-
-            # Write DC channel measurements (if enabled)
+            # Calculate aggregated yield values from DC channels if available
+            yield_day_wh = None
+            yield_total_kwh = None
             dc_channels_stored = 0
-            if settings.STORE_DC_CHANNEL_DATA:
+
+            if settings.STORE_DC_CHANNEL_DATA and inverter_data.dc_channels:
+                # Write DC channel measurements
+                yield_day_sum = 0
+                yield_total_sum = 0
+
                 for dc_channel in inverter_data.dc_channels:
                     await write_dc_channel_measurement(
                         session=session,
@@ -239,7 +237,25 @@ async def post_opendtu_measurement(
                         yield_total_kwh=dc_channel.yield_total,
                         irradiation=dc_channel.irradiation,
                     )
-                dc_channels_stored = len(inverter_data.dc_channels)
+                    # Aggregate yield values
+                    yield_day_sum += int(dc_channel.yield_day)
+                    yield_total_sum += int(dc_channel.yield_total)
+                    dc_channels_stored += 1
+
+                # Set aggregated yields
+                yield_day_wh = yield_day_sum
+                yield_total_kwh = yield_total_sum
+
+            # Write AC measurement to TimescaleDB with aggregated yield data
+            await write_measurement(
+                session=session,
+                user_id=user_id,
+                inverter_id=inverter_id,
+                timestamp=data.timestamp,
+                total_output_power=total_output_power,
+                yield_day_wh=yield_day_wh,
+                yield_total_kwh=yield_total_kwh,
+            )
 
             logger.debug(
                 "Measurements stored",
@@ -247,6 +263,8 @@ async def post_opendtu_measurement(
                 inverter_id=inverter_id,
                 user_id=user_id,
                 power_ac=total_output_power,
+                yield_day_wh=yield_day_wh,
+                yield_total_kwh=yield_total_kwh,
                 dc_channels_stored=dc_channels_stored,
                 dc_channels_available=len(inverter_data.dc_channels),
                 dc_storage_enabled=settings.STORE_DC_CHANNEL_DATA,

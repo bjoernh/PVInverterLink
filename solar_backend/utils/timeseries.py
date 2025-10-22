@@ -72,6 +72,8 @@ async def write_measurement(
     inverter_id: int,
     timestamp: datetime,
     total_output_power: int,
+    yield_day_wh: Optional[int] = None,
+    yield_total_kwh: Optional[int] = None,
 ) -> None:
     """
     Write a single measurement point to TimescaleDB.
@@ -82,14 +84,16 @@ async def write_measurement(
         inverter_id: Inverter ID
         timestamp: Measurement timestamp (with timezone)
         total_output_power: Power in Watts
+        yield_day_wh: Daily yield in Wh (optional, aggregated from DC channels)
+        yield_total_kwh: Total lifetime yield in kWh (optional, aggregated from DC channels)
 
     Raises:
         TimeSeriesException: If write fails
     """
     try:
         stmt = text("""
-            INSERT INTO inverter_measurements (time, user_id, inverter_id, total_output_power)
-            VALUES (:time, :user_id, :inverter_id, :power)
+            INSERT INTO inverter_measurements (time, user_id, inverter_id, total_output_power, yield_day_wh, yield_total_kwh)
+            VALUES (:time, :user_id, :inverter_id, :power, :yield_day_wh, :yield_total_kwh)
             ON CONFLICT DO NOTHING
         """)
 
@@ -100,6 +104,8 @@ async def write_measurement(
                 "user_id": user_id,
                 "inverter_id": inverter_id,
                 "power": total_output_power,
+                "yield_day_wh": yield_day_wh,
+                "yield_total_kwh": yield_total_kwh,
             },
         )
         await session.commit()
@@ -109,6 +115,8 @@ async def write_measurement(
             user_id=user_id,
             inverter_id=inverter_id,
             power=total_output_power,
+            yield_day_wh=yield_day_wh,
+            yield_total_kwh=yield_total_kwh,
         )
     except Exception as e:
         await session.rollback()
