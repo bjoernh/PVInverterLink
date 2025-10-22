@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     FASTMAIL: ConnectionConfig | None = None  # Optional for local dev
     COOKIE_SECURE: bool = False  # False for local dev, True in production
     TZ: str = "Europe/Berlin"  # Default timezone for time display (Docker convention)
+    STORE_DC_CHANNEL_DATA: bool = True  # Store detailed DC channel (MPPT) measurements from inverters
 
 
 settings = Settings()

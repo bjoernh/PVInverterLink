@@ -3,7 +3,7 @@ import contextlib
 from datetime import datetime
 from fastapi import Depends
 from fastapi_users.db import SQLAlchemyBaseUserTable, SQLAlchemyUserDatabase
-from sqlalchemy import ForeignKey, Integer, String, TIMESTAMP
+from sqlalchemy import ForeignKey, Integer, String, Float, TIMESTAMP
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine, AsyncEngine, AsyncConnection
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqladmin import ModelView
@@ -49,6 +49,30 @@ class InverterMeasurement(Base):
         return f"<Measurement(time={self.time}, inverter={self.inverter_id}, power={self.total_output_power})>"
 
 
+class DCChannelMeasurement(Base):
+    """DC channel (MPPT) measurement data stored in TimescaleDB hypertable."""
+    __tablename__ = "dc_channel_measurements"
+
+    time: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), primary_key=True, nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), primary_key=True, nullable=False)
+    inverter_id: Mapped[int] = mapped_column(ForeignKey("inverter.id", ondelete="CASCADE"), primary_key=True, nullable=False)
+    channel: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    power: Mapped[float] = mapped_column(Float, nullable=False)
+    voltage: Mapped[float] = mapped_column(Float, nullable=False)
+    current: Mapped[float] = mapped_column(Float, nullable=False)
+    yield_day_wh: Mapped[float] = mapped_column(Float, nullable=False)  # Daily yield in Wh
+    yield_total_kwh: Mapped[float] = mapped_column(Float, nullable=False)  # Total lifetime yield in kWh
+    irradiation: Mapped[float] = mapped_column(Float, nullable=False)
+
+    # Relationships (optional, for ORM convenience)
+    user = relationship("User", lazy="noload")
+    inverter = relationship("Inverter", lazy="noload")
+
+    def __repr__(self):
+        return f"<DCChannel(time={self.time}, inverter={self.inverter_id}, channel={self.channel}, yield_day={self.yield_day_wh}Wh)>"
+
+
 class InverterAdmin(ModelView, model=Inverter):
     """Admin interface for Inverter model."""
     column_list = [Inverter.id, Inverter.name, Inverter.serial_logger, Inverter.user_id]
@@ -57,6 +81,22 @@ class InverterAdmin(ModelView, model=Inverter):
     column_sortable_list = [Inverter.id, Inverter.name]
     name_plural = "Inverters"
     icon = "fa-solid fa-solar-panel"
+
+
+class DCChannelMeasurementAdmin(ModelView, model=DCChannelMeasurement):
+    """Admin interface for DC Channel Measurement model."""
+    column_list = [
+        DCChannelMeasurement.time,
+        DCChannelMeasurement.inverter_id,
+        DCChannelMeasurement.channel,
+        DCChannelMeasurement.name,
+        DCChannelMeasurement.yield_day_wh,
+        DCChannelMeasurement.yield_total_kwh,
+    ]
+    name = "DC Channel Measurement"
+    column_sortable_list = [DCChannelMeasurement.time, DCChannelMeasurement.inverter_id]
+    name_plural = "DC Channel Measurements"
+    icon = "fa-solid fa-chart-line"
 
 
 class User(SQLAlchemyBaseUserTable[int], Base):

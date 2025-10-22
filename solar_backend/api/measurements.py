@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from solar_backend.db import Inverter, User, get_async_session
 from solar_backend.users import current_superuser_bearer
 from solar_backend.config import settings
-from solar_backend.utils.timeseries import write_measurement, TimeSeriesException
+from solar_backend.utils.timeseries import write_measurement, write_dc_channel_measurement, TimeSeriesException
 
 logger = structlog.get_logger()
 
@@ -212,7 +212,7 @@ async def post_opendtu_measurement(
             # Use power_ac as total_output_power (convert W to W, already in watts)
             total_output_power = int(inverter_data.measurements.power_ac)
 
-            # Write to TimescaleDB
+            # Write AC measurement to TimescaleDB
             await write_measurement(
                 session=session,
                 user_id=user_id,
@@ -221,12 +221,35 @@ async def post_opendtu_measurement(
                 total_output_power=total_output_power,
             )
 
+            # Write DC channel measurements (if enabled)
+            dc_channels_stored = 0
+            if settings.STORE_DC_CHANNEL_DATA:
+                for dc_channel in inverter_data.dc_channels:
+                    await write_dc_channel_measurement(
+                        session=session,
+                        user_id=user_id,
+                        inverter_id=inverter_id,
+                        timestamp=data.timestamp,
+                        channel=dc_channel.channel,
+                        name=dc_channel.name,
+                        power=dc_channel.power,
+                        voltage=dc_channel.voltage,
+                        current=dc_channel.current,
+                        yield_day_wh=dc_channel.yield_day,
+                        yield_total_kwh=dc_channel.yield_total,
+                        irradiation=dc_channel.irradiation,
+                    )
+                dc_channels_stored = len(inverter_data.dc_channels)
+
             logger.debug(
-                "Measurement stored",
+                "Measurements stored",
                 serial=inverter_data.serial,
                 inverter_id=inverter_id,
                 user_id=user_id,
                 power_ac=total_output_power,
+                dc_channels_stored=dc_channels_stored,
+                dc_channels_available=len(inverter_data.dc_channels),
+                dc_storage_enabled=settings.STORE_DC_CHANNEL_DATA,
                 dtu_serial=data.dtu_serial,
             )
 

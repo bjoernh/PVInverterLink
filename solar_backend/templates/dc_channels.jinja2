@@ -1,0 +1,381 @@
+{% extends "base.jinja2" %}
+{% block title %}{{ inverter.name }} Details{% endblock %}
+{% block content %}
+
+<div class="container mx-auto px-4 py-6">
+    <!-- Header with inverter info -->
+    <div class="mb-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold">{{ inverter.name }} Details</h1>
+                <p class="text-sm text-gray-500">Seriennummer: {{ inverter.serial_logger }}</p>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+                <a href="/dashboard/{{ inverter.id }}" class="btn btn-ghost" hx-push-url="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Zurück zum Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- DC Channel Overview Section -->
+    <div class="mb-4">
+        <h2 class="text-lg font-semibold text-gray-700">Modulübersicht</h2>
+        <p class="text-sm text-gray-500">Aktuelle Messwerte der einzelnen Module</p>
+    </div>
+
+    <!-- Channel Cards Grid -->
+    <div id="channel-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <!-- Cards will be dynamically populated -->
+        <div class="col-span-full text-center py-8">
+            <span class="loading loading-spinner loading-lg"></span>
+            <p class="mt-2 text-gray-500">Lade Modul-Daten...</p>
+        </div>
+    </div>
+
+    <!-- Channel Comparison Section -->
+    <div class="mb-4 mt-8">
+        <h2 class="text-lg font-semibold text-gray-700">Vergleichsansicht</h2>
+        <p class="text-sm text-gray-500">Historischer Vergleich der Module</p>
+    </div>
+
+    <!-- Comparison Chart Card -->
+    <div class="card bg-base-100 shadow-md mb-6">
+        <div class="card-body">
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-4">
+                <h2 class="card-title">Modul Vergleich</h2>
+                <div class="flex items-center gap-4 flex-wrap">
+                    <!-- Metric Selector -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-xs">Messwert:</span>
+                        </label>
+                        <select id="metric-selector" class="select select-bordered select-sm">
+                            <option value="power">Leistung (W)</option>
+                            <option value="voltage">Spannung (V)</option>
+                            <option value="current">Strom (A)</option>
+                            <option value="irradiation">Einstrahlung</option>
+                        </select>
+                    </div>
+
+                    <!-- Time Range Buttons -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-xs">Zeitraum:</span>
+                        </label>
+                        <div class="btn-group">
+                            {% for range in valid_ranges %}
+                            <button class="btn btn-sm time-range-btn {% if range == time_range %}btn-active{% endif %}"
+                                    data-range="{{ range }}"
+                                    onclick="changeTimeRange('{{ range }}')">
+                                {{ range_labels[range] }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Refresh Button -->
+                    <button id="refresh-btn" class="btn btn-circle btn-sm btn-ghost" onclick="loadDCChannelData()">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Chart Container -->
+            <div id="comparisonChart" class="relative" style="height: 500px;"></div>
+
+            <!-- Loading/Error States -->
+            <div id="loading-state" class="text-center py-8 hidden">
+                <span class="loading loading-spinner loading-lg"></span>
+                <p class="mt-2 text-gray-500">Daten werden geladen...</p>
+            </div>
+            <div id="error-state" class="alert alert-warning hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span id="error-message">Keine Daten verfügbar</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const inverterId = {{ inverter.id }};
+        let currentTimeRange = '{{ time_range }}';
+        let currentMetric = 'power';
+        let chartInitialized = false;
+        let channelData = null;
+        let timeseriesData = null;
+
+        // Channel color mapping
+        const channelColors = {
+            1: 'rgb(34, 197, 94)',   // green
+            2: 'rgb(59, 130, 246)',   // blue
+            3: 'rgb(249, 115, 22)',   // orange
+            4: 'rgb(168, 85, 247)',   // purple
+            5: 'rgb(236, 72, 153)',   // pink
+            6: 'rgb(14, 165, 233)',   // sky
+        };
+
+        const channelBorderColors = {
+            1: 'border-green-500',
+            2: 'border-blue-500',
+            3: 'border-orange-500',
+            4: 'border-purple-500',
+            5: 'border-pink-500',
+            6: 'border-sky-500',
+        };
+
+        // Initialize Plotly chart
+        function initChart() {
+            const chartDiv = document.getElementById('comparisonChart');
+            if (!chartDiv || chartInitialized) return;
+
+            const layout = {
+                xaxis: {
+                    title: 'Zeit',
+                    type: 'date',
+                    showgrid: true,
+                    gridcolor: 'rgba(128, 128, 128, 0.2)'
+                },
+                yaxis: {
+                    title: 'Leistung (W)',
+                    rangemode: 'tozero',
+                    showgrid: true,
+                    gridcolor: 'rgba(128, 128, 128, 0.2)'
+                },
+                hovermode: 'x unified',
+                showlegend: true,
+                legend: {
+                    x: 0,
+                    y: 1,
+                    orientation: 'h'
+                },
+                margin: {
+                    l: 60,
+                    r: 30,
+                    t: 30,
+                    b: 50
+                },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            };
+
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false,
+                modeBarButtonsToRemove: ['lasso2d', 'select2d']
+            };
+
+            Plotly.newPlot('comparisonChart', [], layout, config);
+            chartInitialized = true;
+        }
+
+        // Render channel cards
+        function renderChannelCards(channels) {
+            const container = document.getElementById('channel-cards');
+            if (!channels || channels.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full alert alert-info">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Keine Modul-Daten verfügbar.</span>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            channels.forEach(ch => {
+                const borderColor = channelBorderColors[ch.channel] || 'border-gray-500';
+                const color = channelColors[ch.channel] || 'rgb(100, 100, 100)';
+
+                html += `
+                    <div class="card bg-base-100 shadow-lg border-l-4 ${borderColor}">
+                        <div class="card-body p-4">
+                            <h3 class="text-lg font-bold" style="color: ${color}">
+                                <i class="fa-solid fa-plug-circle-bolt"></i> ${ch.name}
+                            </h3>
+                            <p class="text-sm text-gray-500 mb-2">${ch.time_ago}</p>
+
+                            <div class="divider my-1"></div>
+
+                            <div class="mb-2">
+                                <span class="text-xs text-gray-500">Leistung</span>
+                                <p class="text-2xl font-bold" style="color: ${color}">${ch.power} W</p>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <div>
+                                    <span class="text-xs text-gray-500">Spannung</span>
+                                    <p class="text-sm font-semibold">${ch.voltage} V</p>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-gray-500">Strom</span>
+                                    <p class="text-sm font-semibold">${ch.current} A</p>
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <span class="text-xs text-gray-500">Ertrag Heute</span>
+                                <p class="text-lg font-bold">${ch.yield_day_wh} Wh</p>
+                            </div>
+
+                            <div>
+                                <span class="text-xs text-gray-500">Gesamtertrag</span>
+                                <p class="text-sm font-semibold text-gray-600">${ch.yield_total_kwh} kWh</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Update chart with current metric
+        function updateChart() {
+            if (!timeseriesData || Object.keys(timeseriesData).length === 0) {
+                document.getElementById('error-state').classList.remove('hidden');
+                document.getElementById('comparisonChart').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('error-state').classList.add('hidden');
+            document.getElementById('comparisonChart').classList.remove('hidden');
+
+            const metricLabels = {
+                power: 'Leistung (W)',
+                voltage: 'Spannung (V)',
+                current: 'Strom (A)',
+                irradiation: 'Einstrahlung'
+            };
+
+            const traces = [];
+            for (const [channel, data] of Object.entries(timeseriesData)) {
+                const channelNum = parseInt(channel);
+                const channelInfo = channelData.find(ch => ch.channel === channelNum);
+                const channelName = channelInfo ? channelInfo.name : `Channel ${channelNum}`;
+
+                traces.push({
+                    x: data.map(d => d.time),
+                    y: data.map(d => d[currentMetric]),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: `${channelName}`,
+                    line: {
+                        color: channelColors[channelNum] || 'rgb(100, 100, 100)',
+                        width: 2
+                    }
+                });
+            }
+
+            const layout = {
+                'yaxis.title': metricLabels[currentMetric]
+            };
+
+            Plotly.react('comparisonChart', traces, layout);
+        }
+
+        // Load DC channel data from API
+        async function loadDCChannelData() {
+            const loadingState = document.getElementById('loading-state');
+            const errorState = document.getElementById('error-state');
+            const chartDiv = document.getElementById('comparisonChart');
+
+            loadingState.classList.remove('hidden');
+            errorState.classList.add('hidden');
+
+            try {
+                const response = await fetch(`/api/dc-channels/${inverterId}/data?time_range=${currentTimeRange}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    channelData = result.channels;
+                    timeseriesData = result.timeseries;
+
+                    // Render channel cards
+                    renderChannelCards(channelData);
+
+                    // Update chart
+                    updateChart();
+
+                    loadingState.classList.add('hidden');
+                } else {
+                    document.getElementById('error-message').textContent = result.message || 'Keine Daten verfügbar';
+                    errorState.classList.remove('hidden');
+                    loadingState.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Failed to load DC channel data:', error);
+                document.getElementById('error-message').textContent = 'Fehler beim Laden der Daten';
+                errorState.classList.remove('hidden');
+                loadingState.classList.add('hidden');
+            }
+        }
+
+        // Change time range
+        function changeTimeRange(range) {
+            currentTimeRange = range;
+
+            // Update active button
+            document.querySelectorAll('.time-range-btn').forEach(btn => {
+                if (btn.dataset.range === range) {
+                    btn.classList.add('btn-active');
+                } else {
+                    btn.classList.remove('btn-active');
+                }
+            });
+
+            // Reload data
+            loadDCChannelData();
+
+            // Update URL without page reload
+            const url = new URL(window.location);
+            url.searchParams.set('time_range', range);
+            window.history.pushState({}, '', url);
+        }
+
+        // Change metric
+        document.getElementById('metric-selector').addEventListener('change', function(e) {
+            currentMetric = e.target.value;
+            updateChart();
+        });
+
+        // Initialize page
+        function initializePage() {
+            chartInitialized = false;
+            initChart();
+            loadDCChannelData();
+        }
+
+        // Expose functions to global scope
+        window.changeTimeRange = changeTimeRange;
+        window.loadDCChannelData = loadDCChannelData;
+
+        // Initialize on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializePage);
+        } else {
+            initializePage();
+        }
+
+        // Re-initialize when content is swapped by HTMX
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.querySelector('#comparisonChart')) {
+                chartInitialized = false;
+                initializePage();
+            }
+        });
+    })();
+</script>
+
+{% endblock %}

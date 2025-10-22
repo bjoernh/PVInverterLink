@@ -121,6 +121,90 @@ async def write_measurement(
         raise TimeSeriesException(f"Failed to write measurement: {str(e)}") from e
 
 
+async def write_dc_channel_measurement(
+    session: AsyncSession,
+    user_id: int,
+    inverter_id: int,
+    timestamp: datetime,
+    channel: int,
+    name: str,
+    power: float,
+    voltage: float,
+    current: float,
+    yield_day_wh: float,
+    yield_total_kwh: float,
+    irradiation: float,
+) -> None:
+    """
+    Write a single DC channel measurement point to TimescaleDB.
+
+    Args:
+        session: Database session
+        user_id: User ID (for partitioning and RLS)
+        inverter_id: Inverter ID
+        timestamp: Measurement timestamp (with timezone)
+        channel: DC channel number (MPPT)
+        name: Channel name
+        power: Power in Watts
+        voltage: Voltage in V
+        current: Current in A
+        yield_day_wh: Daily yield in Wh
+        yield_total_kwh: Total lifetime yield in kWh
+        irradiation: Irradiation value
+
+    Raises:
+        TimeSeriesException: If write fails
+    """
+    try:
+        stmt = text("""
+            INSERT INTO dc_channel_measurements (
+                time, user_id, inverter_id, channel, name,
+                power, voltage, current, yield_day_wh, yield_total_kwh, irradiation
+            )
+            VALUES (
+                :time, :user_id, :inverter_id, :channel, :name,
+                :power, :voltage, :current, :yield_day_wh, :yield_total_kwh, :irradiation
+            )
+            ON CONFLICT DO NOTHING
+        """)
+
+        await session.execute(
+            stmt,
+            {
+                "time": timestamp,
+                "user_id": user_id,
+                "inverter_id": inverter_id,
+                "channel": channel,
+                "name": name,
+                "power": power,
+                "voltage": voltage,
+                "current": current,
+                "yield_day_wh": yield_day_wh,
+                "yield_total_kwh": yield_total_kwh,
+                "irradiation": irradiation,
+            },
+        )
+        await session.commit()
+
+        logger.debug(
+            "DC channel measurement written",
+            user_id=user_id,
+            inverter_id=inverter_id,
+            channel=channel,
+            yield_day_wh=yield_day_wh,
+        )
+    except Exception as e:
+        await session.rollback()
+        logger.error(
+            "Failed to write DC channel measurement",
+            error=str(e),
+            user_id=user_id,
+            inverter_id=inverter_id,
+            channel=channel,
+        )
+        raise TimeSeriesException(f"Failed to write DC channel measurement: {str(e)}") from e
+
+
 async def get_latest_value(
     session: AsyncSession, user_id: int, inverter_id: int
 ) -> tuple[datetime, int]:
@@ -271,7 +355,10 @@ async def get_today_energy_production(
     session: AsyncSession, user_id: int, inverter_id: int
 ) -> float:
     """
-    Calculate today's energy production in kWh using trapezoidal integration.
+    Get today's energy production in kWh.
+
+    Prioritizes inverter-provided yield data (more accurate), falls back to
+    trapezoidal integration from power measurements if yield data unavailable.
 
     Args:
         session: Database session with RLS context set
@@ -282,6 +369,26 @@ async def get_today_energy_production(
         Energy produced today in kWh
     """
     try:
+        # Try inverter-provided yield first (more accurate)
+        total_yield_wh = await get_today_total_yield(session, user_id, inverter_id)
+        if total_yield_wh is not None:
+            energy_kwh = total_yield_wh / 1000.0  # Convert Wh to kWh
+            logger.debug(
+                "Using inverter-provided yield",
+                user_id=user_id,
+                inverter_id=inverter_id,
+                energy_kwh=energy_kwh,
+                source="inverter",
+            )
+            return energy_kwh
+
+        # Fallback: Calculate from power measurements using trapezoidal integration
+        logger.debug(
+            "No inverter yield data, falling back to power integration",
+            user_id=user_id,
+            inverter_id=inverter_id,
+        )
+
         query = text("""
             WITH power_data AS (
                 SELECT
@@ -311,22 +418,92 @@ async def get_today_energy_production(
         energy_kwh = float(row.energy_kwh) if row and row.energy_kwh else 0.0
 
         logger.debug(
-            "Calculated today's energy production",
+            "Calculated energy from power integration",
             user_id=user_id,
             inverter_id=inverter_id,
             energy_kwh=energy_kwh,
+            source="calculated",
         )
 
         return energy_kwh
 
     except Exception as e:
         logger.warning(
-            "Failed to calculate energy production, returning 0",
+            "Failed to get energy production, returning 0",
             error=str(e),
             user_id=user_id,
             inverter_id=inverter_id,
         )
         return 0.0
+
+
+async def get_today_total_yield(
+    session: AsyncSession, user_id: int, inverter_id: int
+) -> Optional[float]:
+    """
+    Get today's total yield from inverter-provided DC channel data.
+
+    This queries the latest yield_day_wh from each DC channel and sums them.
+    Returns None if no DC channel data is available (e.g., old measurements).
+
+    Args:
+        session: Database session with RLS context set
+        user_id: User ID
+        inverter_id: Inverter ID
+
+    Returns:
+        Total daily yield in Wh, or None if no data available
+    """
+    try:
+        # Get the latest yield_day_wh from each channel for today
+        query = text("""
+            WITH latest_per_channel AS (
+                SELECT DISTINCT ON (channel)
+                    channel,
+                    yield_day_wh,
+                    time
+                FROM dc_channel_measurements
+                WHERE user_id = :user_id
+                  AND inverter_id = :inverter_id
+                  AND time >= DATE_TRUNC('day', NOW())
+                ORDER BY channel, time DESC
+            )
+            SELECT COALESCE(SUM(yield_day_wh), 0) AS total_yield_wh
+            FROM latest_per_channel
+        """)
+
+        result = await session.execute(
+            query, {"user_id": user_id, "inverter_id": inverter_id}
+        )
+
+        row = result.first()
+        if not row or row.total_yield_wh == 0:
+            logger.debug(
+                "No DC channel yield data available",
+                user_id=user_id,
+                inverter_id=inverter_id,
+            )
+            return None
+
+        total_yield_wh = float(row.total_yield_wh)
+
+        logger.debug(
+            "Retrieved today's total yield from inverter",
+            user_id=user_id,
+            inverter_id=inverter_id,
+            total_yield_wh=total_yield_wh,
+        )
+
+        return total_yield_wh
+
+    except Exception as e:
+        logger.warning(
+            "Failed to get inverter yield data",
+            error=str(e),
+            user_id=user_id,
+            inverter_id=inverter_id,
+        )
+        return None
 
 
 async def get_today_maximum_power(
@@ -447,6 +624,187 @@ async def reset_rls_context(session: AsyncSession) -> None:
 
     await session.execute(text("RESET app.current_user_id"))
     logger.debug("RLS context reset")
+
+
+async def get_latest_dc_channels(
+    session: AsyncSession, user_id: int, inverter_id: int
+) -> list[dict]:
+    """
+    Get the latest DC channel measurements for an inverter.
+
+    Args:
+        session: Database session with RLS context set
+        user_id: User ID
+        inverter_id: Inverter ID
+
+    Returns:
+        List of dicts with latest measurement for each channel:
+        {
+            'channel': int,
+            'name': str,
+            'power': float,
+            'voltage': float,
+            'current': float,
+            'yield_day_wh': float,
+            'yield_total_kwh': float,
+            'irradiation': float,
+            'time': datetime
+        }
+    """
+    try:
+        query = text("""
+            SELECT DISTINCT ON (channel)
+                channel,
+                name,
+                power,
+                voltage,
+                current,
+                yield_day_wh,
+                yield_total_kwh,
+                irradiation,
+                time
+            FROM dc_channel_measurements
+            WHERE user_id = :user_id
+              AND inverter_id = :inverter_id
+              AND time > NOW() - INTERVAL '1 hour'
+            ORDER BY channel, time DESC
+        """)
+
+        result = await session.execute(
+            query, {"user_id": user_id, "inverter_id": inverter_id}
+        )
+
+        # Get configured timezone
+        tz = ZoneInfo(settings.TZ)
+
+        channels = []
+        for row in result:
+            channels.append({
+                "channel": row.channel,
+                "name": row.name,
+                "power": float(row.power),
+                "voltage": float(row.voltage),
+                "current": float(row.current),
+                "yield_day_wh": float(row.yield_day_wh),
+                "yield_total_kwh": float(row.yield_total_kwh),
+                "irradiation": float(row.irradiation),
+                "time": row.time.astimezone(tz),
+            })
+
+        logger.debug(
+            "Retrieved latest DC channel data",
+            user_id=user_id,
+            inverter_id=inverter_id,
+            channels_found=len(channels),
+        )
+
+        return channels
+
+    except Exception as e:
+        logger.warning(
+            "Failed to get latest DC channel data",
+            error=str(e),
+            user_id=user_id,
+            inverter_id=inverter_id,
+        )
+        return []
+
+
+async def get_dc_channel_timeseries(
+    session: AsyncSession,
+    user_id: int,
+    inverter_id: int,
+    time_range: TimeRange | str = TimeRange.TWENTY_FOUR_HOURS,
+) -> dict[int, list[dict]]:
+    """
+    Get time-series data for all DC channels of an inverter.
+
+    Args:
+        session: Database session with RLS context set
+        user_id: User ID
+        inverter_id: Inverter ID
+        time_range: Time range (TimeRange enum or string value)
+
+    Returns:
+        Dict mapping channel number to list of time-series data points:
+        {
+            1: [{'time': '...', 'power': 123, 'voltage': 30.5, ...}, ...],
+            2: [{'time': '...', 'power': 145, 'voltage': 31.2, ...}, ...],
+            ...
+        }
+    """
+    # Convert string to enum if needed
+    if isinstance(time_range, str):
+        try:
+            time_range = TimeRange(time_range)
+        except ValueError:
+            logger.warning(f"Invalid time range '{time_range}', using default")
+            time_range = TimeRange.default()
+
+    bucket = time_range.bucket
+    interval = time_range.value
+
+    try:
+        query = text(f"""
+            SELECT
+                channel,
+                time_bucket(INTERVAL '{bucket}', time) AS bucket_time,
+                AVG(power)::float AS power,
+                AVG(voltage)::float AS voltage,
+                AVG(current)::float AS current,
+                MAX(yield_day_wh)::float AS yield_day_wh,
+                AVG(irradiation)::float AS irradiation
+            FROM dc_channel_measurements
+            WHERE user_id = :user_id
+              AND inverter_id = :inverter_id
+              AND time > NOW() - INTERVAL '{interval}'
+            GROUP BY channel, bucket_time
+            ORDER BY channel, bucket_time ASC
+        """)
+
+        result = await session.execute(
+            query, {"user_id": user_id, "inverter_id": inverter_id}
+        )
+
+        # Get configured timezone
+        tz = ZoneInfo(settings.TZ)
+
+        # Organize data by channel
+        channel_data = {}
+        for row in result:
+            channel = row.channel
+            if channel not in channel_data:
+                channel_data[channel] = []
+
+            channel_data[channel].append({
+                "time": row.bucket_time.astimezone(tz).isoformat(),
+                "power": float(row.power) if row.power is not None else 0,
+                "voltage": float(row.voltage) if row.voltage is not None else 0,
+                "current": float(row.current) if row.current is not None else 0,
+                "yield_day_wh": float(row.yield_day_wh) if row.yield_day_wh is not None else 0,
+                "irradiation": float(row.irradiation) if row.irradiation is not None else 0,
+            })
+
+        logger.info(
+            "Retrieved DC channel time-series data",
+            user_id=user_id,
+            inverter_id=inverter_id,
+            time_range=time_range,
+            channels=len(channel_data),
+            total_points=sum(len(points) for points in channel_data.values()),
+        )
+
+        return channel_data
+
+    except Exception as e:
+        logger.error(
+            "Failed to get DC channel time-series data",
+            error=str(e),
+            user_id=user_id,
+            inverter_id=inverter_id,
+            time_range=time_range,
+        )
+        return {}
 
 
 async def get_raw_measurements(

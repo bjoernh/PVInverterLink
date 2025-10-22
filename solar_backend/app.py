@@ -11,9 +11,9 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-from solar_backend.db import User, create_db_and_tables, sessionmanager, InverterAdmin
+from solar_backend.db import User, create_db_and_tables, sessionmanager, InverterAdmin, DCChannelMeasurementAdmin
 from solar_backend.users import UserAdmin
-from solar_backend.api import signup, login, start, inverter, healthcheck, account, dashboard, measurements, export
+from solar_backend.api import signup, login, start, inverter, healthcheck, account, dashboard, measurements, export, dc_channels
 from solar_backend.config import settings, WEB_DEV_TESTING
 from solar_backend.users import auth_backend_bearer, fastapi_users_bearer, current_active_user_bearer
 from solar_backend.utils.admin_auth import authentication_backend
@@ -109,12 +109,14 @@ app.include_router(start.router)
 app.include_router(inverter.router)
 app.include_router(account.router)
 app.include_router(dashboard.router)
+app.include_router(dc_channels.router)
 app.include_router(export.router)
 app.include_router(measurements.router, tags=["measurements", "opendtu"])
 app.include_router(healthcheck.router)
 
 admin.add_view(UserAdmin)
 admin.add_view(InverterAdmin)
+admin.add_view(DCChannelMeasurementAdmin)
 
 @app.get("/authenticated-route")
 async def authenticated_route(user: User = Depends(current_active_user_bearer)):
