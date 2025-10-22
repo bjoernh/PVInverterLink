@@ -1,0 +1,184 @@
+version: '3.8'
+
+services:
+  # Backend Service (Staging)
+  backend-staging:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: backend-staging
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    environment:
+      - ENV_FILE=backend.env
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector-staging:4317
+      - OTEL_SERVICE_NAME=solar-backend-staging
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+    volumes:
+      - ./backend.env:/app/backend.env:ro
+    depends_on:
+      db-staging:
+        condition: service_healthy
+      signoz-otel-collector-staging:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.backend-staging.rule=Host(`staging.yourdomain.com`)"
+      - "traefik.http.routers.backend-staging.entrypoints=web"
+      - "traefik.http.services.backend-staging.loadbalancer.server.port=80"
+    networks:
+      - traefik-public
+      - staging-internal
+
+  # TimescaleDB (Staging)
+  db-staging:
+    image: timescale/timescaledb:latest-pg16
+    container_name: db-staging
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    environment:
+      - POSTGRES_USER=deyehard
+      - POSTGRES_DB=deyehard
+      # POSTGRES_PASSWORD from .env.staging
+    volumes:
+      - ./data/staging/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deyehard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - staging-internal
+
+  # Rust Collector (Staging)
+  collector-staging:
+    build:
+      context: ./collector
+      dockerfile: Dockerfile
+    container_name: collector-staging
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    environment:
+      - PORT=10001
+      - BACKEND_URL=http://backend-staging:80
+      # API_KEY from .env.staging
+      - RUST_LOG=info
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector-staging:4317
+      - OTEL_SERVICE_NAME=collector-staging
+    ports:
+      - "10001:10001"  # Different port for staging
+    depends_on:
+      - backend-staging
+    networks:
+      - staging-internal
+      - traefik-public
+
+  # SignOz OTEL Collector (Staging)
+  signoz-otel-collector-staging:
+    image: signoz/signoz-otel-collector:0.88.11
+    container_name: signoz-otel-collector-staging
+    restart: unless-stopped
+    command:
+      - "--config=/etc/otel-collector-config.yaml"
+    volumes:
+      - ./monitoring/signoz/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=staging
+    networks:
+      - staging-internal
+
+  # SignOz Query Service (Staging)
+  signoz-query-service-staging:
+    image: signoz/query-service:0.38.0
+    container_name: signoz-query-service-staging
+    restart: unless-stopped
+    command:
+      - "-config=/root/config/prometheus.yml"
+    volumes:
+      - ./monitoring/signoz/prometheus.yml:/root/config/prometheus.yml:ro
+      - signoz-staging-data:/var/lib/signoz
+    environment:
+      - ClickHouseUrl=tcp://clickhouse-staging:9000
+      - STORAGE=clickhouse
+      - GODEBUG=netdns=go
+      - TELEMETRY_ENABLED=false
+      - DEPLOYMENT_TYPE=docker-standalone-amd
+    depends_on:
+      - clickhouse-staging
+    networks:
+      - staging-internal
+
+  # SignOz Frontend (Staging)
+  signoz-frontend-staging:
+    image: signoz/frontend:0.38.0
+    container_name: signoz-frontend-staging
+    restart: unless-stopped
+    environment:
+      - FRONTEND_API_ENDPOINT=http://signoz-query-service-staging:8080
+    depends_on:
+      - signoz-query-service-staging
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.signoz-staging.rule=Host(`signoz.yourdomain.com`) && PathPrefix(`/staging`)"
+      - "traefik.http.routers.signoz-staging.entrypoints=web"
+      - "traefik.http.services.signoz-staging.loadbalancer.server.port=3301"
+      - "traefik.http.middlewares.signoz-staging-stripprefix.stripprefix.prefixes=/staging"
+      - "traefik.http.routers.signoz-staging.middlewares=signoz-staging-stripprefix"
+    networks:
+      - traefik-public
+      - staging-internal
+
+  # ClickHouse (SignOz storage backend) (Staging)
+  clickhouse-staging:
+    image: clickhouse/clickhouse-server:23.11-alpine
+    container_name: clickhouse-staging
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - ./data/staging/signoz/clickhouse:/var/lib/clickhouse
+    environment:
+      - CLICKHOUSE_DB=signoz
+      - CLICKHOUSE_USER=signoz
+      - CLICKHOUSE_PASSWORD=signoz_password_staging
+    networks:
+      - staging-internal
+
+  # PostgreSQL Exporter (Staging)
+  postgres-exporter-staging:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter-staging
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    environment:
+      - DATA_SOURCE_NAME=postgresql://deyehard:${POSTGRES_PASSWORD}@db-staging:5432/deyehard?sslmode=disable
+    depends_on:
+      - db-staging
+    networks:
+      - staging-internal
+
+networks:
+  traefik-public:
+    external: true
+  staging-internal:
+    name: staging-internal
+
+volumes:
+  signoz-staging-data:
+    name: signoz-staging-data
