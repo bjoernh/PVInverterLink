@@ -41,7 +41,7 @@ async def post_change_email(
     if user is None:
         return HTMLResponse(
             """<div class="alert alert-error">
-                <span><i class="fa-solid fa-circle-xmark"></i> Nicht angemeldet</span>
+                <span><i class="fa-solid fa-circle-xmark"></i> Sitzung abgelaufen. Bitte melden Sie sich erneut an.</span>
             </div>""",
             status_code=status.HTTP_401_UNAUTHORIZED
         )
@@ -94,7 +94,7 @@ async def post_change_password(
     if user is None:
         return HTMLResponse(
             """<div class="alert alert-error">
-                <span><i class="fa-solid fa-circle-xmark"></i> Nicht angemeldet</span>
+                <span><i class="fa-solid fa-circle-xmark"></i> Sitzung abgelaufen. Bitte melden Sie sich erneut an.</span>
             </div>""",
             status_code=status.HTTP_401_UNAUTHORIZED
         )
@@ -160,7 +160,7 @@ async def post_delete_account(
     if user is None:
         return HTMLResponse(
             """<div class="alert alert-error">
-                <span><i class="fa-solid fa-circle-xmark"></i> Nicht angemeldet</span>
+                <span><i class="fa-solid fa-circle-xmark"></i> Sitzung abgelaufen. Bitte melden Sie sich erneut an.</span>
             </div>""",
             status_code=status.HTTP_401_UNAUTHORIZED
         )
@@ -217,7 +217,7 @@ async def post_generate_api_key(
     if user is None:
         return HTMLResponse(
             """<div class="alert alert-error">
-                <span><i class="fa-solid fa-circle-xmark"></i> Nicht angemeldet</span>
+                <span><i class="fa-solid fa-circle-xmark"></i> Sitzung abgelaufen. Bitte melden Sie sich erneut an.</span>
             </div>""",
             status_code=status.HTTP_401_UNAUTHORIZED
         )
@@ -259,7 +259,7 @@ async def get_api_key(
     if user is None:
         return HTMLResponse(
             """<div class="alert alert-error">
-                <span><i class="fa-solid fa-circle-xmark"></i> Nicht angemeldet</span>
+                <span><i class="fa-solid fa-circle-xmark"></i> Sitzung abgelaufen. Bitte melden Sie sich erneut an.</span>
             </div>""",
             status_code=status.HTTP_401_UNAUTHORIZED
         )

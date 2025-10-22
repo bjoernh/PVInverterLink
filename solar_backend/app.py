@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException, status
 from pathlib import Path
 import os
 
@@ -22,7 +22,7 @@ import structlog
 from fastapi_csrf_protect import CsrfProtect
 from fastapi_csrf_protect.exceptions import CsrfProtectError
 from pydantic import BaseModel
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi import Request
 
 
@@ -66,6 +66,28 @@ if not WEB_DEV_TESTING:
         return CsrfSettings()
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Handle 401 Unauthorized (expired sessions, missing auth)
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+        # For HTML/HTMX requests, redirect to login page
+        if "text/html" in request.headers.get("accept", ""):
+            return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+        # For API requests, return JSON error with helpful message
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={
+                "detail": "Session expired or authentication required. Please log in again.",
+                "error_code": "SESSION_EXPIRED"
+            }
+        )
+    # For other HTTP exceptions, use default behavior
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
+
 app.add_middleware(SessionMiddleware, secret_key=settings.AUTH_SECRET)
 htmx_init(templates=Jinja2Templates(directory=Path(os.getcwd()) / Path("templates")))
 

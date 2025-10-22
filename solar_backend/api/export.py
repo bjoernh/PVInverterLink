@@ -55,7 +55,10 @@ async def get_export_page(
         HTML export page
     """
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired or authentication required. Please log in again."
+        )
 
     async with db_session as session:
         # Verify inverter belongs to user
@@ -115,7 +118,10 @@ async def export_csv(
         CSV file as StreamingResponse
     """
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired or authentication required. Please log in again."
+        )
 
     # Parse and validate dates
     try:

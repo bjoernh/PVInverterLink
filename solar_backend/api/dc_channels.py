@@ -43,7 +43,10 @@ async def get_dc_channels_page(
         HTML page with DC channel cards and comparison chart
     """
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired or authentication required. Please log in again."
+        )
 
     async with db_session as session:
         # Verify inverter belongs to user
@@ -105,7 +108,10 @@ async def get_dc_channels_data(
         JSON with channel data and time-series
     """
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired or authentication required. Please log in again."
+        )
 
     async with db_session as session:
         # Verify inverter belongs to user

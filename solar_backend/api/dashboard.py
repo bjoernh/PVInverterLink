@@ -46,7 +46,10 @@ async def get_dashboard(
         HTML dashboard with power graph and statistics
     """
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired or authentication required. Please log in again."
+        )
 
     async with db_session as session:
         # Verify inverter belongs to user
@@ -108,7 +111,10 @@ async def get_dashboard_data(
         JSON with timestamps and power values
     """
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired or authentication required. Please log in again."
+        )
 
     async with db_session as session:
         # Verify inverter belongs to user

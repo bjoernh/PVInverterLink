@@ -166,3 +166,32 @@ async def test_get_login_page(client):
     """Test GET request to login page."""
     response = await client.get("/login")
     assert response.status_code == 200
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_session_expired_html_redirect(client):
+    """Test that HTML requests to protected routes redirect to login on 401."""
+    response = await client.get(
+        "/authenticated-route",
+        headers={"Accept": "text/html"}
+    )
+    # Should redirect to login page
+    assert response.status_code == 302  # Found redirect
+    assert response.headers["location"] == "/login"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_session_expired_api_error(client):
+    """Test that API requests return helpful error message on 401."""
+    response = await client.get(
+        "/authenticated-route",
+        headers={"Accept": "application/json"}
+    )
+    assert response.status_code == 401
+    data = response.json()
+    assert "detail" in data
+    assert "Session expired" in data["detail"]
+    assert "error_code" in data
+    assert data["error_code"] == "SESSION_EXPIRED"
