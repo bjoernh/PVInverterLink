@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     COOKIE_SECURE: bool = False  # False for local dev, True in production
     TZ: str = "Europe/Berlin"  # Default timezone for time display (Docker convention)
     STORE_DC_CHANNEL_DATA: bool = True  # Store detailed DC channel (MPPT) measurements from inverters
+    LOG_LEVEL: str = "INFO" # Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    DEBUG: bool = False # Enable debug mode for verbose logging and other dev features
 
 
 settings = Settings()

@@ -15,7 +15,7 @@ async def test_request_password_reset(client, test_user, mocker):
     mocker.patch('solar_backend.users.send_reset_passwort_mail', mail_mock)
 
     response = await client.post(
-        "/request_reset_passwort",
+        "/request_reset_password",
         headers={"HX-Prompt": "testuser@example.com"}
     )
 
@@ -29,7 +29,7 @@ async def test_request_password_reset(client, test_user, mocker):
 @pytest.mark.asyncio
 async def test_get_reset_password_page(client, test_user, mocker):
     """Test GET request to reset password page with token."""
-    response = await client.get("/reset_passwort?token=some-token")
+    response = await client.get("/reset_password?token=some-token")
     assert response.status_code == 200
 
 
@@ -43,7 +43,7 @@ async def test_reset_password_with_valid_token(client, test_user, mocker):
     mocker.patch('solar_backend.users.send_reset_passwort_mail', mail_mock)
 
     await client.post(
-        "/request_reset_passwort",
+        "/request_reset_password",
         headers={"HX-Prompt": "testuser@example.com"}
     )
 
@@ -81,7 +81,7 @@ async def test_reset_password_with_mismatched_passwords(client, test_user, mocke
     mocker.patch('solar_backend.users.send_reset_passwort_mail', mail_mock)
 
     await client.post(
-        "/request_reset_passwort",
+        "/request_reset_password",
         headers={"HX-Prompt": "testuser@example.com"}
     )
 
@@ -128,7 +128,7 @@ async def test_reset_password_token_cannot_be_reused(client, test_user, mocker):
     mocker.patch('solar_backend.users.send_reset_passwort_mail', mail_mock)
 
     await client.post(
-        "/request_reset_passwort",
+        "/request_reset_password",
         headers={"HX-Prompt": "testuser@example.com"}
     )
 
@@ -169,7 +169,7 @@ async def test_password_reset_email_content(client, test_user, mocker):
     email_spy = mocker.patch('solar_backend.users.send_reset_passwort_mail', mail_mock)
 
     await client.post(
-        "/request_reset_passwort",
+        "/request_reset_password",
         headers={"HX-Prompt": "testuser@example.com"}
     )
 

@@ -191,7 +191,7 @@ async def test_session_expired_api_error(client):
     )
     assert response.status_code == 401
     data = response.json()
-    assert "detail" in data
-    assert "Session expired" in data["detail"]
-    assert "error_code" in data
-    assert data["error_code"] == "SESSION_EXPIRED"
+    assert "message" in data
+    assert "Session expired" in data["message"]
+    assert "error" in data
+    assert data["error"] == "unauthorized"

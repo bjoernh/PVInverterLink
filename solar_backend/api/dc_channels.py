@@ -6,7 +6,11 @@ from fastapi_htmx import htmx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from solar_backend.db import Inverter, User, get_async_session
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from solar_backend.db import get_async_session, User, Inverter
+from solar_backend.limiter import limiter
+from solar_backend.constants import UNAUTHORIZED_MESSAGE
 from solar_backend.users import current_active_user
 from solar_backend.utils.timeseries import (
     TimeRange,
@@ -14,6 +18,7 @@ from solar_backend.utils.timeseries import (
     get_dc_channel_timeseries,
     set_rls_context,
     reset_rls_context,
+    rls_context,
 )
 
 logger = structlog.get_logger()
@@ -29,7 +34,7 @@ async def get_dc_channels_page(
     time_range: str = "24 hours",
     user: User = Depends(current_active_user),
     db_session: AsyncSession = Depends(get_async_session),
-):
+) -> dict:
     """
     Display DC channel details page for a specific inverter.
 
@@ -43,10 +48,7 @@ async def get_dc_channels_page(
         HTML page with DC channel cards and comparison chart
     """
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session expired or authentication required. Please log in again."
-        )
+                    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MESSAGE + " Please log in again.")
 
     async with db_session as session:
         # Verify inverter belongs to user
@@ -93,7 +95,7 @@ async def get_dc_channels_data(
     time_range: str = "24 hours",
     user: User = Depends(current_active_user),
     db_session: AsyncSession = Depends(get_async_session),
-):
+) -> JSONResponse:
     """
     API endpoint to fetch DC channel data.
     Returns JSON data for cards and chart.
@@ -108,10 +110,7 @@ async def get_dc_channels_data(
         JSON with channel data and time-series
     """
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session expired or authentication required. Please log in again."
-        )
+                    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MESSAGE + " Please log in again.")
 
     async with db_session as session:
         # Verify inverter belongs to user
@@ -135,76 +134,73 @@ async def get_dc_channels_data(
             time_range = time_range_enum.value
 
         try:
-            # Set RLS context
-            await set_rls_context(session, user.id)
+            async with rls_context(session, user.id):
+                # Get latest channel data (for cards)
+                latest_channels = await get_latest_dc_channels(
+                    session=session,
+                    user_id=user.id,
+                    inverter_id=inverter.id,
+                )
 
-            # Get latest channel data (for cards)
-            latest_channels = await get_latest_dc_channels(
-                session=session,
-                user_id=user.id,
-                inverter_id=inverter.id,
-            )
+                # Get time-series data (for chart)
+                channel_timeseries = await get_dc_channel_timeseries(
+                    session=session,
+                    user_id=user.id,
+                    inverter_id=inverter.id,
+                    time_range=time_range,
+                )
 
-            # Get time-series data (for chart)
-            channel_timeseries = await get_dc_channel_timeseries(
-                session=session,
-                user_id=user.id,
-                inverter_id=inverter.id,
-                time_range=time_range,
-            )
+                # Calculate time since last update
+                time_ago = "Keine Daten"
+                if latest_channels:
+                    latest_time = max(ch["time"] for ch in latest_channels)
+                    delta = datetime.now(latest_time.tzinfo) - latest_time
+                    if delta.total_seconds() < 60:
+                        time_ago = "vor einer Minute"
+                    elif delta.total_seconds() < 3600:
+                        minutes = int(delta.total_seconds() / 60)
+                        time_ago = f"vor {minutes} Minuten"
+                    elif delta.total_seconds() < 86400:
+                        hours = int(delta.total_seconds() / 3600)
+                        time_ago = f"vor {hours} Stunden"
+                    else:
+                        days = int(delta.total_seconds() / 86400)
+                        time_ago = f"vor {days} Tagen"
 
-            # Calculate time since last update
-            time_ago = "Keine Daten"
-            if latest_channels:
-                latest_time = max(ch["time"] for ch in latest_channels)
-                delta = datetime.now(latest_time.tzinfo) - latest_time
-                if delta.total_seconds() < 60:
-                    time_ago = "vor einer Minute"
-                elif delta.total_seconds() < 3600:
-                    minutes = int(delta.total_seconds() / 60)
-                    time_ago = f"vor {minutes} Minuten"
-                elif delta.total_seconds() < 86400:
-                    hours = int(delta.total_seconds() / 3600)
-                    time_ago = f"vor {hours} Stunden"
-                else:
-                    days = int(delta.total_seconds() / 86400)
-                    time_ago = f"vor {days} Tagen"
+                # Format channel data for response
+                channels_data = []
+                for ch in latest_channels:
+                    channels_data.append({
+                        "channel": ch["channel"],
+                        "name": ch["name"],
+                        "power": round(ch["power"], 1),
+                        "voltage": round(ch["voltage"], 1),
+                        "current": round(ch["current"], 2),
+                        "yield_day_wh": round(ch["yield_day_wh"], 1),
+                        "yield_total_kwh": round(ch["yield_total_kwh"], 1),
+                        "irradiation": round(ch["irradiation"], 3),
+                        "time_ago": time_ago,
+                    })
 
-            # Format channel data for response
-            channels_data = []
-            for ch in latest_channels:
-                channels_data.append({
-                    "channel": ch["channel"],
-                    "name": ch["name"],
-                    "power": round(ch["power"], 1),
-                    "voltage": round(ch["voltage"], 1),
-                    "current": round(ch["current"], 2),
-                    "yield_day_wh": round(ch["yield_day_wh"], 1),
-                    "yield_total_kwh": round(ch["yield_total_kwh"], 1),
-                    "irradiation": round(ch["irradiation"], 3),
-                    "time_ago": time_ago,
-                })
+                logger.info(
+                    "DC Channels data retrieved",
+                    inverter_id=inverter_id,
+                    time_range=time_range,
+                    channels_count=len(channels_data),
+                )
 
-            logger.info(
-                "DC Channels data retrieved",
-                inverter_id=inverter_id,
-                time_range=time_range,
-                channels_count=len(channels_data),
-            )
-
-            return JSONResponse(
-                {
-                    "success": True,
-                    "channels": channels_data,
-                    "timeseries": channel_timeseries,
-                    "inverter": {
-                        "id": inverter.id,
-                        "name": inverter.name,
-                        "serial": inverter.serial_logger,
-                    },
-                }
-            )
-
+                return JSONResponse(
+                    {
+                        "success": True,
+                        "channels": channels_data,
+                        "timeseries": channel_timeseries,
+                        "inverter": {
+                            "id": inverter.id,
+                            "name": inverter.name,
+                            "serial": inverter.serial_logger,
+                        },
+                    }
+                )
         except Exception as e:
             logger.error(
                 "DC Channels data retrieval failed",
@@ -222,6 +218,3 @@ async def get_dc_channels_data(
                 },
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        finally:
-            # Always reset RLS context
-            await reset_rls_context(session)

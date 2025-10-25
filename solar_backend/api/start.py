@@ -17,6 +17,7 @@ from solar_backend.utils.timeseries import (
     get_today_energy_production,
     set_rls_context,
     reset_rls_context,
+    rls_context,
     NoDataException,
     TimeSeriesException,
 )
@@ -42,10 +43,7 @@ async def get_start(
         return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
 
     async with db_session as session:
-        # Set RLS context
-        await set_rls_context(session, user.id)
-
-        try:
+        async with rls_context(session, user.id):
             result = await session.execute(
                 select(Inverter).where(Inverter.user_id == user.id)
             )
@@ -122,15 +120,12 @@ async def get_start(
             if production_available:
                 summary["total_production_today"] = round(total_production, 2)
 
-        finally:
-            await reset_rls_context(session)
-
     return {"user": user, "inverters": inverters, "summary": summary}
 
 
 @router.get("/test", response_class=HTMLResponse)
 @htmx("test", "test")
-async def get_test(request: Request):
+async def get_test(request: Request) -> dict:
     return {"user": None}
 
 

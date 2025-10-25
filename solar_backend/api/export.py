@@ -14,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from zoneinfo import ZoneInfo
 
 from solar_backend.db import Inverter, User, get_async_session
+from solar_backend.limiter import limiter
+from solar_backend.constants import UNAUTHORIZED_MESSAGE
 from solar_backend.users import current_active_user
 from solar_backend.config import settings
 from solar_backend.utils.timeseries import (
@@ -23,6 +25,7 @@ from solar_backend.utils.timeseries import (
     get_last_hour_average,
     set_rls_context,
     reset_rls_context,
+    rls_context,
     NoDataException,
     TimeSeriesException,
 )
@@ -39,7 +42,7 @@ async def get_export_page(
     request: Request,
     user: User = Depends(current_active_user),
     db_session: AsyncSession = Depends(get_async_session),
-):
+) -> dict:
     """
     Display the data export page for a specific inverter.
 
@@ -55,10 +58,7 @@ async def get_export_page(
         HTML export page
     """
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session expired or authentication required. Please log in again."
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MESSAGE + " Please log in again.")
 
     async with db_session as session:
         # Verify inverter belongs to user
@@ -103,7 +103,7 @@ async def export_csv(
     end_date: str,
     user: User = Depends(current_active_user),
     db_session: AsyncSession = Depends(get_async_session),
-):
+) -> StreamingResponse:
     """
     Generate and download measurement data as CSV file.
 
@@ -118,10 +118,7 @@ async def export_csv(
         CSV file as StreamingResponse
     """
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session expired or authentication required. Please log in again."
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MESSAGE + " Please log in again.")
 
     # Parse and validate dates
     try:
@@ -163,134 +160,131 @@ async def export_csv(
             )
 
         try:
-            # Set RLS context
-            await set_rls_context(session, user.id)
-
-            # Get measurement data
-            data_points = await get_raw_measurements(
-                session=session,
-                user_id=user.id,
-                inverter_id=inverter.id,
-                start_date=start_dt,
-                end_date=end_dt,
-            )
-
-            # Get statistics for header
-            try:
-                max_power = await get_today_maximum_power(
-                    session, user.id, inverter.id
+            async with rls_context(session, user.id):
+                # Get measurement data
+                data_points = await get_raw_measurements(
+                    session=session,
+                    user_id=user.id,
+                    inverter_id=inverter.id,
+                    start_date=start_dt,
+                    end_date=end_dt,
                 )
-            except Exception:
-                max_power = 0
 
-            try:
-                total_energy = await get_today_energy_production(
-                    session, user.id, inverter.id
+                # Get statistics for header
+                try:
+                    max_power = await get_today_maximum_power(
+                        session, user.id, inverter.id
+                    )
+                except Exception:
+                    max_power = 0
+
+                try:
+                    total_energy = await get_today_energy_production(
+                        session, user.id, inverter.id
+                    )
+                except Exception:
+                    total_energy = 0.0
+
+                try:
+                    avg_power = await get_last_hour_average(
+                        session, user.id, inverter.id
+                    )
+                except Exception:
+                    avg_power = 0
+
+                # Calculate statistics from exported data
+                if data_points:
+                    powers = [dp["power"] for dp in data_points]
+                    data_max = max(powers)
+                    data_avg = sum(powers) / len(powers)
+                    data_min = min(powers)
+                    data_count = len(data_points)
+                else:
+                    data_max = 0
+                    data_avg = 0
+                    data_min = 0
+                    data_count = 0
+
+                logger.info(
+                    "Exporting measurement data to CSV",
+                    inverter_id=inverter_id,
+                    start_date=start_dt,
+                    end_date=end_dt,
+                    data_points=data_count,
+                    user_id=user.id,
                 )
-            except Exception:
-                total_energy = 0.0
 
-            try:
-                avg_power = await get_last_hour_average(
-                    session, user.id, inverter.id
+                # Generate CSV content
+                output = io.StringIO()
+                writer = csv.writer(output)
+
+                # Write header comments with metadata
+                writer.writerow(
+                    [
+                        "# Messdaten-Export",
+                        "Solar Inverter Measurement Export",
+                    ]
                 )
-            except Exception:
-                avg_power = 0
+                writer.writerow(["# Wechselrichter", "Inverter"])
+                writer.writerow([f"# {inverter.name}", f"# {inverter.name}"])
+                writer.writerow([f"# Seriennummer: {inverter.serial_logger}"])
+                writer.writerow([f"# Benutzer: {user.first_name} {user.last_name}"])
+                writer.writerow(
+                    [f"# Exportdatum: {datetime.now(tz).isoformat()}", "# Export Date"]
+                )
+                writer.writerow([""])
 
-            # Calculate statistics from exported data
-            if data_points:
-                powers = [dp["power"] for dp in data_points]
-                data_max = max(powers)
-                data_avg = sum(powers) / len(powers)
-                data_min = min(powers)
-                data_count = len(data_points)
-            else:
-                data_max = 0
-                data_avg = 0
-                data_min = 0
-                data_count = 0
+                # Write date range info
+                writer.writerow(
+                    [
+                        f"# Zeitraum: {start_dt.date()} bis {end_dt.date()}",
+                        f"# Period: {start_dt.date()} to {end_dt.date()}",
+                    ]
+                )
+                writer.writerow([f"# Anzahl Datenpunkte: {data_count}", "# Data Points"])
+                writer.writerow([""])
 
-            logger.info(
-                "Exporting measurement data to CSV",
-                inverter_id=inverter_id,
-                start_date=start_dt,
-                end_date=end_dt,
-                data_points=data_count,
-                user_id=user.id,
-            )
+                # Write statistics
+                writer.writerow(
+                    [
+                        "# Statistiken",
+                        "Statistics",
+                    ]
+                )
+                writer.writerow(
+                    [f"# Maximale Leistung: {data_max} W", f"# Max Power: {data_max} W"]
+                )
+                writer.writerow(
+                    [
+                        f"# Durchschnittliche Leistung: {data_avg:.1f} W",
+                        f"# Average Power: {data_avg:.1f} W",
+                    ]
+                )
+                writer.writerow(
+                    [f"# Minimale Leistung: {data_min} W", f"# Min Power: {data_min} W"]
+                )
+                writer.writerow([""])
 
-            # Generate CSV content
-            output = io.StringIO()
-            writer = csv.writer(output)
+                # Write column headers
+                writer.writerow(["Zeitstempel", "Leistung (W)"])
 
-            # Write header comments with metadata
-            writer.writerow(
-                [
-                    "# Messdaten-Export",
-                    "Solar Inverter Measurement Export",
-                ]
-            )
-            writer.writerow(["# Wechselrichter", "Inverter"])
-            writer.writerow([f"# {inverter.name}", f"# {inverter.name}"])
-            writer.writerow([f"# Seriennummer: {inverter.serial_logger}"])
-            writer.writerow([f"# Benutzer: {user.first_name} {user.last_name}"])
-            writer.writerow(
-                [f"# Exportdatum: {datetime.now(tz).isoformat()}", "# Export Date"]
-            )
-            writer.writerow([""])
+                # Write data rows
+                for dp in data_points:
+                    writer.writerow([dp["time"], dp["power"]])
 
-            # Write date range info
-            writer.writerow(
-                [
-                    f"# Zeitraum: {start_dt.date()} bis {end_dt.date()}",
-                    f"# Period: {start_dt.date()} to {end_dt.date()}",
-                ]
-            )
-            writer.writerow([f"# Anzahl Datenpunkte: {data_count}", "# Data Points"])
-            writer.writerow([""])
+                # Generate filename
+                filename = f"solar_measurements_{inverter.name}_{start_date}_{end_date}.csv"
+                # Remove invalid characters from filename
+                filename = "".join(c for c in filename if c.isalnum() or c in ".-_ ")
 
-            # Write statistics
-            writer.writerow(
-                [
-                    "# Statistiken",
-                    "Statistics",
-                ]
-            )
-            writer.writerow(
-                [f"# Maximale Leistung: {data_max} W", f"# Max Power: {data_max} W"]
-            )
-            writer.writerow(
-                [
-                    f"# Durchschnittliche Leistung: {data_avg:.1f} W",
-                    f"# Average Power: {data_avg:.1f} W",
-                ]
-            )
-            writer.writerow(
-                [f"# Minimale Leistung: {data_min} W", f"# Min Power: {data_min} W"]
-            )
-            writer.writerow([""])
-
-            # Write column headers
-            writer.writerow(["Zeitstempel", "Leistung (W)"])
-
-            # Write data rows
-            for dp in data_points:
-                writer.writerow([dp["time"], dp["power"]])
-
-            # Generate filename
-            filename = f"solar_measurements_{inverter.name}_{start_date}_{end_date}.csv"
-            # Remove invalid characters from filename
-            filename = "".join(c for c in filename if c.isalnum() or c in ".-_ ")
-
-            # Return as file download
-            return StreamingResponse(
-                iter([output.getvalue()]),
-                media_type="text/csv; charset=utf-8-sig",
-                headers={
-                    "Content-Disposition": f'attachment; filename="{filename}"'
-                },
-            )
-
+                # Return as file download
+                return StreamingResponse(
+                    iter([output.getvalue()]),
+                    media_type="text/csv; charset=utf-8-sig",
+                    headers={
+                        "Content-Disposition": f'attachment; filename="{filename}"'
+                    },
+                )
         except NoDataException as e:
             logger.warning(
                 "No data available for export",
@@ -328,6 +322,3 @@ async def export_csv(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Fehler beim Generieren der CSV-Datei",
             )
-        finally:
-            # Always reset RLS context
-            await reset_rls_context(session)

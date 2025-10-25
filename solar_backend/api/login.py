@@ -11,6 +11,7 @@ from solar_backend.db import User
 
 from solar_backend.users import get_user_manager, current_active_user
 from solar_backend.limiter import limiter
+from solar_backend.constants import LOGIN_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT
 
 from fastapi_users import models, exceptions
 from solar_backend.users import auth_backend_user, get_jwt_strategy
@@ -22,14 +23,14 @@ router = APIRouter()
 
 @router.get("/login", response_class=HTMLResponse)
 @htmx("login", "login")
-async def get_login(request: Request, user: User = Depends(current_active_user)):
+async def get_login(request: Request, user: User = Depends(current_active_user)) -> dict:
     return {"user": user}
 
 from fastapi_csrf_protect import CsrfProtect
 
 
 @router.post("/login", response_class=HTMLResponse)
-@limiter.limit("5/minute")
+@limiter.limit(LOGIN_RATE_LIMIT)
 async def post_login(username: Annotated[str, Form()],
                      password: Annotated[str, Form()],
                      request: Request,
@@ -65,9 +66,9 @@ async def get_logout(request: Request, user: User = Depends(current_active_user)
         status_code=status.HTTP_302_FOUND)
 
 
-@router.post("/request_reset_passwort", response_class=HTMLResponse)
-@limiter.limit("5/hour")
-async def get_reset_password(request: Request, user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager), csrf_protect: CsrfProtect = Depends()):
+@router.post("/request_reset_password", response_class=HTMLResponse)
+@limiter.limit(PASSWORD_RESET_RATE_LIMIT)
+async def post_request_reset_password(request: Request, user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager), csrf_protect: CsrfProtect = Depends()) -> HTMLResponse:
     email = request.headers.get('HX-Prompt')
     user = await user_manager.get_by_email(email)
     await user_manager.forgot_password(user)
@@ -76,9 +77,9 @@ async def get_reset_password(request: Request, user_manager: BaseUserManager[mod
                             </div>""")
 
 
-@router.get("/reset_passwort")
+@router.get("/reset_password")
 @htmx("new_password", "new_password")
-async def get_reset_password(token: str, request: Request, user: User = Depends(current_active_user), user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)):
+async def get_reset_password(token: str, request: Request, user: User = Depends(current_active_user), user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)) -> dict:
     return {"token": token, "user": user}
 
 
@@ -90,7 +91,7 @@ async def post_reset_password(
     request: Request, 
     user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
     csrf_protect: CsrfProtect = Depends()
-    ):
+    ) -> HTMLResponse:
     if new_password1 != new_password2:
         return HTMLResponse("""<div class="alert alert-error">
                                 <span><i class="fa-solid fa-circle-xmark"></i> Beide neuen Passwörter müssen gleich sein!</span>

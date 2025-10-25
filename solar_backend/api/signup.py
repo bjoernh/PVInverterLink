@@ -18,6 +18,7 @@ import os
 
 from solar_backend.schemas import UserCreate
 from solar_backend.limiter import limiter
+from solar_backend.constants import SIGNUP_RATE_LIMIT
 
 from fastapi_users import models, exceptions
 
@@ -30,7 +31,7 @@ router = APIRouter()
 
 @router.get("/signup", response_class=HTMLResponse)
 @htmx("signup", "signup")
-async def root_page(request: Request):
+async def root_page(request: Request) -> dict:
     return {"user": None}
 
 
@@ -38,7 +39,7 @@ async def root_page(request: Request):
 async def validate_password_endpoint(
     password: Annotated[str, Form()],
     user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)
-):
+) -> HTMLResponse:
     """
     Validate password in real-time and return error message if invalid.
     Returns empty response if password is valid.
@@ -53,17 +54,17 @@ async def validate_password_endpoint(
         )
         await user_manager.validate_password(password, dummy_user)
         # Password is valid - return empty/success message
-        return ""
+        return HTMLResponse("")
     except exceptions.InvalidPasswordException as e:
         # Return error message
-        return f'<p class="text-red-600 text-sm mt-1" id="password-error">{e.reason}</p>'
+        return HTMLResponse(f'<p class="text-red-600 text-sm mt-1" id="password-error">{e.reason}</p>')
 
 
 from fastapi_csrf_protect import CsrfProtect
 
 
 @router.post("/signup", response_class=HTMLResponse)
-@limiter.limit("3/hour")
+@limiter.limit(SIGNUP_RATE_LIMIT)
 async def post_signup(
     first_name: Annotated[str, Form()],
     last_name: Annotated[str, Form()],
@@ -71,55 +72,37 @@ async def post_signup(
     password: Annotated[str, Form()],
     request: Request,
     user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
-    csrf_protect: CsrfProtect = Depends()):
-
-    result = True
+    csrf_protect: CsrfProtect = Depends()) -> HTMLResponse:
 
     try:
-        user = UserCreate(
+        user_create = UserCreate(
             first_name=first_name,
             last_name=last_name,
             email=email,
-            password=password,  # For hashing by fastapi-users
+            password=password,
         )
-    except ValidationError as e:
-        # Return error to password validation div without changing page
-        return HTMLResponse(
-            f'<p class="text-red-600 text-sm mt-1" id="password-error">Validierungsfehler: {str(e)}</p>',
-            headers={"HX-Retarget": "#password-validation", "HX-Reswap": "innerHTML"}
-        )
+        user = await user_manager.create(user_create, safe=True, request=request)
+        logger.info(f"User {user.email} created")
+        return templates.TemplateResponse("verify.jinja2", {"request": request, "result": True})
 
-    try:
-        await user_manager.create(user)
-    except exceptions.InvalidPasswordException as e:
-        logger.warning("Password validation failed during signup", error=str(e.reason))
-        # Return error to password validation div without changing page
-        return HTMLResponse(
-            f'<p class="text-red-600 text-sm mt-1" id="password-error">{e.reason}</p>',
-            headers={"HX-Retarget": "#password-validation", "HX-Reswap": "innerHTML"}
-        )
     except exceptions.UserAlreadyExists:
-        # Return error to email field area
-        return HTMLResponse(
-            f'<p class="text-red-600 text-sm mt-1">Email Adresse ist bereits mit einem Account registriert</p>',
-            headers={"HX-Retarget": "#password-validation", "HX-Reswap": "innerHTML"}
-        )
-    except SMTPRecipientsRefused:
-        await user_manager.delete(user)
-        # Return error to email field area
-        return HTMLResponse(
-            f'<p class="text-red-600 text-sm mt-1">Email kann nicht zugestellt werden</p>',
-            headers={"HX-Retarget": "#password-validation", "HX-Reswap": "innerHTML"}
-        )
-
-    # Success - render verify page
-    return templates.TemplateResponse(
-        "verify.jinja2",
-        {"request": request, "result": result, "email": email}
-    )
+        logger.warning(f"User {email} already exists")
+        return HTMLResponse('''<div class="alert alert-error">
+                                <span><i class="fa-solid fa-circle-xmark"></i> User with this email already exists</span>
+                            </div>''')
+    except exceptions.InvalidPasswordException as e:
+        logger.warning(f"Invalid password for {email}: {e.reason}")
+        return HTMLResponse(f'''<div class="alert alert-error">
+                                <span><i class="fa-solid fa-circle-xmark"></i> {e.reason}</span>
+                            </div>''')
+    except Exception as e:
+        logger.error(f"Error during signup: {e}")
+        return HTMLResponse('''<div class="alert alert-error">
+                                <span><i class="fa-solid fa-circle-xmark"></i> An error occurred</span>
+                            </div>''')
 
 @router.get("/verify", response_class=HTMLResponse)
-async def get_signup(token: str, 
+async def get_verify(token: str, 
                  request: Request,
                  user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)):
     

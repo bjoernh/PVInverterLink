@@ -51,5 +51,3 @@ async def test_register(client, mocker):
     }
     response = await client.post("/login", data=login_data)
     assert response.status_code == 200
-
-    

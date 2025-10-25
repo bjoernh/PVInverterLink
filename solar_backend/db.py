@@ -9,6 +9,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqladmin import ModelView
 
 from solar_backend.config import settings, DEBUG
+from solar_backend.constants import MAX_NAME_LENGTH, MAX_SERIAL_LENGTH, API_KEY_LENGTH
 
 
 class Base(DeclarativeBase):
@@ -20,8 +21,8 @@ class Inverter(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id = mapped_column(ForeignKey("user.id"))
     users = relationship("User", back_populates="inverters", lazy="selectin")
-    name: Mapped[str] = mapped_column(String)
-    serial_logger: Mapped[str] = mapped_column(String, unique=True)
+    name: Mapped[str] = mapped_column(String(MAX_NAME_LENGTH))
+    serial_logger: Mapped[str] = mapped_column(String(MAX_SERIAL_LENGTH), unique=True)
     sw_version: Mapped[Optional[str]] = mapped_column(String)
     rated_power: Mapped[Optional[int]] = mapped_column(Integer)
     number_of_mppts: Mapped[Optional[int]] = mapped_column(Integer)
@@ -59,7 +60,7 @@ class DCChannelMeasurement(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), primary_key=True, nullable=False)
     inverter_id: Mapped[int] = mapped_column(ForeignKey("inverter.id", ondelete="CASCADE"), primary_key=True, nullable=False)
     channel: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
-    name: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String(MAX_NAME_LENGTH), nullable=False)
     power: Mapped[float] = mapped_column(Float, nullable=False)
     voltage: Mapped[float] = mapped_column(Float, nullable=False)
     current: Mapped[float] = mapped_column(Float, nullable=False)
@@ -105,9 +106,9 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     inverters = relationship("Inverter", back_populates="users", lazy="selectin")
-    first_name: Mapped[str]  = mapped_column(String(32))
-    last_name: Mapped[str] = mapped_column(String(32))
-    api_key: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, unique=True)
+    first_name: Mapped[str]  = mapped_column(String(MAX_NAME_LENGTH))
+    last_name: Mapped[str] = mapped_column(String(MAX_NAME_LENGTH))
+    api_key: Mapped[Optional[str]] = mapped_column(String(API_KEY_LENGTH), nullable=True, unique=True)
 
     def __repr__(self):
         return f"{self.id} - {self.first_name} {self.last_name}"

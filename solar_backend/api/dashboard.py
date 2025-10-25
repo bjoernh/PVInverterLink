@@ -5,8 +5,12 @@ from fastapi_htmx import htmx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from solar_backend.db import Inverter, User, get_async_session
+from solar_backend.db import get_async_session, User
+from solar_backend.limiter import limiter
+from solar_backend.constants import UNAUTHORIZED_MESSAGE
 from solar_backend.users import current_active_user
+from solar_backend.services.inverter_service import InverterService
+from solar_backend.services.exceptions import InverterNotFoundException
 from solar_backend.utils.timeseries import (
     TimeRange,
     EnergyPeriod,
@@ -20,6 +24,7 @@ from solar_backend.utils.timeseries import (
     get_current_month_energy_production,
     set_rls_context,
     reset_rls_context,
+    rls_context,
     NoDataException,
     TimeSeriesException,
 )
@@ -37,7 +42,7 @@ async def get_dashboard(
     time_range: str = "24 hours",
     user: User = Depends(current_active_user),
     db_session: AsyncSession = Depends(get_async_session),
-):
+) -> dict:
     """
     Display real-time power dashboard for a specific inverter.
 
@@ -53,19 +58,14 @@ async def get_dashboard(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session expired or authentication required. Please log in again."
+            detail=UNAUTHORIZED_MESSAGE + " Please log in again.",
         )
 
     async with db_session as session:
-        # Verify inverter belongs to user
-        result = await session.execute(
-            select(Inverter).where(
-                Inverter.id == inverter_id, Inverter.user_id == user.id
-            )
-        )
-        inverter = result.scalar_one_or_none()
-
-        if not inverter:
+        inverter_service = InverterService(session)
+        try:
+            inverter = await inverter_service.get_user_inverter(user.id, inverter_id)
+        except InverterNotFoundException:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Inverter nicht gefunden oder keine Berechtigung",
@@ -101,7 +101,7 @@ async def get_dashboard_data(
     time_range: str = "24 hours",
     user: User = Depends(current_active_user),
     db_session: AsyncSession = Depends(get_async_session),
-):
+) -> JSONResponse:
     """
     API endpoint to fetch time-series data for dashboard graph.
     Returns JSON data for Plotly consumption.
@@ -118,19 +118,14 @@ async def get_dashboard_data(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session expired or authentication required. Please log in again."
+            detail=UNAUTHORIZED_MESSAGE + " Please log in again.",
         )
 
     async with db_session as session:
-        # Verify inverter belongs to user
-        result = await session.execute(
-            select(Inverter).where(
-                Inverter.id == inverter_id, Inverter.user_id == user.id
-            )
-        )
-        inverter = result.scalar_one_or_none()
-
-        if not inverter:
+        inverter_service = InverterService(session)
+        try:
+            inverter = await inverter_service.get_user_inverter(user.id, inverter_id)
+        except InverterNotFoundException:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Inverter not found"
             )
@@ -143,70 +138,71 @@ async def get_dashboard_data(
             time_range = time_range_enum.value
 
         try:
-            # Set RLS context
-            await set_rls_context(session, user.id)
-
-            # Get time-series data
-            data_points = await get_power_timeseries(
-                session=session,
-                user_id=user.id,
-                inverter_id=inverter.id,
-                time_range=time_range,
-            )
-
-            # Get current power (latest value)
-            current = data_points[-1]["power"] if data_points else 0
-
-            # Get statistics
-            try:
-                max_today = await get_today_maximum_power(session, user.id, inverter.id)
-            except Exception as e:
-                logger.warning("Failed to get today's maximum power", error=str(e))
-                max_today = 0
-
-            try:
-                today_kwh = await get_today_energy_production(
-                    session, user.id, inverter.id
+            async with rls_context(session, user.id):
+                # Get time-series data
+                data_points = await get_power_timeseries(
+                    session=session,
+                    user_id=user.id,
+                    inverter_id=inverter.id,
+                    time_range=time_range,
                 )
-            except Exception as e:
-                logger.warning("Failed to get today's energy production", error=str(e))
-                today_kwh = 0.0
 
-            try:
-                avg_last_hour = await get_last_hour_average(
-                    session, user.id, inverter.id
-                )
-            except Exception as e:
-                logger.warning("Failed to get last hour average", error=str(e))
-                avg_last_hour = 0
+                # Get current power (latest value)
+                current = data_points[-1]["power"] if data_points else 0
 
-            stats = {
-                "current": current,
-                "max": max_today,
-                "today_kwh": today_kwh,
-                "avg_last_hour": avg_last_hour,
-            }
+                # Get statistics
+                try:
+                    max_today = await get_today_maximum_power(
+                        session, user.id, inverter.id
+                    )
+                except Exception as e:
+                    logger.warning("Failed to get today's maximum power", error=str(e))
+                    max_today = 0
 
-            logger.info(
-                "Dashboard data retrieved",
-                inverter_id=inverter_id,
-                time_range=time_range,
-                data_points=len(data_points),
-            )
+                try:
+                    today_kwh = await get_today_energy_production(
+                        session, user.id, inverter.id
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Failed to get today's energy production", error=str(e)
+                    )
+                    today_kwh = 0.0
 
-            return JSONResponse(
-                {
-                    "success": True,
-                    "data": data_points,
-                    "stats": stats,
-                    "inverter": {
-                        "id": inverter.id,
-                        "name": inverter.name,
-                        "serial": inverter.serial_logger,
-                    },
+                try:
+                    avg_last_hour = await get_last_hour_average(
+                        session, user.id, inverter.id
+                    )
+                except Exception as e:
+                    logger.warning("Failed to get last hour average", error=str(e))
+                    avg_last_hour = 0
+
+                stats = {
+                    "current": current,
+                    "max": max_today,
+                    "today_kwh": today_kwh,
+                    "avg_last_hour": avg_last_hour,
                 }
-            )
 
+                logger.info(
+                    "Dashboard data retrieved",
+                    inverter_id=inverter_id,
+                    time_range=time_range,
+                    data_points=len(data_points),
+                )
+
+                return JSONResponse(
+                    {
+                        "success": True,
+                        "data": data_points,
+                        "stats": stats,
+                        "inverter": {
+                            "id": inverter.id,
+                            "name": inverter.name,
+                            "serial": inverter.serial_logger,
+                        },
+                    }
+                )
         except NoDataException as e:
             logger.warning(
                 "No data available for dashboard",
@@ -269,9 +265,6 @@ async def get_dashboard_data(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Fehler beim Abrufen der Daten",
             )
-        finally:
-            # Always reset RLS context
-            await reset_rls_context(session)
 
 
 @router.get("/api/dashboard/{inverter_id}/energy-data")
@@ -280,7 +273,7 @@ async def get_dashboard_energy_data(
     period: str = "day",
     user: User = Depends(current_active_user),
     db_session: AsyncSession = Depends(get_async_session),
-):
+) -> JSONResponse:
     """
     API endpoint to fetch daily/hourly energy production data for bar chart.
 
@@ -296,19 +289,14 @@ async def get_dashboard_energy_data(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session expired or authentication required. Please log in again."
+            detail=UNAUTHORIZED_MESSAGE + " Please log in again.",
         )
 
     async with db_session as session:
-        # Verify inverter belongs to user
-        result = await session.execute(
-            select(Inverter).where(
-                Inverter.id == inverter_id, Inverter.user_id == user.id
-            )
-        )
-        inverter = result.scalar_one_or_none()
-
-        if not inverter:
+        inverter_service = InverterService(session)
+        try:
+            inverter = await inverter_service.get_user_inverter(user.id, inverter_id)
+        except InverterNotFoundException:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Inverter not found"
             )
@@ -321,79 +309,80 @@ async def get_dashboard_energy_data(
             period = period_enum.value
 
         try:
-            # Set RLS context
-            await set_rls_context(session, user.id)
+            async with rls_context(session, user.id):
+                # Get energy data based on period
+                if period_enum == EnergyPeriod.DAY:
+                    # Get hourly data for today
+                    hourly_data = await get_hourly_energy_production(
+                        session, user.id, inverter.id
+                    )
 
-            # Get energy data based on period
-            if period_enum == EnergyPeriod.DAY:
-                # Get hourly data for today
-                hourly_data = await get_hourly_energy_production(
-                    session, user.id, inverter.id
+                    # Format data for response
+                    data_points = [
+                        {
+                            "label": f"{item['hour']:02d}:00",
+                            "energy_kwh": round(item["energy_kwh"], 2),
+                        }
+                        for item in hourly_data
+                    ]
+
+                elif period_enum == EnergyPeriod.MONTH:
+                    # Get daily data for current month
+                    daily_data = await get_current_month_energy_production(
+                        session, user.id, inverter.id
+                    )
+
+                    # Format data for response with German date format
+                    data_points = []
+                    for item in daily_data:
+                        # Convert YYYY-MM-DD to DD.MM. format
+                        date_parts = item["date"].split("-")
+                        label = f"{date_parts[2]}.{date_parts[1]}."
+                        data_points.append(
+                            {
+                                "label": label,
+                                "energy_kwh": round(item["energy_kwh"], 2),
+                            }
+                        )
+
+                else:  # Default to EnergyPeriod.WEEK
+                    # Get daily data for current week (Monday-Sunday)
+                    daily_data = await get_current_week_energy_production(
+                        session, user.id, inverter.id
+                    )
+
+                    # Format data for response with German date format
+                    data_points = []
+                    for item in daily_data:
+                        # Convert YYYY-MM-DD to DD.MM. format
+                        date_parts = item["date"].split("-")
+                        label = f"{date_parts[2]}.{date_parts[1]}."
+                        data_points.append(
+                            {
+                                "label": label,
+                                "energy_kwh": round(item["energy_kwh"], 2),
+                            }
+                        )
+
+                logger.info(
+                    "Energy data retrieved",
+                    inverter_id=inverter_id,
+                    period=period,
+                    data_points=len(data_points),
                 )
 
-                # Format data for response
-                data_points = [
+                return JSONResponse(
                     {
-                        "label": f"{item['hour']:02d}:00",
-                        "energy_kwh": round(item["energy_kwh"], 2),
+                        "success": True,
+                        "period": period,
+                        "data": data_points,
+                        "inverter": {
+                            "id": inverter.id,
+                            "name": inverter.name,
+                            "serial": inverter.serial_logger,
+                        },
                     }
-                    for item in hourly_data
-                ]
-
-            elif period_enum == EnergyPeriod.MONTH:
-                # Get daily data for current month
-                daily_data = await get_current_month_energy_production(
-                    session, user.id, inverter.id
                 )
-
-                # Format data for response with German date format
-                data_points = []
-                for item in daily_data:
-                    # Convert YYYY-MM-DD to DD.MM. format
-                    date_parts = item["date"].split("-")
-                    label = f"{date_parts[2]}.{date_parts[1]}."
-                    data_points.append({
-                        "label": label,
-                        "energy_kwh": round(item["energy_kwh"], 2),
-                    })
-
-            else:  # Default to EnergyPeriod.WEEK
-                # Get daily data for current week (Monday-Sunday)
-                daily_data = await get_current_week_energy_production(
-                    session, user.id, inverter.id
-                )
-
-                # Format data for response with German date format
-                data_points = []
-                for item in daily_data:
-                    # Convert YYYY-MM-DD to DD.MM. format
-                    date_parts = item["date"].split("-")
-                    label = f"{date_parts[2]}.{date_parts[1]}."
-                    data_points.append({
-                        "label": label,
-                        "energy_kwh": round(item["energy_kwh"], 2),
-                    })
-
-            logger.info(
-                "Energy data retrieved",
-                inverter_id=inverter_id,
-                period=period,
-                data_points=len(data_points),
-            )
-
-            return JSONResponse(
-                {
-                    "success": True,
-                    "period": period,
-                    "data": data_points,
-                    "inverter": {
-                        "id": inverter.id,
-                        "name": inverter.name,
-                        "serial": inverter.serial_logger,
-                    },
-                }
-            )
-
         except Exception as e:
             logger.error(
                 "Energy data retrieval failed",
@@ -410,6 +399,3 @@ async def get_dashboard_energy_data(
                     "message": "Fehler beim Abrufen der Energiedaten",
                 }
             )
-        finally:
-            # Always reset RLS context
-            await reset_rls_context(session)

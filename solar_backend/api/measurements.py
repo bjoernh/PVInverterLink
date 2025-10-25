@@ -111,7 +111,7 @@ class MeasurementData(BaseModel):
 async def validate_api_key(
     x_api_key: str = Header(None),
     session: AsyncSession = Depends(get_async_session),
-):
+) -> str:
     """
     Validate per-user API key by looking up the inverter serial.
 

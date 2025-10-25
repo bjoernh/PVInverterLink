@@ -11,6 +11,7 @@ from solar_backend.users import current_active_user, get_user_manager, auth_back
 from solar_backend.limiter import limiter
 from solar_backend.config import settings
 from solar_backend.utils.api_keys import generate_api_key
+from solar_backend.constants import UNAUTHORIZED_MESSAGE, PASSWORD_RESET_RATE_LIMIT, DEFAULT_RATE_LIMIT
 
 from fastapi_csrf_protect import CsrfProtect
 
@@ -29,7 +30,7 @@ async def get_account(request: Request, user: User = Depends(current_active_user
 
 
 @router.post("/account/change-email", response_class=HTMLResponse)
-@limiter.limit("5/hour")
+@limiter.limit(DEFAULT_RATE_LIMIT)
 async def post_change_email(
     new_email: Annotated[str, Form()],
     request: Request,
@@ -80,7 +81,7 @@ async def post_change_email(
 
 
 @router.post("/account/change-password", response_class=HTMLResponse)
-@limiter.limit("5/hour")
+@limiter.limit(DEFAULT_RATE_LIMIT)
 async def post_change_password(
     current_password: Annotated[str, Form()],
     new_password1: Annotated[str, Form()],
@@ -147,7 +148,7 @@ async def post_change_password(
 
 
 @router.post("/account/delete", response_class=HTMLResponse)
-@limiter.limit("3/hour")
+@limiter.limit(PASSWORD_RESET_RATE_LIMIT)
 async def post_delete_account(
     password: Annotated[str, Form()],
     request: Request,
@@ -206,7 +207,7 @@ async def post_delete_account(
 
 
 @router.post("/account/generate-api-key", response_class=HTMLResponse)
-@limiter.limit("5/hour")
+@limiter.limit(DEFAULT_RATE_LIMIT)
 async def post_generate_api_key(
     request: Request,
     user: User = Depends(current_active_user),
