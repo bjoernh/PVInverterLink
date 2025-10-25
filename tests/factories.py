@@ -18,7 +18,6 @@ class UserCreateFactory(factory.Factory):
     last_name = factory.LazyFunction(lambda: faker.last_name())
     email = factory.LazyFunction(lambda: faker.email())
     password = factory.LazyFunction(lambda: faker.password(length=12))
-    tmp_pass = factory.LazyAttribute(lambda obj: obj.password)
 
 
 class InverterAddFactory(factory.Factory):

@@ -62,9 +62,6 @@ async def validate_password_endpoint(
 from fastapi_csrf_protect import CsrfProtect
 
 
-from solar_backend.utils.crypto import CryptoManager
-
-
 @router.post("/signup", response_class=HTMLResponse)
 @limiter.limit("3/hour")
 async def post_signup(
@@ -79,15 +76,11 @@ async def post_signup(
     result = True
 
     try:
-        # Encrypt the password for temporary storage
-        crypto = CryptoManager(settings.ENCRYPTION_KEY)
-        encrypted_password = crypto.encrypt(password)
         user = UserCreate(
             first_name=first_name,
             last_name=last_name,
             email=email,
             password=password,  # For hashing by fastapi-users
-            tmp_pass=encrypted_password  # Encrypted for temporary storage
         )
     except ValidationError as e:
         # Return error to password validation div without changing page
