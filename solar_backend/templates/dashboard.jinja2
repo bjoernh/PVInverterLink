@@ -116,9 +116,55 @@
         </div>
     </div>
 
+    <!-- Energy Production Section Header -->
+    <div class="mb-4 mt-8">
+        <h2 class="text-lg font-semibold text-gray-700">Energieproduktion</h2>
+        <p class="text-sm text-gray-500">Stündliche und tägliche Energieerzeugung</p>
+    </div>
+
+    <!-- Energy Production Chart Card -->
+    <div class="card bg-base-100 shadow-md mb-6">
+        <div class="card-body p-2 md:p-6">
+            <h2 class="card-title mb-4">Energieproduktion</h2>
+
+            <!-- Period Selector Buttons -->
+            <div class="btn-group mb-4 flex-wrap">
+                <button class="btn btn-sm energy-period-tab" data-period="day" onclick="changeEnergyPeriod('day')">
+                    Tag
+                </button>
+                <button class="btn btn-sm energy-period-tab btn-active" data-period="week" onclick="changeEnergyPeriod('week')">
+                    Woche
+                </button>
+                <button class="btn btn-sm energy-period-tab" data-period="month" onclick="changeEnergyPeriod('month')">
+                    Monat
+                </button>
+            </div>
+
+            <!-- Description Text -->
+            <p id="energy-period-description" class="text-sm text-gray-500 mb-4">
+                Tägliche Energieproduktion dieser Woche
+            </p>
+
+            <!-- Chart Container -->
+            <div id="energyChart" class="relative w-full" style="height: 350px;"></div>
+
+            <!-- Loading/Error States -->
+            <div id="energy-loading-state" class="text-center py-8 hidden">
+                <span class="loading loading-spinner loading-lg"></span>
+                <p class="mt-2 text-gray-500">Daten werden geladen...</p>
+            </div>
+            <div id="energy-error-state" class="alert alert-warning hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span id="energy-error-message">Keine Daten verfügbar</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Additional Info Card -->
     {% if inverter.rated_power or inverter.number_of_mppts %}
-    <div class="card bg-base-100 shadow-md">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <div class="card-body p-2 md:p-6">
             <h2 class="card-title">Wechselrichter-Informationen</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -180,14 +226,6 @@
                 responsive: true,
                 displayModeBar: false,
                 displaylogo: false,
-                modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-                toImageButtonOptions: {
-                    format: 'png',
-                    filename: 'solar_power_' + new Date().toISOString().split('T')[0],
-                    height: 600,
-                    width: 1200,
-                    scale: 2
-                }
             };
 
             const trace = {
@@ -340,6 +378,178 @@
                 stopAutoRefresh();
             }
         });
+    })();
+
+    // Energy Production Chart
+    (function() {
+        const inverterId = {{ inverter.id }};
+        let currentEnergyPeriod = 'week';
+        let energyChartInitialized = false;
+
+        // Initialize energy chart
+        function initEnergyChart() {
+            const chartDiv = document.getElementById('energyChart');
+            if (!chartDiv || energyChartInitialized) return;
+
+            const layout = {
+                title: '',
+                xaxis: {
+                    title: '',
+                    showgrid: false,
+                    tickangle: -45
+                },
+                yaxis: {
+                    title: {
+                        text: 'Energie (kWh)',
+                        standoff: 15
+                    },
+                    rangemode: 'tozero',
+                    ticksuffix: ' kWh'
+                },
+                hovermode: 'closest',
+                showlegend: false,
+                margin: {
+                    l: 100,
+                    r: 30,
+                    t: 30,
+                    b: 80
+                },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            };
+
+            const config = {
+                responsive: true,
+                displayModeBar: false,
+                displaylogo: false
+            };
+
+            const trace = {
+                x: [],
+                y: [],
+                type: 'bar',
+                marker: {
+                    color: 'rgb(234, 179, 8)',
+                    line: {
+                        color: 'rgb(202, 138, 4)',
+                        width: 1
+                    }
+                },
+                hovertemplate: '<b>%{x}</b><br>%{y:.2f} kWh<extra></extra>'
+            };
+
+            Plotly.newPlot('energyChart', [trace], layout, config);
+            energyChartInitialized = true;
+        }
+
+        // Load energy data from API
+        async function loadEnergyData() {
+            const loadingState = document.getElementById('energy-loading-state');
+            const errorState = document.getElementById('energy-error-state');
+            const chartDiv = document.getElementById('energyChart');
+
+            // Show loading state
+            loadingState.classList.remove('hidden');
+            errorState.classList.add('hidden');
+            chartDiv.classList.add('opacity-50');
+
+            try {
+                const response = await fetch(`/api/dashboard/${inverterId}/energy-data?period=${currentEnergyPeriod}`);
+                const result = await response.json();
+
+                if (result.success && result.data.length > 0) {
+                    // Update chart with Plotly
+                    const labels = result.data.map(d => d.label);
+                    const values = result.data.map(d => d.energy_kwh);
+
+                    Plotly.update('energyChart', {
+                        x: [labels],
+                        y: [values]
+                    }, {}, [0]);
+
+                    // Hide error, show chart
+                    errorState.classList.add('hidden');
+                    chartDiv.classList.remove('opacity-50');
+                } else {
+                    // Show error message
+                    document.getElementById('energy-error-message').textContent = result.message || 'Keine Daten verfügbar';
+                    errorState.classList.remove('hidden');
+                    chartDiv.classList.add('opacity-50');
+                }
+            } catch (error) {
+                console.error('Failed to load energy data:', error);
+                document.getElementById('energy-error-message').textContent = 'Fehler beim Laden der Daten';
+                errorState.classList.remove('hidden');
+                chartDiv.classList.add('opacity-50');
+            } finally {
+                loadingState.classList.add('hidden');
+            }
+        }
+
+        // Change energy period
+        function changeEnergyPeriod(period) {
+            currentEnergyPeriod = period;
+
+            // Update active button
+            document.querySelectorAll('.energy-period-tab').forEach(btn => {
+                if (btn.dataset.period === period) {
+                    btn.classList.add('btn-active');
+                } else {
+                    btn.classList.remove('btn-active');
+                }
+            });
+
+            // Update description
+            const descriptions = {
+                day: 'Stündliche Energieproduktion für heute',
+                week: 'Tägliche Energieproduktion dieser Woche',
+                month: 'Tägliche Energieproduktion dieses Monats'
+            };
+            document.getElementById('energy-period-description').textContent = descriptions[period];
+
+            // Reload data
+            loadEnergyData();
+        }
+
+        // Handle responsive chart height
+        function updateEnergyChartHeight() {
+            const chartDiv = document.getElementById('energyChart');
+            const isMobile = window.innerWidth < 768;
+            chartDiv.style.height = isMobile ? '350px' : '500px';
+            if (energyChartInitialized) {
+                Plotly.Plots.resize('energyChart');
+            }
+        }
+
+        // Initialize energy chart
+        function initializeEnergyChart() {
+            energyChartInitialized = false;
+            initEnergyChart();
+            loadEnergyData();
+            updateEnergyChartHeight();
+        }
+
+        // Expose changeEnergyPeriod to global scope for onclick handlers
+        window.changeEnergyPeriod = changeEnergyPeriod;
+
+        // Initialize on page load (direct navigation)
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeEnergyChart);
+        } else {
+            // DOM already loaded (HTMX swap)
+            initializeEnergyChart();
+        }
+
+        // Re-initialize when content is swapped by HTMX
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.querySelector('#energyChart')) {
+                energyChartInitialized = false;
+                initializeEnergyChart();
+            }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', updateEnergyChartHeight);
     })();
 </script>
 

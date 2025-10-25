@@ -13,6 +13,10 @@ from solar_backend.utils.timeseries import (
     get_today_energy_production,
     get_today_maximum_power,
     get_last_hour_average,
+    get_daily_energy_production,
+    get_hourly_energy_production,
+    get_current_week_energy_production,
+    get_current_month_energy_production,
     set_rls_context,
     reset_rls_context,
     NoDataException,
@@ -263,6 +267,140 @@ async def get_dashboard_data(
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Fehler beim Abrufen der Daten",
+            )
+        finally:
+            # Always reset RLS context
+            await reset_rls_context(session)
+
+
+@router.get("/api/dashboard/{inverter_id}/energy-data")
+async def get_dashboard_energy_data(
+    inverter_id: int,
+    period: str = "week",
+    user: User = Depends(current_active_user),
+    db_session: AsyncSession = Depends(get_async_session),
+):
+    """
+    API endpoint to fetch daily/hourly energy production data for bar chart.
+
+    Args:
+        inverter_id: ID of the inverter
+        period: Time period ("day", "week", "month")
+        user: Current authenticated user
+        db_session: Database session
+
+    Returns:
+        JSON with labels and energy values
+    """
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired or authentication required. Please log in again."
+        )
+
+    async with db_session as session:
+        # Verify inverter belongs to user
+        result = await session.execute(
+            select(Inverter).where(
+                Inverter.id == inverter_id, Inverter.user_id == user.id
+            )
+        )
+        inverter = result.scalar_one_or_none()
+
+        if not inverter:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Inverter not found"
+            )
+
+        try:
+            # Set RLS context
+            await set_rls_context(session, user.id)
+
+            # Get energy data based on period
+            if period == "day":
+                # Get hourly data for today
+                hourly_data = await get_hourly_energy_production(
+                    session, user.id, inverter.id
+                )
+
+                # Format data for response
+                data_points = [
+                    {
+                        "label": f"{item['hour']:02d}:00",
+                        "energy_kwh": round(item["energy_kwh"], 2),
+                    }
+                    for item in hourly_data
+                ]
+
+            elif period == "month":
+                # Get daily data for current month
+                daily_data = await get_current_month_energy_production(
+                    session, user.id, inverter.id
+                )
+
+                # Format data for response with German date format
+                data_points = []
+                for item in daily_data:
+                    # Convert YYYY-MM-DD to DD.MM. format
+                    date_parts = item["date"].split("-")
+                    label = f"{date_parts[2]}.{date_parts[1]}."
+                    data_points.append({
+                        "label": label,
+                        "energy_kwh": round(item["energy_kwh"], 2),
+                    })
+
+            else:  # Default to "week"
+                # Get daily data for current week (Monday-Sunday)
+                daily_data = await get_current_week_energy_production(
+                    session, user.id, inverter.id
+                )
+
+                # Format data for response with German date format
+                data_points = []
+                for item in daily_data:
+                    # Convert YYYY-MM-DD to DD.MM. format
+                    date_parts = item["date"].split("-")
+                    label = f"{date_parts[2]}.{date_parts[1]}."
+                    data_points.append({
+                        "label": label,
+                        "energy_kwh": round(item["energy_kwh"], 2),
+                    })
+
+            logger.info(
+                "Energy data retrieved",
+                inverter_id=inverter_id,
+                period=period,
+                data_points=len(data_points),
+            )
+
+            return JSONResponse(
+                {
+                    "success": True,
+                    "period": period,
+                    "data": data_points,
+                    "inverter": {
+                        "id": inverter.id,
+                        "name": inverter.name,
+                        "serial": inverter.serial_logger,
+                    },
+                }
+            )
+
+        except Exception as e:
+            logger.error(
+                "Energy data retrieval failed",
+                inverter_id=inverter_id,
+                period=period,
+                error=str(e),
+                exc_info=True,
+            )
+            return JSONResponse(
+                {
+                    "success": False,
+                    "period": period,
+                    "data": [],
+                    "message": "Fehler beim Abrufen der Energiedaten",
+                }
             )
         finally:
             # Always reset RLS context
