@@ -438,7 +438,12 @@ solar-backend/
 │   │   ├── account.py           # Account management
 │   │   └── start.py             # Homepage
 │   │
+│   ├── services/                # Business logic layer
+│   │   ├── inverter_service.py  # Inverter-related logic
+│   │   └── exceptions.py        # Custom service exceptions
+│   │
 │   ├── utils/                   # Utility modules
+│   │   ├── query_builder.py     # Advanced query construction
 │   │   ├── timeseries.py        # TimescaleDB operations
 │   │   ├── email.py             # Email sending
 │   │   ├── crypto.py            # Encryption utilities
@@ -479,15 +484,15 @@ solar-backend/
 2. **Generate Migration**: `uv run alembic revision --autogenerate -m "description"`
 3. **Review Migration**: Check generated file in `alembic/versions/`
 4. **Apply Migration**: `uv run alembic upgrade head`
-5. **Add API Endpoints**: Create/update files in `solar_backend/api/`
-6. **Write Tests**: Add tests in `tests/`
-7. **Run Tests**: `uv run pytest`
+5. **Add Business Logic**: Implement logic in the appropriate service in `solar_backend/services/`.
+6. **Add API Endpoints**: Create/update files in `solar_backend/api/` that call the service layer.
+7. **Write Tests**: Add tests in `tests/`
+8. **Run Tests**: `uv run pytest`
 
 ### Important Development Notes
 
 - **Don't rebuild the backend Docker container in dev mode**: The code directory is volume-mounted with uvicorn's `--reload` flag, so changes are detected automatically
-- **Use RLS Context**: Always call `set_rls_context(session, user_id)` before time-series queries in production code
-- **Reset RLS**: Always call `reset_rls_context(session)` after queries to clean up session state
+- **Use RLS Context**: Always use the `rls_context` manager from `utils/timeseries.py` when querying time-series data.
 - **HTMX Templates**: Must be initialized in test setup with correct path
 
 ### Code Style

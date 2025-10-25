@@ -7,7 +7,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi_htmx import htmx
 
 from solar_backend.db import User, get_async_session
-from solar_backend.schemas import InverterAdd, InverterAddMetadata
+from solar_backend.schemas import InverterAdd, InverterAddMetadata, InverterMetadataResponse
+
 from solar_backend.users import current_active_user, current_superuser_bearer
 from solar_backend.services.inverter_service import InverterService
 from fastapi_csrf_protect import CsrfProtect
@@ -64,7 +65,18 @@ async def get_inverters(
     return {"user": user, "inverters": inverters}
 
 
-@router.post("/inverter")
+@router.post(
+    "/inverter",
+    summary="Create a new inverter",
+    description="Adds a new inverter for the currently authenticated user.",
+    tags=["Inverters"],
+    responses={
+        200: {"description": "Inverter successfully created. Returns HTML content for HTMX."},
+        303: {"description": "User is not authenticated, redirects to login."},
+        403: {"description": "User has not verified their email address."},
+        422: {"description": "An inverter with the same serial number already exists."},
+    },
+)
 async def post_add_inverter(
     inverter_to_add: InverterAdd,
     request: Request,
@@ -168,7 +180,20 @@ from solar_backend.services.exceptions import (
 )
 
 
-@router.put("/inverter/{inverter_id}", response_class=HTMLResponse)
+@router.put(
+    "/inverter/{inverter_id}",
+    response_class=HTMLResponse,
+    summary="Update an inverter",
+    description="Updates an inverter\'s name and serial number based on its ID.",
+    tags=["Inverters"],
+    responses={
+        200: {"description": "Inverter successfully updated. Returns HTML content for HTMX."},
+        303: {"description": "User is not authenticated, redirects to login."},
+        403: {"description": "User is not authorized to update this inverter or has not verified their email."},
+        404: {"description": "The inverter with the specified ID was not found."},
+        422: {"description": "An inverter with the same serial number already exists."},
+    },
+)
 async def put_inverter(
     inverter_id: int,
     inverter_update: InverterAdd,
@@ -264,7 +289,19 @@ async def put_inverter(
     """)
 
 
-@router.delete("/inverter/{inverter_id}", response_class=HTMLResponse)
+@router.delete(
+    "/inverter/{inverter_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Delete an inverter",
+    description="Deletes an inverter and all of its associated measurement data.",
+    tags=["Inverters"],
+    responses={
+        200: {"description": "Inverter successfully deleted."},
+        303: {"description": "User is not authenticated, redirects to login."},
+        403: {"description": "User is not authorized to delete this inverter."},
+        404: {"description": "The inverter with the specified ID was not found."},
+    },
+)
 async def delete_inverter(
     inverter_id: int,
     request: Request,
@@ -283,10 +320,22 @@ async def delete_inverter(
     except UnauthorizedInverterAccessException:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
-    return ""
+    return Response(status_code=status.HTTP_200_OK)
 
 
-@router.post("/inverter_metadata/{serial_logger}")
+@router.post(
+    "/inverter_metadata/{serial_logger}",
+    response_model=InverterMetadataResponse,
+    summary="Update inverter metadata",
+    description="Updates metadata (rated power, MPPTs) for an inverter identified by its serial number. This endpoint is typically used by internal systems or collectors.",
+    tags=["Inverters"],
+    responses={
+        200: {"description": "Metadata successfully updated."},
+        401: {"description": "Authentication failed (invalid or missing bearer token)."},
+        403: {"description": "User is not a superuser."},
+        404: {"description": "Inverter with the specified serial number not found."},
+    },
+)
 async def post_inverter_metadata(
     data: InverterAddMetadata,
     serial_logger: str,

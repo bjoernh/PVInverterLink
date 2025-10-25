@@ -22,7 +22,7 @@ IMPORTANT: mark task that are completed as completed!
 - **Phase 2 (Code Organization)**: ✅ **COMPLETE** - 4/4 tasks (100%)
 - **Phase 3 (Code Quality)**: Not started
 - **Phase 4 (Architecture)**: Not started
-- **Phase 5 (Testing & Docs)**: Not started
+- **Phase 5 (Testing & Docs)**: ✅ **COMPLETE** - 3/3 tasks (100%)
 - **Phase 6 (Performance & Security)**: Not started
 - **Phase 7 (Final Verification)**: Not started
 
@@ -85,6 +85,23 @@ IMPORTANT: mark task that are completed as completed!
    - API layer catches custom exceptions and returns correct HTTP status codes
    - Result: 87 tests passing
    - Date: 2025-10-25
+
+10. **TASK 5.1**: Add Missing Tests - ✅ **COMPLETE**
+    - Added comprehensive unit tests for `InverterService`.
+    - Added unit tests for `TimeSeriesQueryBuilder` logic.
+    - Added unit tests for the `rls_context` manager.
+    - Increased test suite from 83 to 102 tests.
+    - Date: 2025-10-25
+
+11. **TASK 5.2**: Update Documentation - ✅ **COMPLETE**
+    - Updated `CLAUDE.md` and `README.md` to reflect new service layer, query builder, and `rls_context` manager.
+    - Removed references to legacy code.
+    - Date: 2025-10-25
+
+12. **TASK 5.3**: Add API Documentation - ✅ **COMPLETE**
+    - Added detailed OpenAPI documentation (summaries, descriptions, responses) to all routes in the `inverter` API.
+    - Created a new `InverterMetadataResponse` schema for accurate response modeling.
+    - Date: 2025-10-25
 
 ### Parallel Execution Success 🚀
 Tasks 1.4 and 2.2 were executed **simultaneously** using git worktrees:

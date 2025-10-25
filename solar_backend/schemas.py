@@ -42,3 +42,13 @@ class Inverter:
     last_update: Optional[str] = None
     rated_power: Optional[int] = None
     number_of_mppts: Optional[int] = None
+
+
+@dataclass
+class InverterMetadataResponse:
+    id: int
+    serial_logger: str
+    name: str
+    rated_power: Optional[int]
+    number_of_mppts: Optional[int]
+    sw_version: str

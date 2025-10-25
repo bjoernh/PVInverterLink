@@ -144,13 +144,21 @@ uv run alembic history
 - `solar_backend/config.py` - Pydantic settings, environment configuration loading
 - `solar_backend/schemas.py` - Pydantic models for API request/response validation
 
+### Service Layer
+
+Located in `solar_backend/services/`:
+- `inverter_service.py` - Handles business logic for inverter CRUD operations.
+- `exceptions.py` - Defines custom domain exceptions for the service layer.
+
+The service layer abstracts business logic away from the API routes, making the code cleaner, easier to test, and more maintainable. API routes should call services to perform actions, and services will raise domain-specific exceptions on errors.
+
 ### API Routers
 
 Located in `solar_backend/api/`:
 - `signup.py` - User registration flow
 - `login.py` - Authentication endpoints
 - `start.py` - Main dashboard/homepage
-- `inverter.py` - Inverter CRUD operations
+- `inverter.py` - Inverter CRUD operations (delegates logic to `InverterService`)
 - `dashboard.py` - Dashboard data and time-series queries
 - `measurements.py` - Measurement data ingestion endpoint
 - `account.py` - Account management (password, email, deletion)
@@ -158,7 +166,8 @@ Located in `solar_backend/api/`:
 
 ### Utilities
 
-- `utils/timeseries.py` - TimescaleDB utilities for time-series data operations
+- `utils/query_builder.py` - `TimeSeriesQueryBuilder` for constructing complex, reusable time-series SQL queries.
+- `utils/timeseries.py` - Core TimescaleDB utilities, including the `rls_context` manager.
 - `utils/email.py` - Email sending for verification and password reset
 - `utils/admin_auth.py` - Admin panel authentication backend
 
@@ -174,7 +183,7 @@ The application implements per-user data isolation using TimescaleDB:
 
 2. **Data Isolation**:
    - Row-Level Security (RLS) enforces user isolation at database level
-   - Application sets `app.current_user_id` session variable before queries
+   - Application sets `app.current_user_id` session variable before queries using the `rls_context` manager.
    - Queries automatically filtered by RLS policy
    - CASCADE deletion: deleting a user automatically deletes all inverters and measurements
 
@@ -189,7 +198,6 @@ The application implements per-user data isolation using TimescaleDB:
 **User** (`db.py`):
 - Extends `SQLAlchemyBaseUserTable` from fastapi-users
 - Has one-to-many relationship with Inverter
-- `tmp_pass` field exists but is legacy (can be removed in future cleanup)
 
 **Inverter** (`db.py`):
 - Linked to User via `user_id` foreign key with CASCADE deletion
@@ -231,7 +239,6 @@ Both use same JWT strategy with 2-day lifetime.
 - Config loaded from `solar_backend/backend.env` by default
 - Required variables: `DATABASE_URL`, `AUTH_SECRET`, `ENCRYPTION_KEY`, `BASE_URL`
 - Optional: `FASTMAIL` config for email functionality
-- `WEB_DEV_TESTING` flag in `config.py` is legacy (previously for InfluxDB, can be removed)
 - `COOKIE_SECURE` should be True in production, False for local development
 - `STORE_DC_CHANNEL_DATA` (default: True) - Controls whether detailed DC channel (MPPT) measurements are stored
   - When True: Stores per-channel power, voltage, current, yield_day, yield_total, and irradiation data
@@ -245,6 +252,7 @@ Both use same JWT strategy with 2-day lifetime.
 - All tests use function-scoped database recreation for isolation
 - HTMX templates must be initialized in test setup
 - Test data created using helpers in `tests/helpers.py`
+- Unit tests for services, query builders, and other utilities are located in `tests/unit/`.
 
 ## Working with Time-Series Data
 
@@ -263,32 +271,28 @@ docker-compose exec db psql -U deyehard -d deyehard -c "\dx"
 
 ### Row-Level Security Pattern
 
-Always set RLS context before querying time-series data:
+Always use the `rls_context` async context manager to ensure RLS is correctly applied and cleaned up.
 
 ```python
-from solar_backend.utils.timeseries import set_rls_context, reset_rls_context
+from solar_backend.utils.timeseries import rls_context
 
-async with session:
-    try:
-        # Set RLS context
-        await set_rls_context(session, user.id)
-
-        # Perform queries - automatically filtered by user_id
-        data = await get_power_timeseries(session, user.id, inverter.id, "24h")
-
-    finally:
-        # Always reset RLS context
-        await reset_rls_context(session)
+async with rls_context(session, user.id):
+    # RLS context is now set for this block
+    # Perform queries - they will be automatically filtered by user_id
+    data = await get_power_timeseries(session, user.id, inverter.id, "24h")
+# RLS context is automatically reset here, even if exceptions occurred
 ```
 
 ## Common Patterns
 
 ### Adding New API Endpoints
 
-1. Create route in appropriate `api/*.py` file
-2. Use `Depends(current_active_user)` or `Depends(current_active_user_bearer)` for auth
-3. For HTMX routes, use `@htmx("template_name", "component_name")` decorator
-4. Add Pydantic schemas to `schemas.py` for request/response validation
+1.  Add business logic to the appropriate service in `services/`.
+2.  Create the route in the appropriate `api/*.py` file.
+3.  The route should call the service to perform the logic.
+4.  Use `Depends(current_active_user)` or `Depends(current_active_user_bearer)` for auth.
+5.  For HTMX routes, use `@htmx("template_name", "component_name")` decorator.
+6.  Add Pydantic schemas to `schemas.py` for request/response validation.
 
 ### Database Changes
 
@@ -299,9 +303,9 @@ async with session:
 
 ### Working with Time-Series Queries
 
-- Always include `user_id` in queries for partition pruning
-- Set RLS context using `set_rls_context(session, user_id)` before queries
-- Reset RLS context with `reset_rls_context(session)` after queries
+- Always include `user_id` in queries for partition pruning.
+- Use the `rls_context` manager to set the RLS context.
+- Use the `TimeSeriesQueryBuilder` in `utils/query_builder.py` for complex queries like daily energy production.
 - Use utilities in `utils/timeseries.py` for common operations:
   - `write_measurement()` - Insert measurement data
   - `get_latest_value()` - Get most recent measurement
