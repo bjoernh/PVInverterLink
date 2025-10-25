@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from zoneinfo import ZoneInfo
 
 from solar_backend.config import settings
+from solar_backend.utils.query_builder import TimeSeriesQueryBuilder
 
 logger = structlog.get_logger()
 
@@ -53,6 +54,39 @@ class TimeRange(str, Enum):
     def default(cls) -> "TimeRange":
         """Get the default time range."""
         return cls.TWENTY_FOUR_HOURS
+
+
+class EnergyPeriod(str, Enum):
+    """Energy production time period options."""
+
+    DAY = "day"
+    WEEK = "week"
+    MONTH = "month"
+
+    @property
+    def label(self) -> str:
+        """Get the display label for this period."""
+        labels = {
+            self.DAY: "Tag",
+            self.WEEK: "Woche",
+            self.MONTH: "Monat",
+        }
+        return labels[self]
+
+    @property
+    def description(self) -> str:
+        """Get the description text for this period."""
+        descriptions = {
+            self.DAY: "Stündliche Energieproduktion für heute",
+            self.WEEK: "Tägliche Energieproduktion dieser Woche",
+            self.MONTH: "Tägliche Energieproduktion dieses Monats",
+        }
+        return descriptions[self]
+
+    @classmethod
+    def default(cls) -> "EnergyPeriod":
+        """Get the default energy period."""
+        return cls.DAY
 
 
 class TimeSeriesException(Exception):
@@ -935,6 +969,9 @@ async def get_raw_measurements(
         raise TimeSeriesException(f"Failed to query raw measurements: {str(e)}") from e
 
 
+from solar_backend.utils.query_builder import TimeSeriesQueryBuilder
+
+
 async def get_daily_energy_production(
     session: AsyncSession,
     user_id: int,
@@ -957,118 +994,10 @@ async def get_daily_energy_production(
         List of dicts with 'date' (YYYY-MM-DD string) and 'energy_kwh' (float)
     """
     try:
-        # Get configured timezone
-        tz = ZoneInfo(settings.TZ)
-
-        # Try to get yield_day_wh data first (most accurate)
-        query = text(f"""
-            WITH daily_yield AS (
-                SELECT
-                    DATE(time AT TIME ZONE :timezone) AS date,
-                    MAX(yield_day_wh) AS max_yield_wh
-                FROM inverter_measurements
-                WHERE user_id = :user_id
-                  AND inverter_id = :inverter_id
-                  AND time >= NOW() - INTERVAL '{days} days'
-                  AND yield_day_wh IS NOT NULL
-                GROUP BY DATE(time AT TIME ZONE :timezone)
-                ORDER BY date ASC
-            )
-            SELECT date, max_yield_wh
-            FROM daily_yield
-            WHERE max_yield_wh > 0
-        """)
-
-        result = await session.execute(
-            query,
-            {
-                "user_id": user_id,
-                "inverter_id": inverter_id,
-                "timezone": str(tz),
-            },
-        )
-
-        yield_data = []
-        for row in result:
-            yield_data.append({
-                "date": row.date.isoformat(),
-                "energy_kwh": float(row.max_yield_wh) / 1000.0,  # Convert Wh to kWh
-            })
-
-        # If we have yield data for most days, use it
-        if len(yield_data) >= days * 0.7:  # At least 70% of days have data
-            logger.debug(
-                "Using inverter yield data for daily energy",
-                user_id=user_id,
-                inverter_id=inverter_id,
-                days_found=len(yield_data),
-                source="inverter",
-            )
-            return yield_data
-
-        # Fallback: Calculate from power measurements using trapezoidal integration
-        logger.debug(
-            "Insufficient yield data, falling back to power integration",
-            user_id=user_id,
-            inverter_id=inverter_id,
-            yield_days=len(yield_data),
-        )
-
-        query = text(f"""
-            WITH power_data AS (
-                SELECT
-                    DATE(time AT TIME ZONE :timezone) AS date,
-                    time,
-                    total_output_power,
-                    EXTRACT(EPOCH FROM time - LAG(time) OVER (PARTITION BY DATE(time AT TIME ZONE :timezone) ORDER BY time)) AS time_diff_seconds
-                FROM inverter_measurements
-                WHERE user_id = :user_id
-                  AND inverter_id = :inverter_id
-                  AND time >= NOW() - INTERVAL '{days} days'
-                ORDER BY time
-            ),
-            daily_energy AS (
-                SELECT
-                    date,
-                    COALESCE(
-                        SUM((total_output_power * time_diff_seconds) / 3600000.0),
-                        0
-                    ) AS energy_kwh
-                FROM power_data
-                WHERE time_diff_seconds IS NOT NULL
-                GROUP BY date
-                ORDER BY date ASC
-            )
-            SELECT date, energy_kwh
-            FROM daily_energy
-            WHERE energy_kwh > 0
-        """)
-
-        result = await session.execute(
-            query,
-            {
-                "user_id": user_id,
-                "inverter_id": inverter_id,
-                "timezone": str(tz),
-            },
-        )
-
-        integrated_data = []
-        for row in result:
-            integrated_data.append({
-                "date": row.date.isoformat(),
-                "energy_kwh": float(row.energy_kwh),
-            })
-
-        logger.debug(
-            "Calculated daily energy from power integration",
-            user_id=user_id,
-            inverter_id=inverter_id,
-            days_found=len(integrated_data),
-            source="calculated",
-        )
-
-        return integrated_data
+        builder = TimeSeriesQueryBuilder(session, user_id, inverter_id)
+        time_filter = f"time >= NOW() - INTERVAL '{days} days'"
+        yield_threshold = int(days * 0.7)  # At least 70% of days have data
+        return await builder.get_energy_production(time_filter, yield_threshold)
 
     except Exception as e:
         logger.error(
@@ -1187,118 +1116,10 @@ async def get_current_week_energy_production(
         List of dicts with 'date' (YYYY-MM-DD string) and 'energy_kwh' (float)
     """
     try:
-        # Get configured timezone
-        tz = ZoneInfo(settings.TZ)
-
-        # Try to get yield_day_wh data first (most accurate)
-        query = text("""
-            WITH daily_yield AS (
-                SELECT
-                    DATE(time AT TIME ZONE :timezone) AS date,
-                    MAX(yield_day_wh) AS max_yield_wh
-                FROM inverter_measurements
-                WHERE user_id = :user_id
-                  AND inverter_id = :inverter_id
-                  AND time >= DATE_TRUNC('week', NOW() AT TIME ZONE :timezone)
-                  AND yield_day_wh IS NOT NULL
-                GROUP BY DATE(time AT TIME ZONE :timezone)
-                ORDER BY date ASC
-            )
-            SELECT date, max_yield_wh
-            FROM daily_yield
-            WHERE max_yield_wh > 0
-        """)
-
-        result = await session.execute(
-            query,
-            {
-                "user_id": user_id,
-                "inverter_id": inverter_id,
-                "timezone": str(tz),
-            },
-        )
-
-        yield_data = []
-        for row in result:
-            yield_data.append({
-                "date": row.date.isoformat(),
-                "energy_kwh": float(row.max_yield_wh) / 1000.0,  # Convert Wh to kWh
-            })
-
-        # If we have yield data for most days, use it
-        if len(yield_data) >= 3:  # At least 3 days of data
-            logger.debug(
-                "Using inverter yield data for current week",
-                user_id=user_id,
-                inverter_id=inverter_id,
-                days_found=len(yield_data),
-                source="inverter",
-            )
-            return yield_data
-
-        # Fallback: Calculate from power measurements using trapezoidal integration
-        logger.debug(
-            "Insufficient yield data, falling back to power integration",
-            user_id=user_id,
-            inverter_id=inverter_id,
-            yield_days=len(yield_data),
-        )
-
-        query = text("""
-            WITH power_data AS (
-                SELECT
-                    DATE(time AT TIME ZONE :timezone) AS date,
-                    time,
-                    total_output_power,
-                    EXTRACT(EPOCH FROM time - LAG(time) OVER (PARTITION BY DATE(time AT TIME ZONE :timezone) ORDER BY time)) AS time_diff_seconds
-                FROM inverter_measurements
-                WHERE user_id = :user_id
-                  AND inverter_id = :inverter_id
-                  AND time >= DATE_TRUNC('week', NOW() AT TIME ZONE :timezone)
-                ORDER BY time
-            ),
-            daily_energy AS (
-                SELECT
-                    date,
-                    COALESCE(
-                        SUM((total_output_power * time_diff_seconds) / 3600000.0),
-                        0
-                    ) AS energy_kwh
-                FROM power_data
-                WHERE time_diff_seconds IS NOT NULL
-                GROUP BY date
-                ORDER BY date ASC
-            )
-            SELECT date, energy_kwh
-            FROM daily_energy
-            WHERE energy_kwh > 0
-        """)
-
-        result = await session.execute(
-            query,
-            {
-                "user_id": user_id,
-                "inverter_id": inverter_id,
-                "timezone": str(tz),
-            },
-        )
-
-        integrated_data = []
-        for row in result:
-            integrated_data.append({
-                "date": row.date.isoformat(),
-                "energy_kwh": float(row.energy_kwh),
-            })
-
-        logger.debug(
-            "Calculated current week energy from power integration",
-            user_id=user_id,
-            inverter_id=inverter_id,
-            days_found=len(integrated_data),
-            source="calculated",
-        )
-
-        return integrated_data
+        builder = TimeSeriesQueryBuilder(session, user_id, inverter_id)
+        time_filter = "time >= DATE_TRUNC('week', NOW() AT TIME ZONE :timezone)"
+        yield_threshold = 3  # At least 3 days of data
+        return await builder.get_energy_production(time_filter, yield_threshold)
 
     except Exception as e:
         logger.error(
@@ -1330,118 +1151,10 @@ async def get_current_month_energy_production(
         List of dicts with 'date' (YYYY-MM-DD string) and 'energy_kwh' (float)
     """
     try:
-        # Get configured timezone
-        tz = ZoneInfo(settings.TZ)
-
-        # Try to get yield_day_wh data first (most accurate)
-        query = text("""
-            WITH daily_yield AS (
-                SELECT
-                    DATE(time AT TIME ZONE :timezone) AS date,
-                    MAX(yield_day_wh) AS max_yield_wh
-                FROM inverter_measurements
-                WHERE user_id = :user_id
-                  AND inverter_id = :inverter_id
-                  AND time >= DATE_TRUNC('month', NOW() AT TIME ZONE :timezone)
-                  AND yield_day_wh IS NOT NULL
-                GROUP BY DATE(time AT TIME ZONE :timezone)
-                ORDER BY date ASC
-            )
-            SELECT date, max_yield_wh
-            FROM daily_yield
-            WHERE max_yield_wh > 0
-        """)
-
-        result = await session.execute(
-            query,
-            {
-                "user_id": user_id,
-                "inverter_id": inverter_id,
-                "timezone": str(tz),
-            },
-        )
-
-        yield_data = []
-        for row in result:
-            yield_data.append({
-                "date": row.date.isoformat(),
-                "energy_kwh": float(row.max_yield_wh) / 1000.0,  # Convert Wh to kWh
-            })
-
-        # If we have yield data for most days, use it
-        if len(yield_data) >= 5:  # At least 5 days of data
-            logger.debug(
-                "Using inverter yield data for current month",
-                user_id=user_id,
-                inverter_id=inverter_id,
-                days_found=len(yield_data),
-                source="inverter",
-            )
-            return yield_data
-
-        # Fallback: Calculate from power measurements using trapezoidal integration
-        logger.debug(
-            "Insufficient yield data, falling back to power integration",
-            user_id=user_id,
-            inverter_id=inverter_id,
-            yield_days=len(yield_data),
-        )
-
-        query = text("""
-            WITH power_data AS (
-                SELECT
-                    DATE(time AT TIME ZONE :timezone) AS date,
-                    time,
-                    total_output_power,
-                    EXTRACT(EPOCH FROM time - LAG(time) OVER (PARTITION BY DATE(time AT TIME ZONE :timezone) ORDER BY time)) AS time_diff_seconds
-                FROM inverter_measurements
-                WHERE user_id = :user_id
-                  AND inverter_id = :inverter_id
-                  AND time >= DATE_TRUNC('month', NOW() AT TIME ZONE :timezone)
-                ORDER BY time
-            ),
-            daily_energy AS (
-                SELECT
-                    date,
-                    COALESCE(
-                        SUM((total_output_power * time_diff_seconds) / 3600000.0),
-                        0
-                    ) AS energy_kwh
-                FROM power_data
-                WHERE time_diff_seconds IS NOT NULL
-                GROUP BY date
-                ORDER BY date ASC
-            )
-            SELECT date, energy_kwh
-            FROM daily_energy
-            WHERE energy_kwh > 0
-        """)
-
-        result = await session.execute(
-            query,
-            {
-                "user_id": user_id,
-                "inverter_id": inverter_id,
-                "timezone": str(tz),
-            },
-        )
-
-        integrated_data = []
-        for row in result:
-            integrated_data.append({
-                "date": row.date.isoformat(),
-                "energy_kwh": float(row.energy_kwh),
-            })
-
-        logger.debug(
-            "Calculated current month energy from power integration",
-            user_id=user_id,
-            inverter_id=inverter_id,
-            days_found=len(integrated_data),
-            source="calculated",
-        )
-
-        return integrated_data
+        builder = TimeSeriesQueryBuilder(session, user_id, inverter_id)
+        time_filter = "time >= DATE_TRUNC('month', NOW() AT TIME ZONE :timezone)"
+        yield_threshold = 5  # At least 5 days of data
+        return await builder.get_energy_production(time_filter, yield_threshold)
 
     except Exception as e:
         logger.error(

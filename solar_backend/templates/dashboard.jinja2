@@ -129,10 +129,10 @@
 
             <!-- Period Selector Buttons -->
             <div class="btn-group mb-4 flex-wrap">
-                <button class="btn btn-sm energy-period-tab" data-period="day" onclick="changeEnergyPeriod('day')">
+                <button class="btn btn-sm energy-period-tab btn-active" data-period="day" onclick="changeEnergyPeriod('day')">
                     Tag
                 </button>
-                <button class="btn btn-sm energy-period-tab btn-active" data-period="week" onclick="changeEnergyPeriod('week')">
+                <button class="btn btn-sm energy-period-tab" data-period="week" onclick="changeEnergyPeriod('week')">
                     Woche
                 </button>
                 <button class="btn btn-sm energy-period-tab" data-period="month" onclick="changeEnergyPeriod('month')">
@@ -142,7 +142,7 @@
 
             <!-- Description Text -->
             <p id="energy-period-description" class="text-sm text-gray-500 mb-4">
-                Tägliche Energieproduktion dieser Woche
+                Stündliche Energieproduktion für heute
             </p>
 
             <!-- Chart Container -->
@@ -383,7 +383,7 @@
     // Energy Production Chart
     (function() {
         const inverterId = {{ inverter.id }};
-        let currentEnergyPeriod = 'week';
+        let currentEnergyPeriod = 'day';
         let energyChartInitialized = false;
 
         // Initialize energy chart

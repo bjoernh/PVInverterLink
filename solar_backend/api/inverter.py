@@ -1,20 +1,16 @@
 import asyncpg
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
-from fastapi_users import BaseUserManager
-
-
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi_htmx import htmx
 
 from solar_backend.db import User, get_async_session
 from solar_backend.schemas import InverterAdd, InverterAddMetadata
-from solar_backend.schemas import Inverter as InverterSchema
 from solar_backend.users import current_active_user, current_superuser_bearer
-from solar_backend.db import Inverter
+from solar_backend.services.inverter_service import InverterService
+from fastapi_csrf_protect import CsrfProtect
 
 
 logger = structlog.get_logger()
@@ -62,16 +58,10 @@ async def get_inverters(
     if user is None:
         return RedirectResponse('/login', status_code=status.HTTP_303_SEE_OTHER)
 
-    # Fetch all inverters for this user
-    result = await session.execute(
-        select(Inverter).where(Inverter.user_id == user.id)
-    )
-    inverters = result.scalars().all()
+    service = InverterService(session)
+    inverters = await service.get_inverters(user.id)
 
     return {"user": user, "inverters": inverters}
-
-
-from fastapi_csrf_protect import CsrfProtect
 
 
 @router.post("/inverter")
@@ -85,7 +75,6 @@ async def post_add_inverter(
     if user is None:
         return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
 
-    # Check if user is verified
     if not user.is_verified:
         logger.warning(
             "Unverified user attempted to add inverter",
@@ -97,28 +86,10 @@ async def post_add_inverter(
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
-    # Create inverter object (no InfluxDB bucket needed)
-    new_inverter_obj = Inverter(
-        user_id=user.id,
-        name=inverter_to_add.name,
-        serial_logger=inverter_to_add.serial,
-        sw_version="-",
-    )
-
-    # Insert into database
+    service = InverterService(session)
     try:
-        session.add(new_inverter_obj)
-        await session.commit()
-        await session.refresh(new_inverter_obj)
-
-        logger.info(
-            "Inverter created",
-            inverter_id=new_inverter_obj.id,
-            user_id=user.id,
-            serial=inverter_to_add.serial
-        )
+        new_inverter_obj = await service.create_inverter(user.id, inverter_to_add)
     except IntegrityError as e:
-        await session.rollback()
         logger.error(
             "Inverter serial already exists",
             serial=inverter_to_add.serial,
@@ -129,10 +100,8 @@ async def post_add_inverter(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
-    # Check if request is from inverters management page
     hx_current_url = request.headers.get("HX-Current-URL", "")
     if "/inverters" in hx_current_url:
-        # Return table row for inverters management page
         return HTMLResponse(f"""
             <tr id="inverter-row-{new_inverter_obj.id}">
                 <td>
@@ -187,11 +156,16 @@ async def post_add_inverter(
             </tr>
         """)
     else:
-        # Return success page for add_inverter page
         return HTMLResponse("""
                         <div class="sm:mx-auto sm:w-full sm:max-w-sm">
                         <h3 class="mt-10 text-3xl font-bold leading-9 tracking-tight"> Wechselrichter erfolgreich registriert</h3>
                         <a href="/" hx-boost="false"><button class="btn">Weiter</button></a></div>""")
+
+
+from solar_backend.services.exceptions import (
+    InverterNotFoundException,
+    UnauthorizedInverterAccessException,
+)
 
 
 @router.put("/inverter/{inverter_id}", response_class=HTMLResponse)
@@ -206,7 +180,6 @@ async def put_inverter(
     if user is None:
         return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
 
-    # Check if user is verified
     if not user.is_verified:
         logger.warning(
             "Unverified user attempted to edit inverter",
@@ -218,44 +191,17 @@ async def put_inverter(
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
-    # Store user_id before any session operations to avoid detachment issues
-    user_id = user.id
-
-    # Fetch the inverter
-    inverter = await session.get(Inverter, inverter_id)
-
-    if not inverter:
+    service = InverterService(session)
+    try:
+        inverter = await service.update_inverter(inverter_id, user.id, inverter_update)
+    except InverterNotFoundException:
         return HTMLResponse(
             "<tr><td colspan='4' class='text-error'>Wechselrichter nicht gefunden.</td></tr>",
             status_code=status.HTTP_404_NOT_FOUND,
         )
-
-    # Verify ownership
-    if inverter.user_id != user_id:
+    except UnauthorizedInverterAccessException:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-
-    # Update inverter fields
-    inverter.name = inverter_update.name
-    inverter.serial_logger = inverter_update.serial
-
-    try:
-        await session.commit()
-        await session.refresh(inverter)
-
-        logger.info(
-            "Inverter updated",
-            inverter_id=inverter_id,
-            user_id=user_id,
-            new_name=inverter_update.name,
-            new_serial=inverter_update.serial
-        )
-    except IntegrityError as e:
-        await session.rollback()
-        logger.error(
-            "Inverter serial already exists during update",
-            serial=inverter_update.serial,
-            error=str(e),
-        )
+    except IntegrityError:
         return HTMLResponse(
             f"""<tr id="inverter-row-{inverter_id}">
                 <td colspan="4" class="text-error">Seriennummer existiert bereits</td>
@@ -263,7 +209,6 @@ async def put_inverter(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
-    # Return updated table row
     return HTMLResponse(f"""
         <tr id="inverter-row-{inverter.id}">
             <td>
@@ -330,24 +275,13 @@ async def delete_inverter(
     if user is None:
         return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
 
-    # Store user_id before any session operations to avoid detachment issues
-    user_id = user.id
-
-    inverter = await session.get(Inverter, inverter_id)
-
-    # Verify ownership
-    if inverter.user_id != user_id:
+    service = InverterService(session)
+    try:
+        await service.delete_inverter(inverter_id, user.id)
+    except InverterNotFoundException:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    except UnauthorizedInverterAccessException:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-
-    await session.delete(inverter)
-    await session.commit()
-
-    logger.info(
-        "Inverter deleted",
-        inverter_id=inverter_id,
-        user_id=user_id
-    )
-    # Note: Measurements are automatically deleted via CASCADE constraint
 
     return ""
 
@@ -362,53 +296,16 @@ async def post_inverter_metadata(
 ):
     """
     Update metadata for an inverter identified by serial logger number.
-
-    This endpoint is called by the collector (superuser) to update inverter
-    metadata such as rated power and number of MPPTs after collecting this
-    information from the inverter telemetry.
-
-    Args:
-        data: Metadata containing rated_power and number_of_mppts
-        serial_logger: Unique serial number of the data logger
-
-    Returns:
-        Updated inverter data with metadata
-
-    Raises:
-        404: Inverter with given serial_logger not found
     """
-    # Query inverter by serial_logger
-    result = await session.execute(
-        select(Inverter).where(Inverter.serial_logger == serial_logger)
-    )
-    inverter = result.scalar_one_or_none()
-
-    if not inverter:
-        logger.warning(
-            "Inverter not found for metadata update",
-            serial_logger=serial_logger
-        )
+    service = InverterService(session)
+    try:
+        inverter = await service.update_inverter_metadata(serial_logger, data)
+    except InverterNotFoundException:
         return HTMLResponse(
             content=f"Inverter with serial {serial_logger} not found",
             status_code=status.HTTP_404_NOT_FOUND
         )
 
-    # Update metadata fields
-    inverter.rated_power = data.rated_power
-    inverter.number_of_mppts = data.number_of_mppts
-
-    await session.commit()
-    await session.refresh(inverter)
-
-    logger.info(
-        "Inverter metadata updated",
-        serial_logger=serial_logger,
-        inverter_id=inverter.id,
-        rated_power=data.rated_power,
-        number_of_mppts=data.number_of_mppts
-    )
-
-    # Return success response with updated data
     return {
         "id": inverter.id,
         "serial_logger": inverter.serial_logger,

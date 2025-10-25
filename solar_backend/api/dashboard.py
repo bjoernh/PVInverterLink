@@ -9,6 +9,7 @@ from solar_backend.db import Inverter, User, get_async_session
 from solar_backend.users import current_active_user
 from solar_backend.utils.timeseries import (
     TimeRange,
+    EnergyPeriod,
     get_power_timeseries,
     get_today_energy_production,
     get_today_maximum_power,
@@ -276,7 +277,7 @@ async def get_dashboard_data(
 @router.get("/api/dashboard/{inverter_id}/energy-data")
 async def get_dashboard_energy_data(
     inverter_id: int,
-    period: str = "week",
+    period: str = "day",
     user: User = Depends(current_active_user),
     db_session: AsyncSession = Depends(get_async_session),
 ):
@@ -285,7 +286,7 @@ async def get_dashboard_energy_data(
 
     Args:
         inverter_id: ID of the inverter
-        period: Time period ("day", "week", "month")
+        period: Time period (EnergyPeriod enum value)
         user: Current authenticated user
         db_session: Database session
 
@@ -312,12 +313,19 @@ async def get_dashboard_energy_data(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Inverter not found"
             )
 
+        # Validate and convert period to enum
+        try:
+            period_enum = EnergyPeriod(period)
+        except ValueError:
+            period_enum = EnergyPeriod.default()
+            period = period_enum.value
+
         try:
             # Set RLS context
             await set_rls_context(session, user.id)
 
             # Get energy data based on period
-            if period == "day":
+            if period_enum == EnergyPeriod.DAY:
                 # Get hourly data for today
                 hourly_data = await get_hourly_energy_production(
                     session, user.id, inverter.id
@@ -332,7 +340,7 @@ async def get_dashboard_energy_data(
                     for item in hourly_data
                 ]
 
-            elif period == "month":
+            elif period_enum == EnergyPeriod.MONTH:
                 # Get daily data for current month
                 daily_data = await get_current_month_energy_production(
                     session, user.id, inverter.id
@@ -349,7 +357,7 @@ async def get_dashboard_energy_data(
                         "energy_kwh": round(item["energy_kwh"], 2),
                     })
 
-            else:  # Default to "week"
+            else:  # Default to EnergyPeriod.WEEK
                 # Get daily data for current week (Monday-Sunday)
                 daily_data = await get_current_week_energy_production(
                     session, user.id, inverter.id

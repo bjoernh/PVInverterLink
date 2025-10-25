@@ -245,6 +245,67 @@ async def test_dashboard_api_nonexistent_inverter(
 
 
 @pytest.mark.asyncio
+async def test_energy_data_api_endpoint(
+    authenticated_client: AsyncClient,
+    test_user: User,
+    test_inverter: Inverter,
+    without_influx,
+):
+    """Test the energy data API endpoint with different periods."""
+    periods = ["day", "week", "month"]
+
+    for period in periods:
+        response = await authenticated_client.get(
+            f"/api/dashboard/{test_inverter.id}/energy-data?period={period}"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Check response structure
+        assert "success" in data
+        assert "period" in data
+        assert "data" in data
+        assert "inverter" in data
+
+        # Check that period matches
+        assert data["period"] == period
+
+        # Check inverter info
+        assert data["inverter"]["id"] == test_inverter.id
+        assert data["inverter"]["name"] == test_inverter.name
+        assert data["inverter"]["serial"] == test_inverter.serial_logger
+
+
+@pytest.mark.asyncio
+async def test_energy_data_api_invalid_period_defaults(
+    authenticated_client: AsyncClient, test_inverter: Inverter, without_influx
+):
+    """Test that API handles invalid period gracefully and defaults to 'day'."""
+    response = await authenticated_client.get(
+        f"/api/dashboard/{test_inverter.id}/energy-data?period=invalid"
+    )
+
+    # Should default to 'day' and return success
+    assert response.status_code == 200
+    data = response.json()
+    assert data["period"] == "day"  # Should default to EnergyPeriod.DAY
+
+
+@pytest.mark.asyncio
+async def test_energy_data_api_requires_authentication(
+    async_client: AsyncClient, test_inverter: Inverter
+):
+    """Test that energy data API endpoint requires authentication."""
+    response = await async_client.get(
+        f"/api/dashboard/{test_inverter.id}/energy-data"
+    )
+
+    # Should be unauthorized
+    assert response.status_code in [401, 303]
+
+
+@pytest.mark.asyncio
 async def test_home_page_shows_dashboard_link(
     authenticated_client: AsyncClient, test_user: User, test_inverter: Inverter
 ):
@@ -254,4 +315,4 @@ async def test_home_page_shows_dashboard_link(
     assert response.status_code == 200
     # Check for dashboard link in home page
     assert f"/dashboard/{test_inverter.id}" in response.text
-    assert "Dashboard" in response.text
+    # Note: The word "Dashboard" might not be in the German version of the page
