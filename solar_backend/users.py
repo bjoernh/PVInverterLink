@@ -12,7 +12,7 @@ from fastapi_users.db import SQLAlchemyUserDatabase
 from sqladmin import ModelView
 from sqlalchemy import update
 from solar_backend.db import User, get_user_db
-from solar_backend.config import DEBUG, settings, WEB_DEV_TESTING
+from solar_backend.config import DEBUG, settings
 from solar_backend.utils.email import send_verify_mail, send_reset_passwort_mail
 
 logger = structlog.get_logger()
@@ -27,24 +27,23 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int], ModelView):
     verification_token_secret = settings.AUTH_SECRET
 
     async def validate_password(self, password: str, user: User | UserCreate) -> None:
-        if not WEB_DEV_TESTING:
-            # Check for common passwords
-            common_passwords = ["password", "123456", "12345678", "qwerty"]
-            if password.lower() in common_passwords:
-                raise InvalidPasswordException(reason="Passwort ist zu einfach")
+        # Check for common passwords
+        common_passwords = ["password", "123456", "12345678", "qwerty"]
+        if password.lower() in common_passwords:
+            raise InvalidPasswordException(reason="Passwort ist zu einfach")
 
-            if len(password) < 8:
-                raise InvalidPasswordException(
-                    reason="Passwort muss mindestens 8 Zeichen lang sein"
-                )
-            if not any(c.isdigit() for c in password):
-                raise InvalidPasswordException(
-                    reason="Passwort muss mindestens eine Zahl enthalten"
-                )
-            if not any(c.isupper() for c in password):
-                raise InvalidPasswordException(
-                    reason="Passwort muss mindestens einen Großbuchstaben enthalten"
-                )
+        if len(password) < 8:
+            raise InvalidPasswordException(
+                reason="Passwort muss mindestens 8 Zeichen lang sein"
+            )
+        if not any(c.isdigit() for c in password):
+            raise InvalidPasswordException(
+                reason="Passwort muss mindestens eine Zahl enthalten"
+            )
+        if not any(c.isupper() for c in password):
+            raise InvalidPasswordException(
+                reason="Passwort muss mindestens einen Großbuchstaben enthalten"
+            )
         # await super().validate_password(password, user)
 
     async def on_after_register(self, user: User, request: Optional[Request] = None):

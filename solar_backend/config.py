@@ -7,12 +7,12 @@ import structlog
 
 logger = structlog.get_logger()
 
-ENF_FILE = os.environ.get("ENV_FILE", None)
-if ENF_FILE is None:
+ENV_FILE = os.environ.get("ENV_FILE", None)
+if ENV_FILE is None:
     logger.critical("No Env File found, check if ENV_FILE is defined")
     path_to_env = None
 else:
-    path_to_env = Path(__file__).parent.resolve() / Path(ENF_FILE)
+    path_to_env = Path(__file__).parent.resolve() / Path(ENV_FILE)
 
 
 class MailSettings(BaseModel):
@@ -51,7 +51,5 @@ class Settings(BaseSettings):
 settings = Settings()
 
 fastmail = FastMail(settings.FASTMAIL) if settings.FASTMAIL else None
-
-WEB_DEV_TESTING = False  # Legacy flag - can be removed in future cleanup
 
 DEBUG = False  # turn on echo mode of sqlalchemy

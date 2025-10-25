@@ -9,7 +9,7 @@ from sqlalchemy import select
 from solar_backend.db import User, Inverter, get_async_session
 from solar_backend.users import current_active_user, get_user_manager, auth_backend_user, get_jwt_strategy
 from solar_backend.limiter import limiter
-from solar_backend.config import WEB_DEV_TESTING, settings
+from solar_backend.config import settings
 from solar_backend.utils.api_keys import generate_api_key
 
 from fastapi_csrf_protect import CsrfProtect

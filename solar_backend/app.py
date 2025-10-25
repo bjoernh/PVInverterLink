@@ -14,7 +14,7 @@ from slowapi.errors import RateLimitExceeded
 from solar_backend.db import User, create_db_and_tables, sessionmanager, InverterAdmin, DCChannelMeasurementAdmin
 from solar_backend.users import UserAdmin
 from solar_backend.api import signup, login, start, inverter, healthcheck, account, dashboard, measurements, export, dc_channels
-from solar_backend.config import settings, WEB_DEV_TESTING
+from solar_backend.config import settings
 from solar_backend.users import auth_backend_bearer, fastapi_users_bearer, current_active_user_bearer
 from solar_backend.utils.admin_auth import authentication_backend
 from solar_backend.limiter import limiter
@@ -49,21 +49,21 @@ if static_dir.exists():
 else:
     logger.warning(f"Static directory not found at {static_dir}")
 
-if not WEB_DEV_TESTING:
-    @app.exception_handler(CsrfProtectError)
-    def csrf_protect_exception_handler(request: Request, exc: CsrfProtectError):
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={'detail': exc.message}
-        )
+@app.exception_handler(CsrfProtectError)
+def csrf_protect_exception_handler(request: Request, exc: CsrfProtectError):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={'detail': exc.message}
+    )
 
-    class CsrfSettings(BaseModel):
-        secret_key: str = settings.AUTH_SECRET
-        header_name: str = "HX-CSRF-Token"
+class CsrfSettings(BaseModel):
+    secret_key: str = settings.AUTH_SECRET
+    header_name: str = "HX-CSRF-Token"
 
-    @CsrfProtect.load_config
-    def get_csrf_config():
-        return CsrfSettings()
+@CsrfProtect.load_config
+def get_csrf_config():
+    return CsrfSettings()
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -93,30 +93,6 @@ htmx_init(templates=Jinja2Templates(directory=Path(os.getcwd()) / Path("template
 
 sessionmanager.init(settings.DATABASE_URL)
 admin = Admin(app=app, authentication_backend=authentication_backend, engine=sessionmanager.engine)
-
-# app.include_router(
-#     fastapi_users.get_auth_router(auth_backend_user), prefix="/auth/jwt", tags=["auth"]
-# )
-# app.include_router(
-#     fastapi_users.get_register_router(UserRead, UserCreate),
-#     prefix="/auth",
-#     tags=["auth"],
-# )
-# app.include_router(
-#     fastapi_users.get_reset_password_router(),
-#     prefix="/auth",
-#     tags=["auth"],
-# )
-# app.include_router(
-#     fastapi_users.get_verify_router(UserRead),
-#     prefix="/auth",
-#     tags=["auth"],
-# )
-# app.include_router(
-#     fastapi_users.get_users_router(UserRead, UserUpdate),
-#     prefix="/users",
-#     tags=["users"],
-# )
 
 app.include_router(
     fastapi_users_bearer.get_auth_router(auth_backend_bearer),
