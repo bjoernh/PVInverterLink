@@ -2,6 +2,7 @@
 Time-series data utilities for TimescaleDB.
 """
 
+import contextlib
 import structlog
 from datetime import datetime, timezone
 from enum import Enum
@@ -632,6 +633,30 @@ async def reset_rls_context(session: AsyncSession) -> None:
 
     await session.execute(text("RESET app.current_user_id"))
     logger.debug("RLS context reset")
+
+
+@contextlib.asynccontextmanager
+async def rls_context(session: AsyncSession, user_id: int):
+    """
+    Async context manager for Row-Level Security.
+
+    Automatically sets and resets RLS context, ensuring cleanup even on exceptions.
+
+    Usage:
+        async with rls_context(session, user_id):
+            # RLS context is set
+            data = await get_timeseries_data(session, user_id, inverter_id)
+        # RLS context is automatically reset
+
+    Args:
+        session: Database session
+        user_id: User ID for RLS context
+    """
+    try:
+        await set_rls_context(session, user_id)
+        yield
+    finally:
+        await reset_rls_context(session)
 
 
 async def get_latest_dc_channels(
