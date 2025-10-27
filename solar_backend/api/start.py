@@ -8,10 +8,10 @@ from fastapi import APIRouter, Depends, Request, status
 
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi_htmx import htmx
-from solar_backend.db import Inverter, User, get_async_session
+from solar_backend.db import User, get_async_session
 
-from sqlalchemy import select
 from solar_backend.users import current_active_user
+from solar_backend.repositories.inverter_repository import InverterRepository
 from solar_backend.utils.timeseries import (
     get_latest_value,
     get_today_energy_production,
@@ -43,11 +43,12 @@ async def get_start(
         return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
 
     async with db_session as session:
+        # Initialize repository
+        inverter_repo = InverterRepository(session)
+
         async with rls_context(session, user.id):
-            result = await session.execute(
-                select(Inverter).where(Inverter.user_id == user.id)
-            )
-            inverters = list(result.scalars().all())
+            # Get all inverters for the user
+            inverters = await inverter_repo.get_all_by_user_id(user.id)
 
             # Define 5-minute threshold for "current" power values
             now = datetime.now(timezone.utc)

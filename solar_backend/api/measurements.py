@@ -10,13 +10,13 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from solar_backend.db import Inverter, User, get_async_session
+from solar_backend.db import User, get_async_session
 from solar_backend.users import current_superuser_bearer
 from solar_backend.config import settings
 from solar_backend.utils.timeseries import write_measurement, write_dc_channel_measurement, TimeSeriesException
+from solar_backend.repositories.inverter_repository import InverterRepository
 
 logger = structlog.get_logger()
 
@@ -159,14 +159,14 @@ async def post_opendtu_measurement(
     success_count = 0
     error_count = 0
 
+    # Initialize repository
+    inverter_repo = InverterRepository(session)
+
     # Process each inverter in the payload
     for inverter_data in data.inverters:
         try:
             # Find inverter by serial number
-            result = await session.execute(
-                select(Inverter).where(Inverter.serial_logger == inverter_data.serial)
-            )
-            inverter = result.scalar_one_or_none()
+            inverter = await inverter_repo.get_by_serial(inverter_data.serial)
 
             if not inverter:
                 logger.warning(

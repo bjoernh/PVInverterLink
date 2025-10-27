@@ -3,15 +3,14 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi_htmx import htmx
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from solar_backend.db import get_async_session, User, Inverter
+from solar_backend.db import get_async_session, User
 from solar_backend.limiter import limiter
 from solar_backend.constants import UNAUTHORIZED_MESSAGE
 from solar_backend.users import current_active_user
+from solar_backend.services.inverter_service import InverterService
+from solar_backend.services.exceptions import InverterNotFoundException, UnauthorizedInverterAccessException
 from solar_backend.utils.timeseries import (
     TimeRange,
     get_latest_dc_channels,
@@ -52,14 +51,10 @@ async def get_dc_channels_page(
 
     async with db_session as session:
         # Verify inverter belongs to user
-        result = await session.execute(
-            select(Inverter).where(
-                Inverter.id == inverter_id, Inverter.user_id == user.id
-            )
-        )
-        inverter = result.scalar_one_or_none()
-
-        if not inverter:
+        inverter_service = InverterService(session)
+        try:
+            inverter = await inverter_service.get_user_inverter(user.id, inverter_id)
+        except (InverterNotFoundException, UnauthorizedInverterAccessException):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Inverter nicht gefunden oder keine Berechtigung",
@@ -114,14 +109,10 @@ async def get_dc_channels_data(
 
     async with db_session as session:
         # Verify inverter belongs to user
-        result = await session.execute(
-            select(Inverter).where(
-                Inverter.id == inverter_id, Inverter.user_id == user.id
-            )
-        )
-        inverter = result.scalar_one_or_none()
-
-        if not inverter:
+        inverter_service = InverterService(session)
+        try:
+            inverter = await inverter_service.get_user_inverter(user.id, inverter_id)
+        except (InverterNotFoundException, UnauthorizedInverterAccessException):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Inverter not found"
             )
