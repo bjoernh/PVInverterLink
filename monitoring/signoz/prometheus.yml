@@ -1,0 +1,100 @@
+# Prometheus Configuration for SignOz Query Service
+# This configures the query service to scrape metrics from various sources
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  external_labels:
+    cluster: 'solar-backend'
+    replica: '0'
+
+# Alert manager configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
+# Rule files for recording and alerting rules
+# rule_files:
+#   - "/etc/prometheus/rules/*.yml"
+
+scrape_configs:
+  # Scrape SignOz OTel Collector metrics
+  - job_name: 'signoz-otel-collector'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - 'signoz-otel-collector-test:8888'
+          - 'signoz-otel-collector-staging:8888'
+          - 'signoz-otel-collector-prod:8888'
+    metric_relabel_configs:
+      - source_labels: [__address__]
+        regex: 'signoz-otel-collector-(.+):8888'
+        target_label: environment
+        replacement: '$1'
+
+  # Scrape SignOz Query Service metrics
+  - job_name: 'signoz-query-service'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - 'signoz-query-service-test:8080'
+          - 'signoz-query-service-staging:8080'
+          - 'signoz-query-service-prod:8080'
+    metric_relabel_configs:
+      - source_labels: [__address__]
+        regex: 'signoz-query-service-(.+):8080'
+        target_label: environment
+        replacement: '$1'
+
+  # Scrape PostgreSQL Exporter metrics
+  - job_name: 'postgres-exporter'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - 'postgres-exporter-test:9187'
+        labels:
+          environment: 'test'
+          service: 'postgresql'
+          database: 'deyehard'
+
+      - targets:
+          - 'postgres-exporter-staging:9187'
+        labels:
+          environment: 'staging'
+          service: 'postgresql'
+          database: 'deyehard'
+
+      - targets:
+          - 'postgres-exporter-prod:9187'
+        labels:
+          environment: 'production'
+          service: 'postgresql'
+          database: 'deyehard'
+
+  # Scrape ClickHouse metrics (SignOz storage)
+  - job_name: 'clickhouse'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - 'clickhouse-test:8123'
+        labels:
+          environment: 'test'
+
+      - targets:
+          - 'clickhouse-staging:8123'
+        labels:
+          environment: 'staging'
+
+      - targets:
+          - 'clickhouse-prod:8123'
+        labels:
+          environment: 'production'
+
+  # Scrape Traefik metrics (if enabled)
+  - job_name: 'traefik'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - 'traefik:8082'
+    metrics_path: '/metrics'

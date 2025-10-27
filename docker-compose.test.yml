@@ -1,0 +1,215 @@
+version: '3.8'
+
+services:
+  # Traefik Reverse Proxy (shared across environments)
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--log.level=INFO"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      - ./traefik/certs:/certs:ro
+      - traefik-letsencrypt:/letsencrypt
+    networks:
+      - traefik-public
+
+  # Backend Service (Test)
+  backend-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: backend-test
+    restart: unless-stopped
+    env_file:
+      - .env.test
+    environment:
+      - ENV_FILE=backend.env
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector-test:4317
+      - OTEL_SERVICE_NAME=solar-backend-test
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+    volumes:
+      - ./backend.env:/app/backend.env:ro
+    depends_on:
+      db-test:
+        condition: service_healthy
+      signoz-otel-collector-test:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.backend-test.rule=Host(`test.yourdomain.com`)"
+      - "traefik.http.routers.backend-test.entrypoints=web"
+      - "traefik.http.services.backend-test.loadbalancer.server.port=80"
+    networks:
+      - traefik-public
+      - test-internal
+
+  # TimescaleDB (Test)
+  db-test:
+    image: timescale/timescaledb:latest-pg16
+    container_name: db-test
+    restart: unless-stopped
+    env_file:
+      - .env.test
+    environment:
+      - POSTGRES_USER=deyehard
+      - POSTGRES_DB=deyehard
+      # POSTGRES_PASSWORD from .env.test
+    volumes:
+      - ./data/test/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deyehard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-internal
+
+  # Rust Collector (Test)
+  collector-test:
+    build:
+      context: ./collector
+      dockerfile: Dockerfile
+    container_name: collector-test
+    restart: unless-stopped
+    env_file:
+      - .env.test
+    environment:
+      - PORT=10000
+      - BACKEND_URL=http://backend-test:80
+      - RUST_LOG=info
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector-test:4317
+      - OTEL_SERVICE_NAME=collector-test
+    ports:
+      - "10000:10000"  # Exposed for Solarman loggers
+    depends_on:
+      - backend-test
+    networks:
+      - test-internal
+      - traefik-public
+
+  # SignOz OTEL Collector (Test)
+  signoz-otel-collector-test:
+    image: signoz/signoz-otel-collector:0.88.11
+    container_name: signoz-otel-collector-test
+    restart: unless-stopped
+    command:
+      - "--config=/etc/otel-collector-config.yaml"
+    volumes:
+      - ./monitoring/signoz/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=test
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+    networks:
+      - test-internal
+
+  # SignOz Query Service (Test)
+  signoz-query-service-test:
+    image: signoz/query-service:0.38.0
+    container_name: signoz-query-service-test
+    restart: unless-stopped
+    command:
+      - "-config=/root/config/prometheus.yml"
+    volumes:
+      - ./monitoring/signoz/prometheus.yml:/root/config/prometheus.yml:ro
+      - signoz-test-data:/var/lib/signoz
+    environment:
+      - ClickHouseUrl=tcp://clickhouse-test:9000
+      - STORAGE=clickhouse
+      - GODEBUG=netdns=go
+      - TELEMETRY_ENABLED=false
+      - DEPLOYMENT_TYPE=docker-standalone-amd
+    depends_on:
+      - clickhouse-test
+    networks:
+      - test-internal
+
+  # SignOz Frontend (Test)
+  signoz-frontend-test:
+    image: signoz/frontend:0.38.0
+    container_name: signoz-frontend-test
+    restart: unless-stopped
+    environment:
+      - FRONTEND_API_ENDPOINT=http://signoz-query-service-test:8080
+    depends_on:
+      - signoz-query-service-test
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.signoz-test.rule=Host(`signoz.yourdomain.com`) && PathPrefix(`/test`)"
+      - "traefik.http.routers.signoz-test.entrypoints=web"
+      - "traefik.http.services.signoz-test.loadbalancer.server.port=3301"
+      - "traefik.http.middlewares.signoz-test-stripprefix.stripprefix.prefixes=/test"
+      - "traefik.http.routers.signoz-test.middlewares=signoz-test-stripprefix"
+    networks:
+      - traefik-public
+      - test-internal
+
+  # ClickHouse (SignOz storage backend) (Test)
+  clickhouse-test:
+    image: clickhouse/clickhouse-server:23.11-alpine
+    container_name: clickhouse-test
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - ./data/test/signoz/clickhouse:/var/lib/clickhouse
+    environment:
+      - CLICKHOUSE_DB=signoz
+      - CLICKHOUSE_USER=signoz
+      - CLICKHOUSE_PASSWORD=signoz_password_test
+    networks:
+      - test-internal
+
+  # PostgreSQL Exporter (Test)
+  postgres-exporter-test:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter-test
+    restart: unless-stopped
+    env_file:
+      - .env.test
+    environment:
+      - DATA_SOURCE_NAME=postgresql://deyehard:${POSTGRES_PASSWORD}@db-test:5432/deyehard?sslmode=disable
+    depends_on:
+      - db-test
+    networks:
+      - test-internal
+
+networks:
+  traefik-public:
+    name: traefik-public
+  test-internal:
+    name: test-internal
+
+volumes:
+  traefik-letsencrypt:
+    name: traefik-letsencrypt
+  signoz-test-data:
+    name: signoz-test-data

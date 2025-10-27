@@ -1,0 +1,80 @@
+# Traefik Static Configuration
+# This file configures Traefik's core behavior and providers
+
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+# API and Dashboard
+api:
+  dashboard: true
+  insecure: true  # Dashboard accessible on port 8080 without auth (change in production)
+
+# Entry Points
+entryPoints:
+  web:
+    address: ":80"
+    # Optional: Redirect HTTP to HTTPS (uncomment when SSL is ready)
+    # http:
+    #   redirections:
+    #     entryPoint:
+    #       to: websecure
+    #       scheme: https
+
+  websecure:
+    address: ":443"
+
+# Providers
+providers:
+  # Docker provider for automatic service discovery
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false  # Only expose services with traefik.enable=true
+    network: traefik-public
+    watch: true
+
+  # File provider for additional dynamic configuration
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+# Logging
+log:
+  level: INFO  # DEBUG, INFO, WARN, ERROR
+  format: json  # json or common
+
+# Access Logs
+accessLog:
+  format: json
+  fields:
+    headers:
+      defaultMode: keep
+      names:
+        User-Agent: keep
+        Authorization: drop
+        Cookie: drop
+
+# Metrics (optional - for Prometheus)
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addServicesLabels: true
+    entryPoint: metrics
+
+# Certificate Resolvers (for Let's Encrypt - uncomment when ready for SSL)
+# certificatesResolvers:
+#   letsencrypt:
+#     acme:
+#       email: admin@yourdomain.com
+#       storage: /letsencrypt/acme.json
+#       httpChallenge:
+#         entryPoint: web
+#
+#   # Alternative: DNS challenge for wildcard certificates
+#   # letsencrypt-dns:
+#   #   acme:
+#   #     email: admin@yourdomain.com
+#   #     storage: /letsencrypt/acme.json
+#   #     dnsChallenge:
+#   #       provider: cloudflare  # or route53, digitalocean, etc.
+#   #       delayBeforeCheck: 0

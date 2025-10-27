@@ -2,6 +2,8 @@
 
 collector-rust
 
+node_modules/
+
 .vscode/
 
 WARP.md
