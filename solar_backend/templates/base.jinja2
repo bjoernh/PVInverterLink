@@ -47,16 +47,14 @@
     {% endblock %}
     </main>
   {% block footer %}
-  <footer class="footer items-center p-4 bg-neutral text-neutral-content flex justify-evenly">
-  <aside class="items-center flex-auto">
-      <p>Made with ❤️ by<img src="https://wtf-eg.de/images/wtf_logo_white.svg" alt="WTF Logo"></p>
-
-    </aside>
-    <nav class="md:place-self-center">
-      <div class="flex-auto">
-    <a href="https://chaos.social/@HackerGeno"><i class="fa-brands fa-mastodon fa-2x"></i></a>
-    <a href="https://github.com/wtf-eg/project"><i class="fa-brands fa-github fa-2x"></i></a>
-      </div>
+  <footer class="flex items-center py-1 px-2 md:py-2 md:px-4 bg-neutral text-neutral-content justify-between gap-4">
+    <div class="flex items-center gap-1 md:gap-2">
+      <span class="text-sm md:text-base">Made with ❤️ by</span>
+      <span class="font-bold text-sm md:text-base">WTF e.G.</span>
+    </div>
+    <nav class="flex gap-2 md:gap-4">
+      <a href="https://chaos.social/@HackerGeno"><i class="fa-brands fa-mastodon fa-lg"></i></a>
+      <a href="https://github.com/wtf-eg/project"><i class="fa-brands fa-github fa-lg"></i></a>
     </nav>
   </footer>
         {% endblock %}

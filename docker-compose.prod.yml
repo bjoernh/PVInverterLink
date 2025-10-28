@@ -1,0 +1,323 @@
+version: "3.8"
+
+services:
+  # Backend Service (Production)
+  backend-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: backend-prod
+    restart: always
+    env_file:
+      - .env.prod
+    environment:
+      - ENV_FILE=.env
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector-prod:4317
+      - OTEL_SERVICE_NAME=solar-backend-production
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+    volumes:
+      - ./.env.prod:/app/backend.env:ro
+    depends_on:
+      db-prod:
+        condition: service_healthy
+      signoz-otel-collector-prod:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.backend-prod.rule=Host(`yourdomain.com`)"
+      - "traefik.http.routers.backend-prod.entrypoints=web,websecure"
+      - "traefik.http.routers.backend-prod.tls=true"
+      - "traefik.http.services.backend-prod.loadbalancer.server.port=80"
+      # Security headers
+      - "traefik.http.middlewares.security-headers.headers.forcestsheader=true"
+      - "traefik.http.middlewares.security-headers.headers.stsincludesubdomains=true"
+      - "traefik.http.middlewares.security-headers.headers.stspreload=true"
+      - "traefik.http.middlewares.security-headers.headers.stsseconds=31536000"
+      - "traefik.http.routers.backend-prod.middlewares=security-headers"
+    networks:
+      - traefik-public
+      - prod-internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # TimescaleDB (Production)
+  db-prod:
+    image: timescale/timescaledb:latest-pg16
+    container_name: db-prod
+    restart: always
+    env_file:
+      - .env.prod
+    environment:
+      - POSTGRES_USER=deyehard
+      - POSTGRES_DB=deyehard
+      # POSTGRES_PASSWORD from .env.prod
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - ./data/prod/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deyehard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 4G
+        reservations:
+          cpus: "1.0"
+          memory: 1G
+    networks:
+      - prod-internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=1GB"
+      - "-c"
+      - "effective_cache_size=3GB"
+      - "-c"
+      - "maintenance_work_mem=256MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "wal_buffers=16MB"
+      - "-c"
+      - "default_statistics_target=100"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=200"
+      - "-c"
+      - "work_mem=5242kB"
+      - "-c"
+      - "min_wal_size=1GB"
+      - "-c"
+      - "max_wal_size=4GB"
+
+  # Rust Collector (Production)
+  collector-prod:
+    build:
+      context: ./collector
+      dockerfile: Dockerfile
+    container_name: collector-prod
+    restart: always
+    env_file:
+      - .env.prod
+    environment:
+      - PORT=10000
+      - DATABASE_URL=postgresql://deyehard:${POSTGRES_PASSWORD}@db-prod:5432/deyehard
+      - RUST_LOG=info
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector-prod:4317
+      - OTEL_SERVICE_NAME=collector-production
+    ports:
+      - "10000:10000"
+    depends_on:
+      db-prod:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    networks:
+      - prod-internal
+      - traefik-public
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # SignOz OTEL Collector (Production)
+  signoz-otel-collector-prod:
+    image: signoz/signoz-otel-collector:0.88.11
+    container_name: signoz-otel-collector-prod
+    restart: always
+    command:
+      - "--config=/etc/otel-collector-config.yaml"
+    volumes:
+      - ./monitoring/signoz/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=production
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    networks:
+      - prod-internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # SignOz Query Service (Production)
+  signoz-query-service-prod:
+    image: signoz/query-service:0.38.0
+    container_name: signoz-query-service-prod
+    restart: always
+    command:
+      - "-config=/root/config/prometheus.yml"
+    volumes:
+      - ./monitoring/signoz/prometheus.yml:/root/config/prometheus.yml:ro
+      - signoz-prod-data:/var/lib/signoz
+    environment:
+      - ClickHouseUrl=tcp://clickhouse-prod:9000
+      - STORAGE=clickhouse
+      - GODEBUG=netdns=go
+      - TELEMETRY_ENABLED=false
+      - DEPLOYMENT_TYPE=docker-standalone-amd
+    depends_on:
+      - clickhouse-prod
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    networks:
+      - prod-internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # SignOz Frontend (Production)
+  signoz-frontend-prod:
+    image: signoz/frontend:0.38.0
+    container_name: signoz-frontend-prod
+    restart: always
+    environment:
+      - FRONTEND_API_ENDPOINT=http://signoz-query-service-prod:8080
+    depends_on:
+      - signoz-query-service-prod
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.signoz-prod.rule=Host(`signoz.yourdomain.com`)"
+      - "traefik.http.routers.signoz-prod.entrypoints=web,websecure"
+      - "traefik.http.routers.signoz-prod.tls=true"
+      - "traefik.http.services.signoz-prod.loadbalancer.server.port=3301"
+      # Basic auth for SignOz (optional, configure in Traefik dynamic config)
+      - "traefik.http.routers.signoz-prod.middlewares=signoz-auth"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+    networks:
+      - traefik-public
+      - prod-internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ClickHouse (SignOz storage backend) (Production)
+  clickhouse-prod:
+    image: clickhouse/clickhouse-server:23.11-alpine
+    container_name: clickhouse-prod
+    restart: always
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - ./data/prod/signoz/clickhouse:/var/lib/clickhouse
+    environment:
+      - CLICKHOUSE_DB=signoz
+      - CLICKHOUSE_USER=signoz
+      - CLICKHOUSE_PASSWORD=signoz_password_prod_CHANGE_ME
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    networks:
+      - prod-internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # PostgreSQL Exporter (Production)
+  postgres-exporter-prod:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter-prod
+    restart: always
+    env_file:
+      - .env.prod
+    environment:
+      - DATA_SOURCE_NAME=postgresql://deyehard:${POSTGRES_PASSWORD}@db-prod:5432/deyehard?sslmode=disable
+    depends_on:
+      - db-prod
+    deploy:
+      resources:
+        limits:
+          cpus: "0.2"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 32M
+    networks:
+      - prod-internal
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  traefik-public:
+    external: true
+  prod-internal:
+    name: prod-internal
+
+volumes:
+  signoz-prod-data:
+    name: signoz-prod-data

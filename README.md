@@ -129,11 +129,11 @@ docker-compose exec backend uv run alembic upgrade head
 uv sync
 
 # Configure environment
-cp backend.env.example backend.env
-# Edit backend.env with your settings
+cp .env.example .env
+# Edit .env with your settings
 
 # Set environment variable
-export ENV_FILE=backend.env
+export ENV_FILE=.env
 
 # Start TimescaleDB (if not using Docker for everything)
 docker-compose up -d db
@@ -169,7 +169,6 @@ Create `collector/.env`:
 ```bash
 PORT=10000
 BACKEND_URL=http://localhost:8000
-API_KEY=your-api-key-here
 RUST_LOG=info
 ```
 
@@ -220,7 +219,7 @@ Configure HTTP push in OpenDTU's web interface (Settings > HTTP Push Settings):
 ```
 Target URL: http://your-backend-host:8000/api/opendtu/measurements
 Publish Interval: 60
-Authentication Header Name: X-API-Key 
+Authentication Header Name: X-API-Key
 Authentication Token: your-api-key-here
 ```
 
@@ -229,7 +228,7 @@ The OpenDTU device will automatically push measurement data at regular intervals
 
 ### Required Environment Variables
 
-Create a `backend.env` file with the following settings:
+Create a `.env` file with the following settings:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
@@ -237,7 +236,6 @@ Create a `backend.env` file with the following settings:
 | `AUTH_SECRET` | JWT signing secret (32+ bytes) | `your-secret-key-min-32-characters-long` |
 | `ENCRYPTION_KEY` | Fernet encryption key (base64) | `6DLfBB4KnMuChUJZsMHWz2kJTtNRNTTtoTCCbH7CYyw=` |
 | `BASE_URL` | Public URL for email links | `http://localhost:8000` |
-| `API_KEY` | API key for collectors/OpenDTU | `your-secure-api-key-here` |
 | `COOKIE_SECURE` | Secure flag for cookies | `False` (dev), `True` (production) |
 
 ### Email Configuration (Optional)
@@ -265,7 +263,7 @@ COOKIE_SECURE=False      # Allow HTTP cookies in development
 DEBUG=False              # Enable SQLAlchemy query logging if True
 ```
 
-See `backend.env.example` for a complete configuration template.
+See `.env.example` for a complete configuration template.
 
 ## Database Setup
 
@@ -311,14 +309,12 @@ Send measurement data from OpenDTU devices:
 
 **Endpoint:** `POST /api/opendtu/measurements`
 
-**Authentication:** API Key in `X-API-Key` header
-
 **Request Example:**
 
 ```bash
 curl -X POST "http://localhost:8000/api/opendtu/measurements" \
-  -H "X-API-Key: your-api-key-here" \
   -H "Content-Type: application/json" \
+  -H "X-API-KEY: YOUR-API-KEY" \
   -d '{
     "timestamp": "2025-10-19T17:54:43+02:00",
     "dtu_serial": "145680140006",
@@ -372,7 +368,6 @@ curl -X POST "http://localhost:8000/api/opendtu/measurements" \
 - `201 Created`: All inverters processed successfully
 - `207 Multi-Status`: Some inverters succeeded, some failed
 - `404 Not Found`: All inverters not found in database
-- `401 Unauthorized`: Invalid or missing API key
 
 ### Interactive API Documentation
 
@@ -571,7 +566,6 @@ DATABASE_URL=postgresql+asyncpg://user:strong-password@prod-host:5432/deyehard
 # Security
 AUTH_SECRET=generate-strong-random-secret-min-32-characters
 ENCRYPTION_KEY=generate-fernet-key-base64-encoded
-API_KEY=generate-strong-random-api-key-for-collectors
 
 # Application
 COOKIE_SECURE=True
@@ -602,7 +596,7 @@ curl http://localhost:8000/healthcheck
 ### Security Checklist
 
 - Set `COOKIE_SECURE=True` in production
-- Use strong random values for `AUTH_SECRET`, `ENCRYPTION_KEY`, and `API_KEY`
+- Use strong random values for `AUTH_SECRET` and `ENCRYPTION_KEY`
 - Enable HTTPS/TLS for all endpoints (use reverse proxy like nginx or Traefik)
 - Configure firewall to allow only necessary ports (80, 443, 10000 for collector)
 - Use strong database passwords (avoid default credentials)
