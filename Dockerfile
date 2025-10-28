@@ -4,7 +4,7 @@ ENV PYTHONUNBUFFERED=1
 
 RUN apk add --update --no-cache --virtual .tmp-build-deps \
     gcc libc-dev linux-headers \
-    && apk add libffi-dev
+    && apk add libffi-dev curl
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
