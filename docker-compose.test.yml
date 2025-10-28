@@ -99,14 +99,15 @@ services:
       - .env.test
     environment:
       - PORT=10000
-      - BACKEND_URL=http://backend-test:80
+      - DATABASE_URL=postgresql://deyehard:${POSTGRES_PASSWORD}@db-test:5432/deyehard
       - RUST_LOG=info
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector-test:4317
       - OTEL_SERVICE_NAME=collector-test
     ports:
       - "10000:10000"  # Exposed for Solarman loggers
     depends_on:
-      - backend-test
+      db-test:
+        condition: service_healthy
     networks:
       - test-internal
       - traefik-public

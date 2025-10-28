@@ -132,14 +132,15 @@ services:
       - .env.prod
     environment:
       - PORT=10000
-      - BACKEND_URL=http://backend-prod:80
+      - DATABASE_URL=postgresql://deyehard:${POSTGRES_PASSWORD}@db-prod:5432/deyehard
       - RUST_LOG=info
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector-prod:4317
       - OTEL_SERVICE_NAME=collector-production
     ports:
       - "10000:10000"
     depends_on:
-      - backend-prod
+      db-prod:
+        condition: service_healthy
     deploy:
       resources:
         limits:

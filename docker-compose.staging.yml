@@ -72,14 +72,15 @@ services:
       - .env.staging
     environment:
       - PORT=10001
-      - BACKEND_URL=http://backend-staging:80
+      - DATABASE_URL=postgresql://deyehard:${POSTGRES_PASSWORD}@db-staging:5432/deyehard
       - RUST_LOG=info
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector-staging:4317
       - OTEL_SERVICE_NAME=collector-staging
     ports:
       - "10001:10001"  # Different port for staging
     depends_on:
-      - backend-staging
+      db-staging:
+        condition: service_healthy
     networks:
       - staging-internal
       - traefik-public
