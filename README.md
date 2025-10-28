@@ -129,11 +129,11 @@ docker-compose exec backend uv run alembic upgrade head
 uv sync
 
 # Configure environment
-cp backend.env.example backend.env
-# Edit backend.env with your settings
+cp .env.example .env
+# Edit .env with your settings
 
 # Set environment variable
-export ENV_FILE=backend.env
+export ENV_FILE=.env
 
 # Start TimescaleDB (if not using Docker for everything)
 docker-compose up -d db
@@ -219,6 +219,8 @@ Configure HTTP push in OpenDTU's web interface (Settings > HTTP Push Settings):
 ```
 Target URL: http://your-backend-host:8000/api/opendtu/measurements
 Publish Interval: 60
+Authentication Header Name: X-API-Key
+Authentication Token: your-api-key-here
 ```
 
 The OpenDTU device will automatically push measurement data at regular intervals.
@@ -226,7 +228,7 @@ The OpenDTU device will automatically push measurement data at regular intervals
 
 ### Required Environment Variables
 
-Create a `backend.env` file with the following settings:
+Create a `.env` file with the following settings:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
@@ -261,7 +263,7 @@ COOKIE_SECURE=False      # Allow HTTP cookies in development
 DEBUG=False              # Enable SQLAlchemy query logging if True
 ```
 
-See `backend.env.example` for a complete configuration template.
+See `.env.example` for a complete configuration template.
 
 ## Database Setup
 
@@ -312,6 +314,7 @@ Send measurement data from OpenDTU devices:
 ```bash
 curl -X POST "http://localhost:8000/api/opendtu/measurements" \
   -H "Content-Type: application/json" \
+  -H "X-API-KEY: YOUR-API-KEY" \
   -d '{
     "timestamp": "2025-10-19T17:54:43+02:00",
     "dtu_serial": "145680140006",

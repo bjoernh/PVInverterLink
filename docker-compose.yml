@@ -7,9 +7,9 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - ./backend.env:/app/solar_backend/backend.env
+      - ./.env:/app/solar_backend/.env
     environment:
-      - ENV_FILE=backend.env
+      - ENV_FILE=.env
 
   db:
     image: timescale/timescaledb:latest-pg16

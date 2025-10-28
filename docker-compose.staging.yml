@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # Backend Service (Staging)
@@ -11,14 +11,14 @@ services:
     env_file:
       - .env.staging
     environment:
-      - ENV_FILE=backend.env
+      - ENV_FILE=.env
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector-staging:4317
       - OTEL_SERVICE_NAME=solar-backend-staging
       - OTEL_TRACES_EXPORTER=otlp
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
     volumes:
-      - ./backend.env:/app/backend.env:ro
+      - ./.env.staging:/app/.env:ro
     depends_on:
       db-staging:
         condition: service_healthy
@@ -77,7 +77,7 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector-staging:4317
       - OTEL_SERVICE_NAME=collector-staging
     ports:
-      - "10001:10001"  # Different port for staging
+      - "10001:10001" # Different port for staging
     depends_on:
       db-staging:
         condition: service_healthy

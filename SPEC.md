@@ -901,7 +901,7 @@ uv run alembic downgrade -1
 ### Configuration Loading
 
 **File Path**: Specified via `ENV_FILE` environment variable
-**Default**: `solar_backend/backend.env` (relative to config.py)
+**Default**: `solar_backend/.env` (relative to config.py)
 **Format**: Key=value pairs
 
 **Example**:

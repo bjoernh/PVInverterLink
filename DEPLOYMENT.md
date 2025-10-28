@@ -272,11 +272,11 @@ postgres-exporter-test        Up
 ```bash
 # Run migrations
 docker compose -f docker-compose.test.yml exec backend-test \
-  sh -c "ENV_FILE=/app/backend.env uv run alembic upgrade head"
+  sh -c "ENV_FILE=/app/.env uv run alembic upgrade head"
 
 # Verify migration success
 docker compose -f docker-compose.test.yml exec backend-test \
-  sh -c "ENV_FILE=/app/backend.env uv run alembic current"
+  sh -c "ENV_FILE=/app/.env uv run alembic current"
 ```
 
 ### Step 4: Create Admin User
@@ -286,7 +286,7 @@ docker compose -f docker-compose.test.yml exec backend-test \
 docker compose -f docker-compose.test.yml exec backend-test sh
 
 # Inside container, create superuser (interactive Python)
-ENV_FILE=/app/backend.env uv run python
+ENV_FILE=/app/.env uv run python
 
 # Python console:
 from solar_backend.db import async_session_maker, User
@@ -428,7 +428,7 @@ sleep 30
 
 # Run migrations
 docker compose -f docker-compose.staging.yml exec backend-staging \
-  sh -c "ENV_FILE=/app/backend.env uv run alembic upgrade head"
+  sh -c "ENV_FILE=/app/.env uv run alembic upgrade head"
 
 # Create admin user (same process as test environment)
 # Verify health
@@ -494,7 +494,7 @@ sleep 30
 
 # Run migrations
 docker compose -f docker-compose.prod.yml exec backend-prod \
-  sh -c "ENV_FILE=/app/backend.env uv run alembic upgrade head"
+  sh -c "ENV_FILE=/app/.env uv run alembic upgrade head"
 
 # Create admin user
 # Verify health
@@ -512,7 +512,7 @@ docker compose -f docker-compose.prod.yml logs --tail=100
 
 # Verify database connectivity
 docker compose -f docker-compose.prod.yml exec backend-prod \
-  sh -c "ENV_FILE=/app/backend.env uv run python -c 'from solar_backend.db import engine; import asyncio; asyncio.run(engine.dispose())'"
+  sh -c "ENV_FILE=/app/.env uv run python -c 'from solar_backend.db import engine; import asyncio; asyncio.run(engine.dispose())'"
 
 # Test API endpoints
 curl https://yourdomain.com/docs
@@ -564,7 +564,7 @@ docker compose -f docker-compose.prod.yml exec db-prod \
 
 ```bash
 docker compose -f docker-compose.prod.yml exec backend-prod \
-  sh -c "ENV_FILE=/app/backend.env uv run alembic upgrade head"
+  sh -c "ENV_FILE=/app/.env uv run alembic upgrade head"
 ```
 
 ---
@@ -891,7 +891,7 @@ docker compose -f docker-compose.staging.yml up -d --build
 
 # Run migrations (staging)
 docker compose -f docker-compose.staging.yml exec backend-staging \
-  sh -c "ENV_FILE=/app/backend.env uv run alembic upgrade head"
+  sh -c "ENV_FILE=/app/.env uv run alembic upgrade head"
 
 # Verify staging works
 curl http://staging.yourdomain.com/healthcheck
@@ -902,7 +902,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 # Run migrations (production)
 docker compose -f docker-compose.prod.yml exec backend-prod \
-  sh -c "ENV_FILE=/app/backend.env uv run alembic upgrade head"
+  sh -c "ENV_FILE=/app/.env uv run alembic upgrade head"
 
 # Verify production
 curl https://yourdomain.com/healthcheck
@@ -923,7 +923,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 # Rollback database if needed
 docker compose -f docker-compose.prod.yml exec backend-prod \
-  sh -c "ENV_FILE=/app/backend.env uv run alembic downgrade -1"
+  sh -c "ENV_FILE=/app/.env uv run alembic downgrade -1"
 ```
 
 ### Log Rotation

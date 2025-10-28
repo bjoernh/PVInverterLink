@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # Backend Service (Production)
@@ -11,14 +11,14 @@ services:
     env_file:
       - .env.prod
     environment:
-      - ENV_FILE=backend.env
+      - ENV_FILE=.env
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector-prod:4317
       - OTEL_SERVICE_NAME=solar-backend-production
       - OTEL_TRACES_EXPORTER=otlp
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
     volumes:
-      - ./backend.env:/app/backend.env:ro
+      - ./.env.prod:/app/backend.env:ro
     depends_on:
       db-prod:
         condition: service_healthy
@@ -33,10 +33,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
+          cpus: "2.0"
           memory: 2G
         reservations:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
     labels:
       - "traefik.enable=true"
@@ -82,10 +82,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '4.0'
+          cpus: "4.0"
           memory: 4G
         reservations:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 1G
     networks:
       - prod-internal
@@ -144,10 +144,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 512M
         reservations:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 128M
     networks:
       - prod-internal
@@ -172,10 +172,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 1G
         reservations:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 256M
     networks:
       - prod-internal
@@ -206,10 +206,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 1G
         reservations:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 256M
     networks:
       - prod-internal
@@ -240,10 +240,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
         reservations:
-          cpus: '0.1'
+          cpus: "0.1"
           memory: 128M
     networks:
       - traefik-public
@@ -272,10 +272,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
+          cpus: "2.0"
           memory: 2G
         reservations:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
     networks:
       - prod-internal
@@ -299,10 +299,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.2'
+          cpus: "0.2"
           memory: 128M
         reservations:
-          cpus: '0.05'
+          cpus: "0.05"
           memory: 32M
     networks:
       - prod-internal

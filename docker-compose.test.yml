@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # Traefik Reverse Proxy (shared across environments)
@@ -18,7 +18,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080"  # Traefik dashboard
+      - "8080:8080" # Traefik dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
@@ -38,14 +38,14 @@ services:
     env_file:
       - .env.test
     environment:
-      - ENV_FILE=backend.env
+      - ENV_FILE=.env
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector-test:4317
       - OTEL_SERVICE_NAME=solar-backend-test
       - OTEL_TRACES_EXPORTER=otlp
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
     volumes:
-      - ./backend.env:/app/backend.env:ro
+      - ./.env.test:/app/.env:ro
     depends_on:
       db-test:
         condition: service_healthy
@@ -90,9 +90,7 @@ services:
 
   # Rust Collector (Test)
   collector-test:
-    build:
-      context: ./collector
-      dockerfile: Dockerfile
+    image: git.64b.de/bjoern/inverter-collector:latest
     container_name: collector-test
     restart: unless-stopped
     env_file:
@@ -104,7 +102,7 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector-test:4317
       - OTEL_SERVICE_NAME=collector-test
     ports:
-      - "10000:10000"  # Exposed for Solarman loggers
+      - "10000:10000" # Exposed for Solarman loggers
     depends_on:
       db-test:
         condition: service_healthy
@@ -124,8 +122,8 @@ services:
     environment:
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=test
     ports:
-      - "4317:4317"   # OTLP gRPC receiver
-      - "4318:4318"   # OTLP HTTP receiver
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP HTTP receiver
     networks:
       - test-internal
 

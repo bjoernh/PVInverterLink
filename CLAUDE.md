@@ -236,7 +236,7 @@ Both use same JWT strategy with 2-day lifetime.
 ### Configuration & Environment
 
 - Environment file path set via `ENV_FILE` environment variable
-- Config loaded from `solar_backend/backend.env` by default
+- Config loaded from `solar_backend/.env` by default
 - Required variables: `DATABASE_URL`, `AUTH_SECRET`, `ENCRYPTION_KEY`, `BASE_URL`
 - Optional: `FASTMAIL` config for email functionality
 - `COOKIE_SECURE` should be True in production, False for local development

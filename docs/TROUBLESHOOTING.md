@@ -69,7 +69,7 @@ docker inspect backend-prod
 4. **Permission issues:**
    ```bash
    # Check file permissions
-   ls -la backend.env
+   ls -la .env
 
    # Solution: Fix permissions
    chmod 600 .env.prod
@@ -265,11 +265,11 @@ grep DATABASE_URL .env.prod
 ```bash
 # Check migration status
 docker compose -f docker-compose.prod.yml exec backend-prod \
-  sh -c "ENV_FILE=/app/backend.env uv run alembic current"
+  sh -c "ENV_FILE=/app/.env uv run alembic current"
 
 # Check migration history
 docker compose -f docker-compose.prod.yml exec backend-prod \
-  sh -c "ENV_FILE=/app/backend.env uv run alembic history"
+  sh -c "ENV_FILE=/app/.env uv run alembic history"
 ```
 
 **Solutions:**
@@ -278,7 +278,7 @@ docker compose -f docker-compose.prod.yml exec backend-prod \
    ```bash
    # Stamp current version
    docker compose -f docker-compose.prod.yml exec backend-prod \
-     sh -c "ENV_FILE=/app/backend.env uv run alembic stamp head"
+     sh -c "ENV_FILE=/app/.env uv run alembic stamp head"
    ```
 
 2. **Migration conflict:**
@@ -648,13 +648,13 @@ docker logs db-prod
 ```bash
 # Check Alembic status
 docker compose -f docker-compose.prod.yml exec backend-prod \
-  sh -c "ENV_FILE=/app/backend.env uv run alembic current"
+  sh -c "ENV_FILE=/app/.env uv run alembic current"
 ```
 
 **Solutions:**
 
 1. **ENV_FILE not set:**
-   - Ensure `ENV_FILE=backend.env` is in environment
+   - Ensure `ENV_FILE=.env` is in environment
    - Or use full command with ENV_FILE prefix
 
 2. **Database locked:**
