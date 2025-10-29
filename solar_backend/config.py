@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     STORE_DC_CHANNEL_DATA: bool = True  # Store detailed DC channel (MPPT) measurements from inverters
     LOG_LEVEL: str = "INFO" # Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     DEBUG: bool = False # Enable debug mode for verbose logging and other dev features
+    AUTO_REFRESH_RATE: int = 120  # Auto-refresh interval in seconds for dashboard and other real-time views
 
 
 settings = Settings()

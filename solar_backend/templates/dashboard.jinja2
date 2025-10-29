@@ -328,7 +328,7 @@
             stopAutoRefresh(); // Clear any existing interval
             autoRefreshInterval = setInterval(() => {
                 loadDashboardData();
-            }, 30000); // 30 seconds
+            }, {{ auto_refresh_rate }} * 1000); // Convert seconds to milliseconds
         }
 
         // Stop auto-refresh

@@ -9,6 +9,7 @@ from solar_backend.db import get_async_session, User
 from solar_backend.limiter import limiter
 from solar_backend.constants import UNAUTHORIZED_MESSAGE
 from solar_backend.users import current_active_user
+from solar_backend.config import settings
 from solar_backend.services.inverter_service import InverterService
 from solar_backend.services.exceptions import InverterNotFoundException
 from solar_backend.utils.timeseries import (
@@ -92,6 +93,7 @@ async def get_dashboard(
         "time_range": time_range,
         "valid_ranges": [tr.value for tr in TimeRange],
         "range_labels": {tr.value: tr.label for tr in TimeRange},
+        "auto_refresh_rate": settings.AUTO_REFRESH_RATE,
     }
 
 
