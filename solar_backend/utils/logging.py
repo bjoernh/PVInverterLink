@@ -1,12 +1,23 @@
 import structlog
-from structlog.processors import JSONRenderer, TimeStamper, format_exc_info, StackInfoRenderer, CallsiteParameterAdder, CallsiteParameter
+from structlog.processors import JSONRenderer, TimeStamper, format_exc_info, StackInfoRenderer, CallsiteParameterAdder, CallsiteParameter, FilteringBoundLogger
 from structlog.dev import ConsoleRenderer
 from logging import INFO, DEBUG, WARNING, ERROR, CRITICAL
+import logging
 
 from solar_backend.config import settings
 
 def configure_logging():
     """Configures structlog for consistent logging across the application."""
+
+    # Map LOG_LEVEL string to logging level
+    log_level_map = {
+        "DEBUG": DEBUG,
+        "INFO": INFO,
+        "WARNING": WARNING,
+        "ERROR": ERROR,
+        "CRITICAL": CRITICAL,
+    }
+    current_log_level = log_level_map.get(settings.LOG_LEVEL, INFO)
 
     shared_processors = [
         TimeStamper(fmt="iso"),
@@ -27,6 +38,9 @@ def configure_logging():
             ],
             logger_factory=structlog.PrintLoggerFactory(),
             cache_logger_on_first_use=False,
+            wrapper_class=FilteringBoundLogger,
+            context_class=dict,
+            initial_values={},
         )
     else:
         # Production configuration: JSON output for log aggregation
@@ -36,28 +50,19 @@ def configure_logging():
             ],
             logger_factory=structlog.PrintLoggerFactory(),
             cache_logger_on_first_use=False,
+            wrapper_class=FilteringBoundLogger,
+            context_class=dict,
+            initial_values={},
         )
 
     # Configure standard logging to use structlog
     # This ensures that logs from libraries also go through structlog
-    import logging
-    logging.basicConfig(level=INFO, handlers=[logging.StreamHandler()])
+    logging.basicConfig(level=current_log_level, handlers=[logging.StreamHandler()])
     logging.getLogger("uvicorn").handlers = [] # Remove default uvicorn handlers
     logging.getLogger("uvicorn.access").handlers = []
 
-    # Set log level based on settings
-    if settings.LOG_LEVEL == "DEBUG":
-        logging.root.setLevel(DEBUG)
-    elif settings.LOG_LEVEL == "INFO":
-        logging.root.setLevel(INFO)
-    elif settings.LOG_LEVEL == "WARNING":
-        logging.root.setLevel(WARNING)
-    elif settings.LOG_LEVEL == "ERROR":
-        logging.root.setLevel(ERROR)
-    elif settings.LOG_LEVEL == "CRITICAL":
-        logging.root.setLevel(CRITICAL)
-    else:
-        logging.root.setLevel(INFO)
+    # Set root logger level
+    logging.root.setLevel(current_log_level)
 
     # Suppress some chatty loggers
     logging.getLogger("httpx").setLevel(WARNING)
