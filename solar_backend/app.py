@@ -41,6 +41,10 @@ app = FastAPI(title="Deye Hard API",
                 },
 )
 
+# Add SessionMiddleware FIRST before any other middleware or routes
+# This ensures session data is available for all routes and middleware
+app.add_middleware(SessionMiddleware, secret_key=settings.AUTH_SECRET)
+
 # Mount static files for CSS and other assets
 static_dir = Path(__file__).parent / "static"
 if static_dir.exists():
@@ -88,7 +92,6 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
         content={"detail": exc.detail}
     )
 
-app.add_middleware(SessionMiddleware, secret_key=settings.AUTH_SECRET)
 htmx_init(templates=Jinja2Templates(directory=Path(os.getcwd()) / Path("templates")))
 
 sessionmanager.init(settings.DATABASE_URL)
