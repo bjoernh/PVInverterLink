@@ -245,7 +245,9 @@ async def write_dc_channel_measurement(
             inverter_id=inverter_id,
             channel=channel,
         )
-        raise TimeSeriesException(f"Failed to write DC channel measurement: {str(e)}") from e
+        raise TimeSeriesException(
+            f"Failed to write DC channel measurement: {str(e)}"
+        ) from e
 
 
 async def get_latest_value(
@@ -646,11 +648,11 @@ async def set_rls_context(session: AsyncSession, user_id: int) -> None:
     # Skip RLS context for SQLite (used in tests)
     db_url = str(session.bind.url) if session.bind else ""
     if "sqlite" in db_url.lower():
-        logger.debug("Skipping RLS context for SQLite", user_id=user_id)
+        # logger.debug("Skipping RLS context for SQLite", user_id=user_id)
         return
 
     await session.execute(text(f"SET app.current_user_id = {user_id}"))
-    logger.debug("RLS context set", user_id=user_id)
+    # logger.debug("RLS context set", user_id=user_id)
 
 
 async def reset_rls_context(session: AsyncSession) -> None:
@@ -662,11 +664,11 @@ async def reset_rls_context(session: AsyncSession) -> None:
     # Skip RLS context for SQLite (used in tests)
     db_url = str(session.bind.url) if session.bind else ""
     if "sqlite" in db_url.lower():
-        logger.debug("Skipping RLS context reset for SQLite")
+        # logger.debug("Skipping RLS context reset for SQLite")
         return
 
     await session.execute(text("RESET app.current_user_id"))
-    logger.debug("RLS context reset")
+    # logger.debug("RLS context reset")
 
 
 @contextlib.asynccontextmanager
@@ -746,17 +748,19 @@ async def get_latest_dc_channels(
 
         channels = []
         for row in result:
-            channels.append({
-                "channel": row.channel,
-                "name": row.name,
-                "power": float(row.power),
-                "voltage": float(row.voltage),
-                "current": float(row.current),
-                "yield_day_wh": float(row.yield_day_wh),
-                "yield_total_kwh": float(row.yield_total_kwh),
-                "irradiation": float(row.irradiation),
-                "time": row.time.astimezone(tz),
-            })
+            channels.append(
+                {
+                    "channel": row.channel,
+                    "name": row.name,
+                    "power": float(row.power),
+                    "voltage": float(row.voltage),
+                    "current": float(row.current),
+                    "yield_day_wh": float(row.yield_day_wh),
+                    "yield_total_kwh": float(row.yield_total_kwh),
+                    "irradiation": float(row.irradiation),
+                    "time": row.time.astimezone(tz),
+                }
+            )
 
         logger.debug(
             "Retrieved latest DC channel data",
@@ -843,14 +847,20 @@ async def get_dc_channel_timeseries(
             if channel not in channel_data:
                 channel_data[channel] = []
 
-            channel_data[channel].append({
-                "time": row.bucket_time.astimezone(tz).isoformat(),
-                "power": float(row.power) if row.power is not None else 0,
-                "voltage": float(row.voltage) if row.voltage is not None else 0,
-                "current": float(row.current) if row.current is not None else 0,
-                "yield_day_wh": float(row.yield_day_wh) if row.yield_day_wh is not None else 0,
-                "irradiation": float(row.irradiation) if row.irradiation is not None else 0,
-            })
+            channel_data[channel].append(
+                {
+                    "time": row.bucket_time.astimezone(tz).isoformat(),
+                    "power": float(row.power) if row.power is not None else 0,
+                    "voltage": float(row.voltage) if row.voltage is not None else 0,
+                    "current": float(row.current) if row.current is not None else 0,
+                    "yield_day_wh": float(row.yield_day_wh)
+                    if row.yield_day_wh is not None
+                    else 0,
+                    "irradiation": float(row.irradiation)
+                    if row.irradiation is not None
+                    else 0,
+                }
+            )
 
         logger.info(
             "Retrieved DC channel time-series data",
@@ -1072,10 +1082,12 @@ async def get_hourly_energy_production(
 
         hourly_data = []
         for row in result:
-            hourly_data.append({
-                "hour": int(row.hour),
-                "energy_kwh": float(row.energy_kwh),
-            })
+            hourly_data.append(
+                {
+                    "hour": int(row.hour),
+                    "energy_kwh": float(row.energy_kwh),
+                }
+            )
 
         logger.debug(
             "Retrieved hourly energy production",
