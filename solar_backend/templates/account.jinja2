@@ -32,7 +32,7 @@
         <div class="card-body p-2 md:p-6">
           <h3 class="card-title">E-Mail-Adresse ändern</h3>
           <div id="email-alert"></div>
-          <form class="space-y-4" hx-post="/account/change-email" hx-target="#email-alert" hx-ext="response-targets" hx-target-422="#email-alert" hx-target-401="#email-alert">
+          <form class="space-y-4" hx-post="/account/change-email" hx-target="#email-alert" hx-ext="response-targets" hx-target-422="#email-alert" hx-target-401="#email-alert" hx-on::after-request="if(event.detail.successful) this.reset()">
             <div>
               <label class="label">
                 <span class="label-text">Aktuelle E-Mail</span>
@@ -59,7 +59,7 @@
         <div class="card-body p-2 md:p-6">
           <h3 class="card-title">Passwort ändern</h3>
           <div id="password-alert"></div>
-          <form class="space-y-4" hx-post="/account/change-password" hx-target="#password-alert" hx-ext="response-targets" hx-target-422="#password-alert" hx-target-401="#password-alert" hx-target-207="#password-alert">
+          <form class="space-y-4" hx-post="/account/change-password" hx-target="#password-alert" hx-ext="response-targets" hx-target-422="#password-alert" hx-target-401="#password-alert" hx-target-207="#password-alert" hx-on::after-request="if(event.detail.successful) this.reset()">
             <div>
               <label class="label">
                 <span class="label-text">Aktuelles Passwort</span>
