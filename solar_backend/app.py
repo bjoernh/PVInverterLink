@@ -125,3 +125,4 @@ async def authenticated_route(user: User = Depends(current_active_user_bearer)) 
 async def on_startup() -> None:
     # Not needed after setup Alembic
     await create_db_and_tables()
+    logger.info("Application startup complete", log_level=settings.LOG_LEVEL)
