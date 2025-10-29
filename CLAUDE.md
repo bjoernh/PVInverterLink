@@ -134,6 +134,30 @@ uv run alembic downgrade -1
 uv run alembic history
 ```
 
+### Administration & CLI Tools
+
+#### Password Reset Tool
+
+The `reset_password.py` CLI tool allows administrators to reset user passwords. It uses the same password hashing as the application to ensure compatibility.
+
+```bash
+# Reset password with auto-generated secure password
+ENV_FILE=.env uv run python reset_password.py user@example.com
+
+# Reset password with specific password
+ENV_FILE=.env uv run python reset_password.py user@example.com 'NewPassword123!'
+
+# Note: If running locally (outside Docker), override DATABASE_URL to use localhost
+ENV_FILE=.env DATABASE_URL="postgresql+asyncpg://deyehard:dev-testing-ok@localhost:5432/deyehard" \
+  uv run python reset_password.py user@example.com
+```
+
+**Features**:
+- Automatically generates secure random passwords (16 characters with uppercase, digits, and special characters)
+- Uses fastapi-users' `PasswordHelper` for proper bcrypt hashing
+- Validates user existence before attempting password reset
+- Displays new credentials after successful reset
+
 ## Architecture
 
 ### Core Module Structure
