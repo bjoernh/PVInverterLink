@@ -142,7 +142,7 @@ async def post_change_password(
 
     return HTMLResponse(
         """<div class="alert alert-success">
-            <span><i class="fa-solid fa-circle-check"></i> Passwort erfolgreich geändert!</span>
+            <span class="text-green-700"><i class="fa-solid fa-circle-check"></i> Passwort erfolgreich geändert!</span>
         </div>"""
     )
 

@@ -4,8 +4,8 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "tailwind:build": "tailwindcss -i ./solar_backend/static/style.css -o ./solar_backend/static/output.css",
-    "tailwind:watch": "tailwindcss -i ./solar_backend/static/style.css -o ./solar_backend/static/output.css --watch"
+    "tailwind:build": "npx tailwindcss -i ./solar_backend/static/style.css -o ./solar_backend/static/output.css",
+    "tailwind:watch": "npx tailwindcss -i ./solar_backend/static/style.css -o ./solar_backend/static/output.css --watch"
   },
   "dependencies": {
     "tailwindcss": "^3.4.1",
