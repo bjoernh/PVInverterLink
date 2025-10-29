@@ -1,6 +1,7 @@
 import structlog
-from structlog.processors import JSONRenderer, TimeStamper, format_exc_info, StackInfoRenderer, CallsiteParameterAdder, CallsiteParameter, FilteringBoundLogger
+from structlog.processors import JSONRenderer, TimeStamper, format_exc_info, StackInfoRenderer, CallsiteParameterAdder, CallsiteParameter
 from structlog.dev import ConsoleRenderer
+from structlog.stdlib import add_logger_name, add_log_level, PositionalArgumentsFormatter
 from logging import INFO, DEBUG, WARNING, ERROR, CRITICAL
 import logging
 
@@ -20,9 +21,12 @@ def configure_logging():
     current_log_level = log_level_map.get(settings.LOG_LEVEL, INFO)
 
     shared_processors = [
+        add_log_level,
+        add_logger_name,
         TimeStamper(fmt="iso"),
         StackInfoRenderer(),
         format_exc_info,
+        PositionalArgumentsFormatter(),
         CallsiteParameterAdder({
             CallsiteParameter.FILENAME,
             CallsiteParameter.LINENO,
@@ -36,11 +40,8 @@ def configure_logging():
             processors=shared_processors + [
                 ConsoleRenderer(colors=True)
             ],
-            logger_factory=structlog.PrintLoggerFactory(),
+            logger_factory=structlog.stdlib.LoggerFactory(),
             cache_logger_on_first_use=False,
-            wrapper_class=FilteringBoundLogger,
-            context_class=dict,
-            initial_values={},
         )
     else:
         # Production configuration: JSON output for log aggregation
@@ -48,16 +49,16 @@ def configure_logging():
             processors=shared_processors + [
                 JSONRenderer()
             ],
-            logger_factory=structlog.PrintLoggerFactory(),
+            logger_factory=structlog.stdlib.LoggerFactory(),
             cache_logger_on_first_use=False,
-            wrapper_class=FilteringBoundLogger,
-            context_class=dict,
-            initial_values={},
         )
 
-    # Configure standard logging to use structlog
-    # This ensures that logs from libraries also go through structlog
-    logging.basicConfig(level=current_log_level, handlers=[logging.StreamHandler()])
+    # Configure standard logging
+    logging.basicConfig(
+        level=current_log_level,
+        format="%(message)s",
+        handlers=[logging.StreamHandler()]
+    )
     logging.getLogger("uvicorn").handlers = [] # Remove default uvicorn handlers
     logging.getLogger("uvicorn.access").handlers = []
 
