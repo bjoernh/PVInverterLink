@@ -1,0 +1,23 @@
+[backend]
+# Your backend URL (without trailing slash)
+url = https://your-backend.com
+
+# API key for authentication (generated in backend user settings)
+api_key = your-api-key-here
+
+# HTTP request timeout in seconds
+timeout = 10
+
+[device]
+# Cerbo GX serial number
+# Find this in Settings > General > System on your Venus OS device
+# Or read from D-Bus: dbus -y com.victronenergy.system /Serial GetValue
+cerbo_serial = HQ2345ABCDE
+
+# Update interval in seconds (how often to post measurements)
+# Recommended: 30 seconds
+update_interval = 30
+
+[logging]
+# Log level: DEBUG, INFO, WARNING, ERROR
+level = INFO

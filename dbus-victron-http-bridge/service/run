@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# Service runner for dbus-victron-http-bridge
+# This script is executed by daemontools/supervise on Venus OS
+#
+
+# Set working directory to script location
+cd /data/dbus-victron-http-bridge
+
+# Add Venus OS Python paths
+export PYTHONPATH="/opt/victronenergy/dbus-systemcalc-py/ext/velib_python:$PYTHONPATH"
+
+# Run the bridge script
+exec 2>&1
+exec python3 -u dbus-victron-http-bridge.py

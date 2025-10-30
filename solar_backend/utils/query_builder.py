@@ -58,7 +58,7 @@ class TimeSeriesQueryBuilder:
         yield_data = [
             {
                 "date": row.date.isoformat(),
-                "energy_kwh": float(row.max_yield_wh) / 1000.0,
+                "energy_kwh": float(row.yield_day_wh) / 1000.0,
             }
             for row in result
         ]
@@ -105,21 +105,21 @@ class TimeSeriesQueryBuilder:
 
     def _build_yield_query(self, time_filter_clause: str):
         return text(f"""
-            WITH daily_yield AS (
-                SELECT
+            WITH last_daily_measurement AS (
+                SELECT DISTINCT ON (DATE(time AT TIME ZONE :timezone))
                     DATE(time AT TIME ZONE :timezone) AS date,
-                    MAX(yield_day_wh) AS max_yield_wh
+                    yield_day_wh
                 FROM inverter_measurements
                 WHERE user_id = :user_id
                   AND inverter_id = :inverter_id
                   AND {time_filter_clause}
                   AND yield_day_wh IS NOT NULL
-                GROUP BY DATE(time AT TIME ZONE :timezone)
-                ORDER BY date ASC
+                ORDER BY DATE(time AT TIME ZONE :timezone), time DESC
             )
-            SELECT date, max_yield_wh
-            FROM daily_yield
-            WHERE max_yield_wh > 0
+            SELECT date, yield_day_wh
+            FROM last_daily_measurement
+            WHERE yield_day_wh > 0
+            ORDER BY date ASC
         """)
 
     def _build_integration_query(self, time_filter_clause: str):
