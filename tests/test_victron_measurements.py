@@ -21,11 +21,11 @@ async def test_post_victron_measurement_with_api_key(client, test_user, db_sessi
     )
     await db_session.commit()
 
-    # Create an inverter with Victron identifier format: cerbo_serial_deviceinstance
+    # Create an inverter with actual device serial
     await create_inverter_in_db(
         db_session,
         user_id=test_user.id,
-        serial_logger="HQ2345ABCDE_0",  # Format: cerbo_serial + "_" + device_instance
+        serial_logger="HQ22345ABCD",  # Actual device serial
         sw_version="v3.20",
         rated_power=3000,
         number_of_mppts=1,
@@ -67,7 +67,7 @@ async def test_post_victron_measurement_with_api_key(client, test_user, db_sessi
     assert data["success_count"] == 1
     assert data["error_count"] == 0
     assert data["cerbo_serial"] == "HQ2345ABCDE"
-    assert data["results"][0]["device_identifier"] == "HQ2345ABCDE_0"
+    assert data["results"][0]["device_identifier"] == "HQ22345ABCD"
     assert data["results"][0]["status"] == "ok"
 
 
@@ -77,11 +77,11 @@ async def test_post_victron_measurement_without_api_key(client, test_user, db_se
     """Test posting Victron measurement data without API key."""
     from tests.helpers import create_inverter_in_db
 
-    # Create an inverter with Victron identifier format
+    # Create an inverter with actual device serial
     await create_inverter_in_db(
         db_session,
         user_id=test_user.id,
-        serial_logger="HQ2345ABCDE_0",
+        serial_logger="HQ22345ABCD",
         sw_version="v3.20",
         rated_power=3000,
         number_of_mppts=1,
@@ -129,11 +129,11 @@ async def test_post_victron_measurement_multiple_devices(client, test_user, db_s
     )
     await db_session.commit()
 
-    # Create two solar chargers connected to the same Cerbo GX
+    # Create two solar chargers with their actual device serials
     await create_inverter_in_db(
         db_session,
         user_id=test_user.id,
-        serial_logger="HQ2345ABCDE_0",
+        serial_logger="HQ22345ABCD",
         sw_version="v3.20",
         rated_power=3000,
         number_of_mppts=1,
@@ -141,7 +141,7 @@ async def test_post_victron_measurement_multiple_devices(client, test_user, db_s
     await create_inverter_in_db(
         db_session,
         user_id=test_user.id,
-        serial_logger="HQ2345ABCDE_1",
+        serial_logger="HQ22345ABCE",
         sw_version="v3.20",
         rated_power=3000,
         number_of_mppts=1,
@@ -209,7 +209,7 @@ async def test_post_victron_measurement_with_multi_tracker(client, test_user, db
     await create_inverter_in_db(
         db_session,
         user_id=test_user.id,
-        serial_logger="HQ2345ABCDE_0",
+        serial_logger="HQ22345ABCD",
         sw_version="v3.20",
         rated_power=5000,
         number_of_mppts=4,
@@ -335,7 +335,7 @@ async def test_post_victron_measurement_mixed_results(client, test_user, db_sess
     await create_inverter_in_db(
         db_session,
         user_id=test_user.id,
-        serial_logger="HQ2345ABCDE_0",
+        serial_logger="HQ22345ABCD",
         sw_version="v3.20",
         rated_power=3000,
         number_of_mppts=1,

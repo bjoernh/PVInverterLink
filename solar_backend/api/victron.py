@@ -124,9 +124,9 @@ async def post_victron_measurement(
     monitor multiple solar chargers/inverters. Each device's data is stored separately.
 
     Device Identification:
-        Devices are identified by combining cerbo_serial and device_instance:
-        serial_logger format: "{cerbo_serial}_{device_instance}"
-        Example: "HQ2345ABCDE_0" for device instance 0 on Cerbo GX HQ2345ABCDE
+        Devices are identified by their serial number from the device itself.
+        serial_logger format: Device serial number (e.g., "HQ2208AXN7V")
+        This is the actual serial number of the solar charger/inverter.
 
     Authentication:
         The API key in the header must match the api_key of the user who owns
@@ -156,16 +156,16 @@ async def post_victron_measurement(
     # Process each device in the payload
     for device_data in data.devices:
         try:
-            # Construct device identifier: cerbo_serial + "_" + device_instance
-            device_identifier = f"{data.cerbo_serial}_{device_data.device_instance}"
+            # Use device serial as identifier
+            device_identifier = device_data.serial
 
-            # Find inverter by constructed identifier
+            # Find inverter by device serial
             inverter = await inverter_repo.get_by_serial(device_identifier)
 
             if not inverter:
                 logger.warning(
                     "Measurement received for unknown device",
-                    device_identifier=device_identifier,
+                    device_serial=device_identifier,
                     device_instance=device_data.device_instance,
                     cerbo_serial=data.cerbo_serial,
                 )
@@ -186,7 +186,7 @@ async def post_victron_measurement(
             if not user.api_key or user.api_key != x_api_key:
                 logger.warning(
                     "Unauthorized API key for device",
-                    device_identifier=device_identifier,
+                    device_serial=device_identifier,
                     user_id=user.id,
                     cerbo_serial=data.cerbo_serial,
                 )
@@ -255,7 +255,7 @@ async def post_victron_measurement(
 
             logger.debug(
                 "Victron measurements stored",
-                device_identifier=device_identifier,
+                device_serial=device_identifier,
                 inverter_id=inverter_id,
                 user_id=user_id,
                 yield_power_w=total_output_power,
@@ -280,7 +280,7 @@ async def post_victron_measurement(
             logger.error(
                 "Failed to store Victron measurement",
                 error=str(e),
-                device_identifier=device_identifier,
+                device_serial=device_identifier,
                 cerbo_serial=data.cerbo_serial,
             )
             results.append(

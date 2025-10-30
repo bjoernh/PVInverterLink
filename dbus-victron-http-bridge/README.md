@@ -121,31 +121,29 @@ The installer will:
 
 ### 8. Configure Backend Inverters
 
-In your backend, create inverter entries for each solar charger:
+In your backend, create inverter entries for each solar charger using the **actual device serial number**.
 
-**Serial Logger Format**: `{cerbo_serial}_{device_instance}`
+**Serial Logger Format**: Use the device's actual serial number (e.g., `HQ2208AXN7V`)
 
-Examples:
-- First solar charger: `HQ2345ABCDE_0`
-- Second solar charger: `HQ2345ABCDE_1`
-
-**Finding Device Instance IDs:**
+**Finding Device Serial Numbers:**
 
 ```bash
-# List all solar chargers with their instance IDs
+# List all solar chargers
 dbus -y | grep solarcharger
 
 # Example output:
 # com.victronenergy.solarcharger.ttyUSB0
 # com.victronenergy.solarcharger.ttyUSB1
 
-# Get device instance for a specific charger
-dbus -y com.victronenergy.solarcharger.ttyUSB0 /DeviceInstance GetValue
-# Output: 0
+# Get serial number for a specific charger
+dbus -y com.victronenergy.solarcharger.ttyUSB0 /Serial GetValue
+# Output: HQ2208AXN7V
 
-dbus -y com.victronenergy.solarcharger.ttyUSB1 /DeviceInstance GetValue
-# Output: 1
+dbus -y com.victronenergy.solarcharger.ttyUSB1 /Serial GetValue
+# Output: HQ22377MQDC
 ```
+
+These are the actual device serial numbers printed on your solar chargers.
 
 ## Usage
 
@@ -222,25 +220,44 @@ The bridge posts data in this format:
 
 ```json
 {
-  "timestamp": "2025-10-30T14:32:15+01:00",
-  "cerbo_serial": "HQ2345ABCDE",
+  "timestamp": "2025-10-30T15:27:33.058551+00:00",
+  "cerbo_serial": "c0619ab35133",
   "devices": [
     {
-      "device_instance": 0,
-      "serial": "HQ22345ABCD",
-      "name": "SmartSolar MPPT 150/35",
-      "product_name": "SmartSolar MPPT 150/35",
+      "device_instance": 281,
+      "serial": "HQ2208AXN7V",
+      "name": "PV Carport",
+      "product_name": "BlueSolar Charger MPPT 150/45 rev3",
       "reachable": true,
-      "producing": true,
-      "last_update": 1730297535,
-      "yield_power_w": 245.5,
-      "yield_total_kwh": 1234.56,
+      "producing": false,
+      "last_update": 1761838053,
+      "yield_power_w": 16.38,
+      "yield_total_kwh": 1274.38,
       "trackers": [
         {
           "tracker": 0,
-          "name": "PV-1",
-          "voltage": 48.3,
-          "power": 245.5
+          "name": "PV",
+          "voltage": 62.55,
+          "power": 16.38
+        }
+      ]
+    },
+    {
+      "device_instance": 280,
+      "serial": "HQ22377MQDC",
+      "name": "PV Garden",
+      "product_name": "BlueSolar Charger MPPT 150/45 rev3",
+      "reachable": true,
+      "producing": false,
+      "last_update": 1761838053,
+      "yield_power_w": 348.09,
+      "yield_total_kwh": 6515.43,
+      "trackers": [
+        {
+          "tracker": 0,
+          "name": "PV",
+          "voltage": 98.73,
+          "power": 348.09
         }
       ]
     }
@@ -276,8 +293,8 @@ The bridge posts data in this format:
 ### Device Not Found Errors (404)
 
 - Verify inverters exist in backend database
-- Check serial_logger format: `{cerbo_serial}_{device_instance}`
-- Use correct device instance IDs from D-Bus
+- Check serial_logger matches the actual device serial number
+- Get the correct serial from D-Bus: `dbus -y com.victronenergy.solarcharger.ttyUSB0 /Serial GetValue`
 
 ### No Data Being Posted
 
