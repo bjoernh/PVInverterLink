@@ -32,6 +32,7 @@ sys.path.insert(1, "/opt/victronenergy/dbus-systemcalc-py/ext/velib_python")
 
 try:
     import requests
+    from urllib.parse import urljoin
     from dbus.mainloop.glib import DBusGMainLoop
     from gi.repository import GLib
     import dbus
@@ -44,7 +45,9 @@ try:
     from dbusmonitor import DbusMonitor
 except ImportError:
     print("ERROR: Could not import dbusmonitor from velib_python")
-    print("Make sure velib_python is available in ext/velib_python/ or at the Venus OS standard location")
+    print(
+        "Make sure velib_python is available in ext/velib_python/ or at the Venus OS standard location"
+    )
     sys.exit(1)
 
 
@@ -67,7 +70,9 @@ class VictronBridge:
 
         self.logger.info("Victron HTTP Bridge starting")
         self.logger.info(f"Backend URL: {self.config['backend']['url']}")
-        self.logger.info(f"Update interval: {self.config['device']['update_interval']}s")
+        self.logger.info(
+            f"Update interval: {self.config['device']['update_interval']}s"
+        )
 
     def _load_config(self, config_path: str) -> Dict[str, Dict[str, Any]]:
         """Load configuration from INI file."""
@@ -82,12 +87,20 @@ class VictronBridge:
         config = {
             "backend": {
                 "url": parser.get("backend", "url"),
+                "base_url": parser.get("backend", "base_url", fallback=None),
+                "endpoint_path": parser.get(
+                    "backend", "endpoint_path", fallback="/api/victron/measurements"
+                ),
                 "api_key": parser.get("backend", "api_key"),
-                "timeout": parser.getint("backend", "timeout", fallback=DEFAULT_TIMEOUT),
+                "timeout": parser.getint(
+                    "backend", "timeout", fallback=DEFAULT_TIMEOUT
+                ),
             },
             "device": {
                 "cerbo_serial": parser.get("device", "cerbo_serial"),
-                "update_interval": parser.getint("device", "update_interval", fallback=DEFAULT_UPDATE_INTERVAL),
+                "update_interval": parser.getint(
+                    "device", "update_interval", fallback=DEFAULT_UPDATE_INTERVAL
+                ),
             },
             "logging": {
                 "level": parser.get("logging", "level", fallback="INFO"),
@@ -139,7 +152,9 @@ class VictronBridge:
 
             serial = self._get_dbus_value(service, "/Serial", "UNKNOWN")
             custom_name = self._get_dbus_value(service, "/CustomName")
-            product_name = self._get_dbus_value(service, "/ProductName", "Unknown Product")
+            product_name = self._get_dbus_value(
+                service, "/ProductName", "Unknown Product"
+            )
 
             # Use custom name if available, otherwise product name
             name = custom_name if custom_name else product_name
@@ -168,12 +183,14 @@ class VictronBridge:
                 power = yield_power_w
 
                 if voltage is not None and voltage > 0:
-                    trackers.append({
-                        "tracker": 0,
-                        "name": "PV",
-                        "voltage": float(voltage),
-                        "power": float(power),
-                    })
+                    trackers.append(
+                        {
+                            "tracker": 0,
+                            "name": "PV",
+                            "voltage": float(voltage),
+                            "power": float(power),
+                        }
+                    )
             else:
                 # Multi-tracker - read each tracker
                 for i in range(nr_of_trackers):
@@ -181,12 +198,14 @@ class VictronBridge:
                     power = self._get_dbus_value(service, f"/Pv/{i}/P", 0.0)
 
                     if voltage is not None and voltage > 0:
-                        trackers.append({
-                            "tracker": i,
-                            "name": f"PV-{i+1}",
-                            "voltage": float(voltage),
-                            "power": float(power),
-                        })
+                        trackers.append(
+                            {
+                                "tracker": i,
+                                "name": f"PV-{i + 1}",
+                                "voltage": float(voltage),
+                                "power": float(power),
+                            }
+                        )
 
             device_data = {
                 "device_instance": int(device_instance),
@@ -211,7 +230,9 @@ class VictronBridge:
         """Collect measurements from all solar chargers."""
         try:
             # Get all solar charger services
-            services = self.dbusmonitor.get_service_list("com.victronenergy.solarcharger")
+            services = self.dbusmonitor.get_service_list(
+                "com.victronenergy.solarcharger"
+            )
 
             if not services:
                 self.logger.debug("No solar chargers found on D-Bus")
@@ -244,7 +265,14 @@ class VictronBridge:
     def _post_measurements(self, payload: Dict[str, Any]) -> bool:
         """Post measurements to HTTP backend."""
         try:
-            url = f"{self.config['backend']['url']}/api/victron/measurements"
+            # Use configured base URL
+            base_url = self.config["backend"]["base_url"]
+            # Endpoint path can be overridden in config, defaults to /api/victron/measurements
+            endpoint_path = self.config["backend"].get(
+                "endpoint_path", "/api/victron/measurements"
+            )
+            # Build full URL using urllib.parse.urljoin for correct handling of slashes
+            url = urljoin(base_url.rstrip("/"), "/" + endpoint_path.lstrip("/"))
             headers = {
                 "Content-Type": "application/json",
                 "X-API-Key": self.config["backend"]["api_key"],
@@ -267,14 +295,20 @@ class VictronBridge:
                     f"Posted measurements: {result['success_count']} success, "
                     f"{result['error_count']} errors"
                 )
-                if result['error_count'] > 0:
-                    self.logger.warning(f"Errors in response: {result.get('results', [])}")
+                if result["error_count"] > 0:
+                    self.logger.warning(
+                        f"Errors in response: {result.get('results', [])}"
+                    )
                 return True
             elif response.status_code == 404:
                 # All devices not found
                 self.logger.error("All devices not found in backend database")
-                self.logger.error("Make sure devices are registered with correct serial_logger format:")
-                self.logger.error(f"  {self.config['device']['cerbo_serial']}_<device_instance>")
+                self.logger.error(
+                    "Make sure devices are registered with correct serial_logger format:"
+                )
+                self.logger.error(
+                    f"  {self.config['device']['cerbo_serial']}_<device_instance>"
+                )
                 return False
             elif response.status_code == 401:
                 self.logger.error("Authentication failed - check API key in config.ini")
@@ -298,7 +332,10 @@ class VictronBridge:
         current_time = time.time()
 
         # Check if it's time to post
-        if current_time - self.last_post_time < self.config["device"]["update_interval"]:
+        if (
+            current_time - self.last_post_time
+            < self.config["device"]["update_interval"]
+        ):
             return True  # Continue timer
 
         self.logger.debug("Collecting measurements")

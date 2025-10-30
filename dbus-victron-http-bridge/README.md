@@ -4,13 +4,13 @@ A Python bridge script that runs on Victron Venus OS devices (Cerbo GX, etc.) to
 
 ## Features
 
-- ✅ Monitors all connected Victron solar chargers automatically
-- ✅ Supports single and multi-MPPT devices (up to 4 trackers)
-- ✅ Collects power, voltage, and yield data
-- ✅ Posts measurements to HTTP endpoint every 30 seconds (configurable)
-- ✅ Automatic retry and error handling
-- ✅ Integrates with Venus OS daemontools for reliability
-- ✅ Logs to syslog for easy monitoring
+- Monitors all connected Victron solar chargers automatically
+- Supports single and multi-MPPT devices (up to 4 trackers)
+- Collects power, voltage, and yield data
+- Posts measurements to HTTP endpoint every 30 seconds (configurable)
+- Automatic retry and error handling
+- Integrates with Venus OS daemontools for reliability
+- Logs to syslog for easy monitoring
 
 ## Prerequisites
 
@@ -26,9 +26,8 @@ A Python bridge script that runs on Victron Venus OS devices (Cerbo GX, etc.) to
 
 ### Backend Requirements
 
-- Backend server running the Solar Backend API
-- User account with API key generated
-- Inverters registered with correct `serial_logger` format
+- Backend server running a HTTP POST API endpoint on /api/victron/measurements  (accepting json payload)
+- X-API-Key is send for authorization
 
 ## Installation
 
@@ -58,7 +57,7 @@ opkg install python3-dbus python3-gi python3-requests
 #### Option A: Using git (if available)
 
 ```bash
-cd /data
+cd /tmp
 git clone https://github.com/your-repo/dbus-victron-http-bridge.git
 cd dbus-victron-http-bridge
 ```
@@ -68,13 +67,13 @@ cd dbus-victron-http-bridge
 On your local machine:
 
 ```bash
-scp -r dbus-victron-http-bridge root@<venus-os-ip>:/data/
+scp -r dbus-victron-http-bridge root@<venus-os-ip>:/tmp/
 ```
 
 Then on Venus OS:
 
 ```bash
-cd /data/dbus-victron-http-bridge
+cd /tmp/dbus-victron-http-bridge
 ```
 
 ### 5. Configure the Bridge
@@ -225,7 +224,7 @@ The bridge posts data in this format:
   "devices": [
     {
       "device_instance": 281,
-      "serial": "HQ2208AXN7V",
+      "serial": "HQ24208RTN7V",
       "name": "PV Carport",
       "product_name": "BlueSolar Charger MPPT 150/45 rev3",
       "reachable": true,
@@ -244,7 +243,7 @@ The bridge posts data in this format:
     },
     {
       "device_instance": 280,
-      "serial": "HQ22377MQDC",
+      "serial": "HQ24325MQEE",
       "name": "PV Garden",
       "product_name": "BlueSolar Charger MPPT 150/45 rev3",
       "reachable": true,
