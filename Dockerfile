@@ -30,5 +30,13 @@ COPY ./alembic.ini /app/
 
 WORKDIR /app/solar_backend/
 
-CMD ["uvicorn", "app:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "80"]
+RUN uv pip install \
+    opentelemetry-distro \
+    opentelemetry-exporter-otlp \
+    opentelemetry-instrumentation-fastapi \
+    opentelemetry-instrumentation-sqlalchemy \
+    opentelemetry-instrumentation-httpx \
+    opentelemetry-instrumentation-asyncpg
+
+CMD ["opentelemetry-instrument", "uvicorn", "app:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "80"]
 
