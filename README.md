@@ -569,29 +569,51 @@ ENCRYPTION_KEY=generate-fernet-key-base64-encoded
 
 # Application
 COOKIE_SECURE=True
-BASE_URL=https://yourdomain.com
+BASE_URL=https://solar.64b.de
 
 # Email (if using)
-FASTMAIL__MAIL_SERVER=smtp.yourdomain.com
-FASTMAIL__MAIL_FROM=noreply@yourdomain.com
+FASTMAIL__MAIL_SERVER=smtp.example.com
+FASTMAIL__MAIL_FROM=noreply@example.com
 # ... other email settings
 ```
 
 ### Docker Deployment
 
+The project uses pre-built Docker images from `git.64b.de/bjoern/deye_hard` for deployments. Images are built automatically via CI/CD.
+
 ```bash
-# Build and start services
-docker-compose -f docker-compose.prod.yml up -d
+# Set registry credentials (required)
+export DOCKER_REGISTRY_USERNAME="your-username"
+export DOCKER_REGISTRY_PASSWORD="your-password"
+
+# Set desired image tag (optional, defaults based on environment)
+export IMAGE_TAG="v1.2.3"  # or 'prod', 'staging', 'test'
+
+# Deploy using environment-specific scripts
+cd deployment
+./scripts/deploy-prod.sh     # Production
+./scripts/deploy-staging.sh  # Staging
+./scripts/deploy-test.sh     # Test
+
+# Or manually with docker compose
+docker login git.64b.de -u "$DOCKER_REGISTRY_USERNAME"
+docker compose -f deployment/docker-compose.prod.yml pull
+docker compose -f deployment/docker-compose.prod.yml up -d
 
 # Run database migrations
-docker-compose exec backend uv run alembic upgrade head
+docker compose -f deployment/docker-compose.prod.yml exec backend-prod \
+  sh -c "ENV_FILE=/app/.env uv run alembic upgrade head"
 
 # View logs
-docker-compose logs -f backend
+docker compose -f deployment/docker-compose.prod.yml logs -f
 
 # Check health
-curl http://localhost:8000/healthcheck
+curl https://solar.64b.de/healthcheck
 ```
+
+**See also:**
+- [Docker Registry Guide](docs/DOCKER-REGISTRY.md) - Detailed registry and CI/CD documentation
+- [Deployment Guide](docs/DEPLOYMENT.md) - Complete deployment procedures
 
 ### Security Checklist
 
@@ -619,11 +641,34 @@ The system uses structured logging with `structlog`. Key events logged:
 
 Configure log aggregation in production (e.g., ELK stack, Grafana Loki, or CloudWatch).
 
+## CI/CD Pipeline
+
+The project uses GitHub Actions for automated Docker image builds and pushes to the registry.
+
+### Automatic Builds
+
+Images are built automatically on:
+- Push to `main`/`master` branch → Tags: `latest`, `main`, `sha-xxxxx`
+- Push to any branch → Tags: `<branch-name>`, `test`, `sha-xxxxx`
+- Creating git tags (e.g., `v1.2.3`) → Tags: `v1.2.3`, `v1.2`, `v1`, `prod`, `sha-xxxxx`
+
+### Manual Builds
+
+```bash
+# Build and push manually
+deployment/scripts/build-and-push.sh v1.2.3
+
+# Or trigger via GitHub Actions UI
+# → Go to Actions tab → Run workflow → Select environment/tag
+```
+
+See [Docker Registry Guide](docs/DOCKER-REGISTRY.md) for complete CI/CD documentation.
+
 ## Related Documentation
 
+- **[Docker Registry Guide](./docs/DOCKER-REGISTRY.md)**: Registry, CI/CD, and image management
+- **[Deployment Guide](./docs/DEPLOYMENT.md)**: Complete deployment procedures
 - **[CLAUDE.md](./CLAUDE.md)**: Comprehensive development guide for working with Claude Code
-- **[collector/README.md](./collector/README.md)**: Rust collector documentation and protocol details
-- **[collector/DEPLOYMENT.md](./collector/DEPLOYMENT.md)**: Collector deployment and configuration guide
 - **[OpenDTU Fork](https://github.com/bjoernh/OpenDTU)**: Modified OpenDTU firmware with HTTP push
 - **[FastAPI Documentation](https://fastapi.tiangolo.com/)**: FastAPI framework reference
 - **[TimescaleDB Documentation](https://docs.timescale.com/)**: TimescaleDB time-series features
