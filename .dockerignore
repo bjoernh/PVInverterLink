@@ -1,3 +1,80 @@
+# Environment files
 .env
+.env.*
 *.env
+!.env.example
+
+# Git
+.git/
+.gitignore
+.gitmodules
+.gitattributes
+
+# Tests
 tests/
+pytest.ini
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation
+*.md
+!README.md
+docs/
+img/
+
+# Deployment files (not needed in production image)
+deployment/
+docker-compose*.yml
+!docker-compose.yml
+Dockerfile*
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Development files
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Node modules (for Tailwind CSS development)
+node_modules/
+package-lock.json
+tailwind.config.js
+
+# Data and logs (should be in volumes, not image)
+data/
+logs/
+*.log
+
+# Backup files
+*.bak
+*.backup
+*.sql
+*.dump
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Alembic (migrations are included, but not environment-specific data)
+alembic.ini.example

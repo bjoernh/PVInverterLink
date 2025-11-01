@@ -24,9 +24,9 @@
 
 This guide covers deploying a three-tier architecture:
 
-- **Testing**: `test.yourdomain.com` - For experimental features and testing
-- **Staging**: `staging.yourdomain.com` - Pre-production verification
-- **Production**: `yourdomain.com` - Live production system
+- **Testing**: `test.solar.64b.de` - For experimental features and testing
+- **Staging**: `staging.solar.64b.de` - Pre-production verification
+- **Production**: `solar.64b.de` - Live production system
 
 All environments include full observability with SignOz monitoring from day one.
 

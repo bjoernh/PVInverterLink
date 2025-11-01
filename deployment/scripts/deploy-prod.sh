@@ -13,13 +13,16 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 ENVIRONMENT="prod"
-COMPOSE_FILE="docker-compose.${ENVIRONMENT}.yml"
+COMPOSE_FILE="deployment/docker-compose.${ENVIRONMENT}.yml"
+# Default to 'prod' tag for production, or use environment variable
+export IMAGE_TAG="${IMAGE_TAG:-prod}"
 
 echo -e "${RED}========================================${NC}"
 echo -e "${RED}  PRODUCTION DEPLOYMENT${NC}"
 echo -e "${RED}========================================${NC}"
 echo ""
 echo -e "${RED}WARNING: This will deploy to PRODUCTION!${NC}"
+echo -e "${YELLOW}Image Tag: ${IMAGE_TAG}${NC}"
 echo ""
 read -p "Are you sure you want to continue? Type 'yes' to proceed: " CONFIRM
 if [ "$CONFIRM" != "yes" ]; then
@@ -58,23 +61,41 @@ if ! grep -q "BASE_URL=https://" .env.${ENVIRONMENT}; then
     fi
 fi
 
+# Docker registry authentication
+echo ""
+echo -e "${YELLOW}Logging in to Docker registry...${NC}"
+if [ -n "$DOCKER_REGISTRY_USERNAME" ] && [ -n "$DOCKER_REGISTRY_PASSWORD" ]; then
+    echo "$DOCKER_REGISTRY_PASSWORD" | docker login git.64b.de -u "$DOCKER_REGISTRY_USERNAME" --password-stdin
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Failed to authenticate with Docker registry!${NC}"
+        echo "Please set DOCKER_REGISTRY_USERNAME and DOCKER_REGISTRY_PASSWORD environment variables."
+        exit 1
+    fi
+else
+    echo -e "${RED}ERROR: Docker registry credentials required for production!${NC}"
+    echo "Please set DOCKER_REGISTRY_USERNAME and DOCKER_REGISTRY_PASSWORD environment variables."
+    exit 1
+fi
+
 # Create backup before deployment
 echo ""
 echo -e "${YELLOW}Creating pre-deployment backup...${NC}"
 if docker compose -f "$COMPOSE_FILE" ps db-${ENVIRONMENT} | grep -q "Up"; then
-    ./scripts/backup-db.sh ${ENVIRONMENT}
+    deployment/scripts/backup-db.sh ${ENVIRONMENT}
 else
     echo "Database not running, skipping backup"
 fi
 
 # Pull latest images
 echo ""
-echo -e "${YELLOW}Pulling latest Docker images...${NC}"
+echo -e "${YELLOW}Pulling Docker image: git.64b.de/bjoern/deye_hard:${IMAGE_TAG}...${NC}"
 docker compose -f "$COMPOSE_FILE" pull
-
-# Build services
-echo -e "${YELLOW}Building services...${NC}"
-docker compose -f "$COMPOSE_FILE" build
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Failed to pull Docker images!${NC}"
+    echo "Check your registry authentication and network connectivity."
+    echo "Aborting deployment."
+    exit 1
+fi
 
 # Start services
 echo -e "${YELLOW}Starting services...${NC}"
@@ -98,23 +119,24 @@ docker compose -f "$COMPOSE_FILE" ps
 echo ""
 echo -e "${YELLOW}Testing health endpoint...${NC}"
 sleep 5
-curl -f https://yourdomain.com/healthcheck || curl -f http://yourdomain.com/healthcheck || echo -e "${RED}Health check failed!${NC}"
+curl -f https://solar.64b.de/healthcheck || curl -f http://solar.64b.de/healthcheck || echo -e "${RED}Health check failed!${NC}"
 
 # Create post-deployment backup
 echo ""
 echo -e "${YELLOW}Creating post-deployment backup...${NC}"
-./scripts/backup-db.sh ${ENVIRONMENT}
+deployment/scripts/backup-db.sh ${ENVIRONMENT}
 
 echo ""
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  PRODUCTION DEPLOYMENT COMPLETE!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
+echo "Image deployed: git.64b.de/bjoern/deye_hard:${IMAGE_TAG}"
+echo ""
 echo "Services:"
-echo "  - Backend: https://yourdomain.com"
-echo "  - API Docs: https://yourdomain.com/docs"
-echo "  - Admin: https://yourdomain.com/admin"
-echo "  - SignOz: https://signoz.yourdomain.com"
+echo "  - Backend: https://solar.64b.de"
+echo "  - API Docs: https://solar.64b.de/docs"
+echo "  - Admin: https://solar.64b.de/admin"
 echo ""
 echo "Monitoring:"
 echo "  - Check SignOz dashboard for any errors"
@@ -122,8 +144,8 @@ echo "  - Monitor logs: docker compose -f $COMPOSE_FILE logs -f"
 echo "  - Check alerts: Review email for any alert notifications"
 echo ""
 echo "Rollback (if needed):"
-echo "  - Restore backup: ./scripts/restore-db.sh ${ENVIRONMENT} [backup_file]"
-echo "  - Revert code: git checkout [previous_commit] && ./scripts/deploy-prod.sh"
+echo "  - Restore backup: deployment/scripts/restore-db.sh ${ENVIRONMENT} [backup_file]"
+echo "  - Deploy previous version: IMAGE_TAG=<previous-tag> deployment/scripts/deploy-prod.sh"
 echo ""
 echo -e "${YELLOW}Post-deployment checklist:${NC}"
 echo "  [ ] Test user login"

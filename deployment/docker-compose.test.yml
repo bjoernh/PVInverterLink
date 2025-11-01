@@ -4,10 +4,9 @@ services:
 
     # Backend Service (Test)
     backend-test:
-        build:
-            context: .
-            dockerfile: Dockerfile
+        image: git.64b.de/bjoern/deye_hard:${IMAGE_TAG:-test}
         container_name: backend-test
+        pull_policy: always
         restart: unless-stopped
         #ports:
         #    - 8080:80

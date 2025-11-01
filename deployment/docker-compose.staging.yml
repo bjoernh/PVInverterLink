@@ -3,10 +3,9 @@ version: "3.8"
 services:
   # Backend Service (Staging)
   backend-staging:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: git.64b.de/bjoern/deye_hard:${IMAGE_TAG:-staging}
     container_name: backend-staging
+    pull_policy: always
     restart: unless-stopped
     env_file:
       - .env.staging

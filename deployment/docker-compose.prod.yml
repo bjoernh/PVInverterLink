@@ -3,10 +3,9 @@ version: "3.8"
 services:
   # Backend Service (Production)
   backend-prod:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: git.64b.de/bjoern/deye_hard:${IMAGE_TAG:-prod}
     container_name: backend-prod
+    pull_policy: always
     restart: always
     env_file:
       - .env.prod

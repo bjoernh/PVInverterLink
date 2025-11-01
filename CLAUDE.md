@@ -105,6 +105,8 @@ npm run tailwind:watch
 **Note**: When you add new Tailwind CSS classes to templates (e.g., `overflow-hidden`, `flex-wrap`), you must rebuild the CSS by running `npm run tailwind:build`. The DaisyUI plugin is included and will be compiled together. After rebuilding, reload the page in your browser to see the changes.
 
 ### Docker Development
+
+**Local Development:**
 ```bash
 # Start all services (backend, timescale db)
 docker-compose up -d
@@ -115,9 +117,30 @@ docker-compose logs -f backend
 # Stop all services
 docker-compose down
 
-# Rebuild backend after general changes (not backend code)
-docker-compose up -d --build backend
+# Note: Don't rebuild the backend container in dev mode!
+# The app directory is volume-mounted and uvicorn uses --reload to detect changes
 ```
+
+**Production Deployments:**
+
+Production deployments use pre-built Docker images from `git.64b.de/bjoern/deye_hard` registry.
+
+```bash
+# Set registry credentials
+export DOCKER_REGISTRY_USERNAME="your-username"
+export DOCKER_REGISTRY_PASSWORD="your-password"
+
+# Deploy to specific environment
+export IMAGE_TAG="v1.2.3"  # or 'prod', 'staging', 'test'
+deployment/scripts/deploy-prod.sh
+
+# Or manually
+docker login git.64b.de
+docker compose -f deployment/docker-compose.prod.yml pull
+docker compose -f deployment/docker-compose.prod.yml up -d
+```
+
+See [docs/DOCKER-REGISTRY.md](docs/DOCKER-REGISTRY.md) for complete Docker registry documentation.
 
 ### Database Migrations
 ```bash
@@ -365,7 +388,65 @@ HTMX by default only processes 200-series HTTP responses. To display error messa
 - **Extension loaded**: `base.jinja2:72` includes `response-targets.js`
 - **Usage pattern**: Add `hx-target-XXX="#element-id"` attributes to forms/elements
 - **Example**: `<form hx-post="/endpoint" hx-target-422="#error-div" hx-target-503="#error-div">
-- **Backend**: Return `HTMLResponse` with error message and appropriate HTTP status codedocker
+- **Backend**: Return `HTMLResponse` with error message and appropriate HTTP status code
+
+## CI/CD and Docker Registry
+
+### Automated Docker Builds
+
+The project uses GitHub Actions to automatically build and push Docker images to `git.64b.de/bjoern/deye_hard`.
+
+**Workflow file**: `.github/workflows/docker-build-push.yml`
+
+**Automatic triggers:**
+- Push to `main`/`master`: Creates `latest`, `main`, `sha-xxxxx` tags
+- Push to any branch: Creates `<branch-name>`, `test`, `sha-xxxxx` tags
+- Git tags (`v1.2.3`): Creates `v1.2.3`, `v1.2`, `v1`, `prod`, `sha-xxxxx` tags
+
+**Manual trigger:**
+- GitHub Actions UI → Run workflow → Select environment/tag
+
+### Image Tagging Strategy
+
+- **Test**: `test`, `sha-xxxxx`, branch names (bleeding edge)
+- **Staging**: `staging`, `v1.x.x-rc.1` (release candidates)
+- **Production**: `v1.x.x`, `prod` (stable versions only)
+
+**Never use in production:** `latest`, `test`, or `sha-xxxxx`
+
+### Building and Pushing Manually
+
+```bash
+# Set registry credentials
+export DOCKER_REGISTRY_USERNAME="your-username"
+export DOCKER_REGISTRY_PASSWORD="your-password"
+
+# Build and push
+deployment/scripts/build-and-push.sh v1.2.3
+deployment/scripts/build-and-push.sh --env staging
+```
+
+### Deployment with Registry Images
+
+```bash
+# Set credentials and image tag
+export DOCKER_REGISTRY_USERNAME="deploy-user"
+export DOCKER_REGISTRY_PASSWORD="deploy-token"
+export IMAGE_TAG="v1.2.3"
+
+# Deploy to environment
+deployment/scripts/deploy-prod.sh
+deployment/scripts/deploy-staging.sh
+deployment/scripts/deploy-test.sh
+```
+
+### GitHub Secrets Configuration
+
+Required secrets in repository settings:
+- `DOCKER_REGISTRY_USERNAME`: Registry username
+- `DOCKER_REGISTRY_PASSWORD`: Registry password/token
+
+**See also:** [docs/DOCKER-REGISTRY.md](docs/DOCKER-REGISTRY.md) for comprehensive documentation
 
 ## Known Issues & TODOs
 
