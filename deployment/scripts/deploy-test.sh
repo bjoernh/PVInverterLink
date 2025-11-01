@@ -72,7 +72,7 @@ sleep 30
 # Run database migrations
 echo -e "${YELLOW}Running database migrations...${NC}"
 docker compose -f "$COMPOSE_FILE" exec backend-${ENVIRONMENT} \
-    sh -c "ENV_FILE=/app/.env uv run alembic upgrade head"
+    sh -c "cd /app && ENV_FILE=/app/.env uv run alembic upgrade head"
 
 # Check service health
 echo ""

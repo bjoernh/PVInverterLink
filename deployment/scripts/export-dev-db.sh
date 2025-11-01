@@ -60,7 +60,7 @@ if [ $? -eq 0 ]; then
     echo "     gunzip -c ${OUTPUT_FILE}.gz | docker compose -f docker-compose.prod.yml exec -T db-prod psql -U deyehard deyehard"
     echo ""
     echo "  3. Run migrations:"
-    echo "     docker compose -f docker-compose.prod.yml exec backend-prod sh -c 'ENV_FILE=/app/.env uv run alembic upgrade head'"
+    echo "     docker compose -f docker-compose.prod.yml exec backend-prod sh -c 'cd /app && ENV_FILE=/app/.env uv run alembic upgrade head'"
     echo ""
 else
     echo -e "${RED}Export failed!${NC}"
