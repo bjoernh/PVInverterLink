@@ -30,6 +30,8 @@ dependencies = [
     "fastapi-csrf-protect>=1.0.7",
     "cryptography>=46.0.2",
     "plotly>=5.18.0",
+    "opentelemetry-distro>=0.59b0",
+    "opentelemetry-exporter-otlp>=1.38.0",
 ]
 
 [project.optional-dependencies]
