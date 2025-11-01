@@ -116,50 +116,50 @@ async def post_add_inverter(
     if "/inverters" in hx_current_url:
         return HTMLResponse(f"""
             <tr id="inverter-row-{new_inverter_obj.id}">
-                <td>
+                <td class="text-xs md:text-sm py-2 md:py-3">
                     <span id="name-display-{new_inverter_obj.id}">{new_inverter_obj.name}</span>
-                    <input id="name-edit-{new_inverter_obj.id}" type="text" value="{new_inverter_obj.name}" class="input input-bordered input-sm w-full hidden" />
+                    <input id="name-edit-{new_inverter_obj.id}" type="text" value="{new_inverter_obj.name}" class="input input-bordered input-xs md:input-sm w-full hidden" />
                 </td>
-                <td>
+                <td class="text-xs md:text-sm py-2 md:py-3">
                     <span id="serial-display-{new_inverter_obj.id}">{new_inverter_obj.serial_logger}</span>
-                    <input id="serial-edit-{new_inverter_obj.id}" type="text" value="{new_inverter_obj.serial_logger}" class="input input-bordered input-sm w-full hidden" />
+                    <input id="serial-edit-{new_inverter_obj.id}" type="text" value="{new_inverter_obj.serial_logger}" class="input input-bordered input-xs md:input-sm w-full hidden" />
                 </td>
-                <td>{new_inverter_obj.sw_version}</td>
-                <td class="text-right">
-                    <div class="flex gap-2 justify-end">
-                        <a href="/dashboard/{new_inverter_obj.id}" class="btn btn-sm btn-primary" title="Dashboard">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <td class="hidden lg:table-cell text-xs md:text-sm">{new_inverter_obj.sw_version}</td>
+                <td class="text-right py-2 md:py-3">
+                    <div class="flex flex-col gap-0.5 md:gap-1 lg:gap-2 justify-end">
+                        <a href="/dashboard/{new_inverter_obj.id}" class="btn btn-xs md:btn-sm btn-primary" title="Dashboard">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 md:h-4 w-3 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                             </svg>
                         </a>
-                        <button id="edit-btn-{new_inverter_obj.id}" class="btn btn-sm btn-info" onclick="editInverter({new_inverter_obj.id})" title="Bearbeiten">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <button id="edit-btn-{new_inverter_obj.id}" class="btn btn-xs md:btn-sm btn-info" onclick="editInverter({new_inverter_obj.id})" title="Bearbeiten">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 md:h-4 w-3 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                         </button>
-                        <button id="save-btn-{new_inverter_obj.id}" class="btn btn-sm btn-success hidden"
+                        <button id="save-btn-{new_inverter_obj.id}" class="btn btn-xs md:btn-sm btn-success hidden"
                                 hx-put="/inverter/{new_inverter_obj.id}"
                                 hx-ext="json-enc"
                                 hx-vals='js:{{name: document.getElementById("name-edit-{new_inverter_obj.id}").value, serial: document.getElementById("serial-edit-{new_inverter_obj.id}").value}}'
                                 hx-target="#inverter-row-{new_inverter_obj.id}"
                                 hx-swap="outerHTML"
                                 title="Speichern">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 md:h-4 w-3 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                             </svg>
                         </button>
-                        <button id="cancel-btn-{new_inverter_obj.id}" class="btn btn-sm btn-ghost hidden" onclick="cancelEdit({new_inverter_obj.id})" title="Abbrechen">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <button id="cancel-btn-{new_inverter_obj.id}" class="btn btn-xs md:btn-sm btn-ghost hidden" onclick="cancelEdit({new_inverter_obj.id})" title="Abbrechen">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 md:h-4 w-3 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
-                        <button id="delete-btn-{new_inverter_obj.id}" class="btn btn-sm btn-error"
+                        <button id="delete-btn-{new_inverter_obj.id}" class="btn btn-xs md:btn-sm btn-error"
                                 hx-delete="/inverter/{new_inverter_obj.id}"
                                 hx-swap="delete"
                                 hx-target="#inverter-row-{new_inverter_obj.id}"
                                 hx-confirm="Soll der Wechselrichter '{new_inverter_obj.name}' wirklich gelöscht werden? Alle gespeicherten Daten werden gelöscht!"
                                 title="Löschen">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 md:h-4 w-3 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
                         </button>
@@ -236,50 +236,50 @@ async def put_inverter(
 
     return HTMLResponse(f"""
         <tr id="inverter-row-{inverter.id}">
-            <td>
+            <td class="text-xs md:text-sm py-2 md:py-3">
                 <span id="name-display-{inverter.id}">{inverter.name}</span>
-                <input id="name-edit-{inverter.id}" type="text" value="{inverter.name}" class="input input-bordered input-sm w-full hidden" />
+                <input id="name-edit-{inverter.id}" type="text" value="{inverter.name}" class="input input-bordered input-xs md:input-sm w-full hidden" />
             </td>
-            <td>
+            <td class="text-xs md:text-sm py-2 md:py-3">
                 <span id="serial-display-{inverter.id}">{inverter.serial_logger}</span>
-                <input id="serial-edit-{inverter.id}" type="text" value="{inverter.serial_logger}" class="input input-bordered input-sm w-full hidden" />
+                <input id="serial-edit-{inverter.id}" type="text" value="{inverter.serial_logger}" class="input input-bordered input-xs md:input-sm w-full hidden" />
             </td>
-            <td>{inverter.sw_version}</td>
-            <td class="text-right">
-                <div class="flex gap-2 justify-end">
-                    <a href="/dashboard/{inverter.id}" class="btn btn-sm btn-primary" title="Dashboard">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <td class="hidden lg:table-cell text-xs md:text-sm">{inverter.sw_version}</td>
+            <td class="text-right py-2 md:py-3">
+                <div class="flex flex-col gap-0.5 md:gap-1 lg:gap-2 justify-end">
+                    <a href="/dashboard/{inverter.id}" class="btn btn-xs md:btn-sm btn-primary" title="Dashboard">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 md:h-4 w-3 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                         </svg>
                     </a>
-                    <button id="edit-btn-{inverter.id}" class="btn btn-sm btn-info" onclick="editInverter({inverter.id})" title="Bearbeiten">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <button id="edit-btn-{inverter.id}" class="btn btn-xs md:btn-sm btn-info" onclick="editInverter({inverter.id})" title="Bearbeiten">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 md:h-4 w-3 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                     </button>
-                    <button id="save-btn-{inverter.id}" class="btn btn-sm btn-success hidden"
+                    <button id="save-btn-{inverter.id}" class="btn btn-xs md:btn-sm btn-success hidden"
                             hx-put="/inverter/{inverter.id}"
                             hx-ext="json-enc"
                             hx-vals='js:{{name: document.getElementById("name-edit-{inverter.id}").value, serial: document.getElementById("serial-edit-{inverter.id}").value}}'
                             hx-target="#inverter-row-{inverter.id}"
                             hx-swap="outerHTML"
                             title="Speichern">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 md:h-4 w-3 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
                     </button>
-                    <button id="cancel-btn-{inverter.id}" class="btn btn-sm btn-ghost hidden" onclick="cancelEdit({inverter.id})" title="Abbrechen">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <button id="cancel-btn-{inverter.id}" class="btn btn-xs md:btn-sm btn-ghost hidden" onclick="cancelEdit({inverter.id})" title="Abbrechen">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 md:h-4 w-3 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
-                    <button id="delete-btn-{inverter.id}" class="btn btn-sm btn-error"
+                    <button id="delete-btn-{inverter.id}" class="btn btn-xs md:btn-sm btn-error"
                             hx-delete="/inverter/{inverter.id}"
                             hx-swap="delete"
                             hx-target="#inverter-row-{inverter.id}"
                             hx-confirm="Soll der Wechselrichter '{inverter.name}' wirklich gelöscht werden? Alle gespeicherten Daten werden gelöscht!"
                             title="Löschen">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 md:h-4 w-3 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                     </button>
