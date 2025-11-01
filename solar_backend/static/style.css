@@ -1,6 +1,15 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "daisyui";
+
+@layer utilities {
+  .text-green-700 {
+    color: rgb(21 128 61);
+  }
+
+  .text-red-700 {
+    color: rgb(185 28 28);
+  }
+}
 
 body{
   min-height: 100%;

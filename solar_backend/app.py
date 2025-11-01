@@ -92,7 +92,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
         content={"detail": exc.detail}
     )
 
-htmx_init(templates=Jinja2Templates(directory=Path(os.getcwd()) / Path("templates")))
+htmx_init(templates=Jinja2Templates(directory=Path(__file__).parent / "templates"))
 
 sessionmanager.init(settings.DATABASE_URL)
 admin = Admin(app=app, authentication_backend=authentication_backend, engine=sessionmanager.engine)
