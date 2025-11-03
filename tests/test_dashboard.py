@@ -219,7 +219,7 @@ async def test_dashboard_has_auto_refresh(
     assert response.status_code == 200
     # Check for refresh functions in JavaScript
     assert "startAutoRefresh" in response.text
-    assert "30000" in response.text  # 30 second interval
+    assert "120 * 1000" in response.text  # 120 second interval (from config)
 
 
 @pytest.mark.asyncio

@@ -8,7 +8,7 @@
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
                 <h1 class="text-3xl font-bold">{{ inverter.name }} Details</h1>
-                <p class="text-sm text-gray-500">Seriennummer: {{ inverter.serial_logger }}</p>
+                <p class="text-sm opacity-70">Seriennummer: {{ inverter.serial_logger }}</p>
             </div>
             <div class="flex gap-2 flex-wrap">
                 <a href="/dashboard/{{ inverter.id }}" class="btn btn-ghost" hx-push-url="true">
@@ -23,8 +23,8 @@
 
     <!-- DC Channel Overview Section -->
     <div class="mb-4">
-        <h2 class="text-lg font-semibold text-gray-700">Modulübersicht</h2>
-        <p class="text-sm text-gray-500">Aktuelle Messwerte der einzelnen Module</p>
+        <h2 class="text-lg font-semibold">Modulübersicht</h2>
+        <p class="text-sm opacity-70">Aktuelle Messwerte der einzelnen Module</p>
     </div>
 
     <!-- Channel Cards Grid -->
@@ -32,14 +32,14 @@
         <!-- Cards will be dynamically populated -->
         <div class="col-span-full text-center py-8">
             <span class="loading loading-spinner loading-lg"></span>
-            <p class="mt-2 text-gray-500">Lade Modul-Daten...</p>
+            <p class="mt-2 opacity-70">Lade Modul-Daten...</p>
         </div>
     </div>
 
     <!-- Channel Comparison Section -->
     <div class="mb-4 mt-8">
-        <h2 class="text-lg font-semibold text-gray-700">Vergleichsansicht</h2>
-        <p class="text-sm text-gray-500">Historischer Vergleich der Module</p>
+        <h2 class="text-lg font-semibold">Vergleichsansicht</h2>
+        <p class="text-sm opacity-70">Historischer Vergleich der Module</p>
     </div>
 
     <!-- Comparison Chart Card -->
@@ -92,7 +92,7 @@
             <!-- Loading/Error States -->
             <div id="loading-state" class="text-center py-8 hidden">
                 <span class="loading loading-spinner loading-lg"></span>
-                <p class="mt-2 text-gray-500">Daten werden geladen...</p>
+                <p class="mt-2 opacity-70">Daten werden geladen...</p>
             </div>
             <div id="error-state" class="alert alert-warning hidden">
                 <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
@@ -112,6 +112,15 @@
         let chartInitialized = false;
         let channelData = null;
         let timeseriesData = null;
+
+        // Get current theme-aware colors
+        function getChartColors() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            return {
+                gridColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                textColor: isDark ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)'
+            };
+        }
 
         // Channel color mapping
         const channelColors = {
@@ -137,18 +146,21 @@
             const chartDiv = document.getElementById('comparisonChart');
             if (!chartDiv || chartInitialized) return;
 
+            const colors = getChartColors();
             const layout = {
                 xaxis: {
                     title: 'Zeit',
                     type: 'date',
                     showgrid: true,
-                    gridcolor: 'rgba(128, 128, 128, 0.2)'
+                    gridcolor: colors.gridColor,
+                    color: colors.textColor
                 },
                 yaxis: {
                     title: 'Leistung (W)',
                     rangemode: 'tozero',
                     showgrid: true,
-                    gridcolor: 'rgba(128, 128, 128, 0.2)'
+                    gridcolor: colors.gridColor,
+                    color: colors.textColor
                 },
                 hovermode: 'x unified',
                 showlegend: true,
@@ -157,7 +169,10 @@
                     y: 1.15,
                     xanchor: 'center',
                     yanchor: 'bottom',
-                    orientation: 'h'
+                    orientation: 'h',
+                    font: {
+                        color: colors.textColor
+                    }
                 },
                 margin: {
                     l: 60,
@@ -166,7 +181,10 @@
                     b: 50
                 },
                 plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)'
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: {
+                    color: colors.textColor
+                }
             };
 
             const config = {
@@ -204,34 +222,34 @@
                             <h3 class="text-lg font-bold" style="color: ${color}">
                                 <i class="fa-solid fa-plug-circle-bolt"></i> ${ch.name}
                             </h3>
-                            <p class="text-sm text-gray-500 mb-2">${ch.time_ago}</p>
+                            <p class="text-sm opacity-70 mb-2">${ch.time_ago}</p>
 
                             <div class="divider my-1"></div>
 
                             <div class="mb-2">
-                                <span class="text-xs text-gray-500">Leistung</span>
+                                <span class="text-xs opacity-70">Leistung</span>
                                 <p class="text-2xl font-bold" style="color: ${color}">${ch.power} W</p>
                             </div>
 
                             <div class="grid grid-cols-2 gap-2 mb-2">
                                 <div>
-                                    <span class="text-xs text-gray-500">Spannung</span>
+                                    <span class="text-xs opacity-70">Spannung</span>
                                     <p class="text-sm font-semibold">${ch.voltage} V</p>
                                 </div>
                                 <div>
-                                    <span class="text-xs text-gray-500">Strom</span>
+                                    <span class="text-xs opacity-70">Strom</span>
                                     <p class="text-sm font-semibold">${ch.current} A</p>
                                 </div>
                             </div>
 
                             <div class="mb-2">
-                                <span class="text-xs text-gray-500">Ertrag Heute</span>
+                                <span class="text-xs opacity-70">Ertrag Heute</span>
                                 <p class="text-lg font-bold">${ch.yield_day_wh} Wh</p>
                             </div>
 
                             <div>
-                                <span class="text-xs text-gray-500">Gesamtertrag</span>
-                                <p class="text-sm font-semibold text-gray-600">${ch.yield_total_kwh} kWh</p>
+                                <span class="text-xs opacity-70">Gesamtertrag</span>
+                                <p class="text-sm font-semibold opacity-80">${ch.yield_total_kwh} kWh</p>
                             </div>
                         </div>
                     </div>
@@ -278,18 +296,21 @@
                 });
             }
 
+            const colors = getChartColors();
             const layout = {
                 xaxis: {
                     title: 'Zeit',
                     type: 'date',
                     showgrid: true,
-                    gridcolor: 'rgba(128, 128, 128, 0.2)'
+                    gridcolor: colors.gridColor,
+                    color: colors.textColor
                 },
                 yaxis: {
                     title: metricLabels[currentMetric],
                     rangemode: 'tozero',
                     showgrid: true,
-                    gridcolor: 'rgba(128, 128, 128, 0.2)'
+                    gridcolor: colors.gridColor,
+                    color: colors.textColor
                 },
                 hovermode: 'x unified',
                 showlegend: true,
@@ -298,7 +319,10 @@
                     y: 1.12,
                     xanchor: 'center',
                     yanchor: 'bottom',
-                    orientation: 'h'
+                    orientation: 'h',
+                    font: {
+                        color: colors.textColor
+                    }
                 },
                 margin: {
                     l: 60,
@@ -307,7 +331,10 @@
                     b: 50
                 },
                 plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)'
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: {
+                    color: colors.textColor
+                }
             };
 
             Plotly.react('comparisonChart', traces, layout);
@@ -403,6 +430,19 @@
                 initializePage();
             }
         });
+
+        // Update chart when theme changes
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+                    if (chartInitialized) {
+                        chartInitialized = false;
+                        initializePage();
+                    }
+                }
+            });
+        });
+        observer.observe(document.documentElement, { attributes: true });
     })();
 </script>
 

@@ -11,6 +11,60 @@
   }
 }
 
+/* Dark mode improvements */
+[data-theme="dark"] {
+  /* Improve text contrast in dark mode */
+  .text-base-content {
+    opacity: 1;
+  }
+
+  /* Headers and important text should be brighter */
+  h1, h2, h3, h4, h5, h6 {
+    color: oklch(var(--bc) / 0.95);
+    font-weight: 600;
+  }
+
+  /* Secondary text with better contrast than default gray-500 */
+  .text-secondary-content,
+  .stat-desc,
+  .label-text {
+    color: oklch(var(--bc) / 0.75);
+  }
+
+  /* Cards should have slight elevation in dark mode */
+  .card {
+    background-color: oklch(var(--b2));
+    border: 1px solid oklch(var(--bc) / 0.1);
+  }
+
+  /* Stats cards */
+  .stat {
+    background-color: oklch(var(--b2));
+  }
+
+  /* Improve navbar contrast */
+  .navbar {
+    background-color: oklch(var(--b1));
+    border-bottom: 1px solid oklch(var(--bc) / 0.1);
+  }
+
+  /* Alert components */
+  .alert {
+    border: 1px solid oklch(var(--bc) / 0.2);
+  }
+
+  /* Form inputs */
+  .input, .select, .textarea {
+    background-color: oklch(var(--b2));
+    border-color: oklch(var(--bc) / 0.2);
+  }
+
+  /* Buttons should be more visible */
+  .btn {
+    border-width: 1px;
+  }
+}
+
 body{
   min-height: 100%;
   display: grid;

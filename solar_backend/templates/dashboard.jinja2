@@ -8,7 +8,7 @@
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
                 <h1 class="text-3xl font-bold">{{ inverter.name }}</h1>
-                <p class="text-sm text-gray-500">Seriennummer: {{ inverter.serial_logger }}</p>
+                <p class="text-sm opacity-70">Seriennummer: {{ inverter.serial_logger }}</p>
             </div>
             <div class="flex gap-2 flex-wrap">
                 <a href="/dc-channels/{{ inverter.id }}" class="btn btn-secondary" hx-push-url="true">
@@ -35,33 +35,33 @@
 
     <!-- Today's Metrics Section Header -->
     <div class="mb-4">
-        <h2 class="text-lg font-semibold text-gray-700">Heutige Metriken</h2>
-        <p class="text-sm text-gray-500">Aktuelle Messwerte von heute</p>
+        <h2 class="text-lg font-semibold">Heutige Metriken</h2>
+        <p class="text-sm opacity-70">Aktuelle Messwerte von heute</p>
     </div>
 
     <!-- Statistics Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <div class="card bg-base-100 shadow-md">
             <div class="card-body p-4">
-                <h3 class="text-sm font-medium text-gray-500">Aktuell</h3>
+                <h3 class="text-sm font-medium opacity-70">Aktuell</h3>
                 <p id="stat-current" class="text-2xl font-bold">-- W</p>
             </div>
         </div>
         <div class="card bg-base-100 shadow-md">
             <div class="card-body p-4">
-                <h3 class="text-sm font-medium text-gray-500">Maximum heute</h3>
+                <h3 class="text-sm font-medium opacity-70">Maximum heute</h3>
                 <p id="stat-max" class="text-2xl font-bold">-- W</p>
             </div>
         </div>
         <div class="card bg-base-100 shadow-md">
             <div class="card-body p-4">
-                <h3 class="text-sm font-medium text-gray-500">Produktion Heute</h3>
+                <h3 class="text-sm font-medium opacity-70">Produktion Heute</h3>
                 <p id="stat-today-kwh" class="text-2xl font-bold">-- kWh</p>
             </div>
         </div>
         <div class="card bg-base-100 shadow-md">
             <div class="card-body p-4">
-                <h3 class="text-sm font-medium text-gray-500">Durchschnitt (letzte Stunde)</h3>
+                <h3 class="text-sm font-medium opacity-70">Durchschnitt (letzte Stunde)</h3>
                 <p id="stat-avg-hour" class="text-2xl font-bold">-- W</p>
             </div>
         </div>
@@ -69,8 +69,8 @@
 
     <!-- Historic Data Section Header -->
     <div class="mb-4 mt-8">
-        <h2 class="text-lg font-semibold text-gray-700">Detaillierter Verlauf</h2>
-        <p class="text-sm text-gray-500">Historische Daten über den gewählten Zeitraum</p>
+        <h2 class="text-lg font-semibold">Detaillierter Verlauf</h2>
+        <p class="text-sm opacity-70">Historische Daten über den gewählten Zeitraum</p>
     </div>
 
     <!-- Time Range Selector -->
@@ -79,7 +79,7 @@
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 mb-4">
                 <h2 class="card-title text-xl md:text-2xl truncate">Leistungsverlauf</h2>
                 <div class="flex items-center gap-2 flex-shrink-0">
-                    <span class="text-sm text-gray-500 whitespace-nowrap">Letztes Update: <span id="last-update">--</span></span>
+                    <span class="text-sm opacity-70 whitespace-nowrap">Letztes Update: <span id="last-update">--</span></span>
                     <button id="refresh-btn" class="btn btn-circle btn-sm btn-ghost" onclick="loadDashboardData()">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -105,7 +105,7 @@
             <!-- Loading/Error States -->
             <div id="loading-state" class="text-center py-8 hidden">
                 <span class="loading loading-spinner loading-lg"></span>
-                <p class="mt-2 text-gray-500">Daten werden geladen...</p>
+                <p class="mt-2 opacity-70">Daten werden geladen...</p>
             </div>
             <div id="error-state" class="alert alert-warning hidden">
                 <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
@@ -118,8 +118,8 @@
 
     <!-- Energy Production Section Header -->
     <div class="mb-4 mt-8">
-        <h2 class="text-lg font-semibold text-gray-700">Energieproduktion</h2>
-        <p class="text-sm text-gray-500">Stündliche und tägliche Energieerzeugung</p>
+        <h2 class="text-lg font-semibold">Energieproduktion</h2>
+        <p class="text-sm opacity-70">Stündliche und tägliche Energieerzeugung</p>
     </div>
 
     <!-- Energy Production Chart Card -->
@@ -141,7 +141,7 @@
             </div>
 
             <!-- Description Text -->
-            <p id="energy-period-description" class="text-sm text-gray-500 mb-4">
+            <p id="energy-period-description" class="text-sm opacity-70 mb-4">
                 Stündliche Energieproduktion für heute
             </p>
 
@@ -151,7 +151,7 @@
             <!-- Loading/Error States -->
             <div id="energy-loading-state" class="text-center py-8 hidden">
                 <span class="loading loading-spinner loading-lg"></span>
-                <p class="mt-2 text-gray-500">Daten werden geladen...</p>
+                <p class="mt-2 opacity-70">Daten werden geladen...</p>
             </div>
             <div id="energy-error-state" class="alert alert-warning hidden">
                 <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
@@ -170,13 +170,13 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {% if inverter.rated_power %}
                 <div>
-                    <span class="text-sm text-gray-500">Nennleistung:</span>
+                    <span class="text-sm opacity-70">Nennleistung:</span>
                     <p class="text-lg font-medium">{{ inverter.rated_power }} W</p>
                 </div>
                 {% endif %}
                 {% if inverter.number_of_mppts %}
                 <div>
-                    <span class="text-sm text-gray-500">Anzahl MPPTs:</span>
+                    <span class="text-sm opacity-70">Anzahl MPPTs:</span>
                     <p class="text-lg font-medium">{{ inverter.number_of_mppts }}</p>
                 </div>
                 {% endif %}
@@ -187,6 +187,16 @@
 </div>
 
 <script>
+    // Get current theme-aware colors - shared by all charts
+    function getChartColors() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        return {
+            gridColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+            textColor: isDark ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)',
+            lineColor: isDark ? 'rgb(96, 165, 250)' : 'rgb(59, 130, 246)'
+        };
+    }
+
     (function() {
         const inverterId = {{ inverter.id }};
         let currentTimeRange = '{{ time_range }}';
@@ -198,17 +208,23 @@
             const chartDiv = document.getElementById('powerChart');
             if (!chartDiv || chartInitialized) return;
 
+            const colors = getChartColors();
             const layout = {
                 title: '',
                 xaxis: {
                     title: '',
                     type: 'date',
-                    showgrid: false
+                    showgrid: true,
+                    gridcolor: colors.gridColor,
+                    color: colors.textColor
                 },
                 yaxis: {
                     title: 'Leistung (W)',
                     rangemode: 'tozero',
-                    ticksuffix: ' W'
+                    ticksuffix: ' W',
+                    showgrid: true,
+                    gridcolor: colors.gridColor,
+                    color: colors.textColor
                 },
                 hovermode: 'x unified',
                 showlegend: false,
@@ -219,7 +235,10 @@
                     b: 50
                 },
                 plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)'
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: {
+                    color: colors.textColor
+                }
             };
 
             const config = {
@@ -235,11 +254,11 @@
                 mode: 'lines',
                 fill: 'tozeroy',
                 line: {
-                    color: 'rgb(59, 130, 246)',
+                    color: colors.lineColor,
                     width: 2,
                     shape: 'spline'
                 },
-                fillcolor: 'rgba(59, 130, 246, 0.1)',
+                fillcolor: colors.lineColor.replace('rgb', 'rgba').replace(')', ', 0.1)'),
                 name: 'Leistung'
             };
 
@@ -378,6 +397,19 @@
                 stopAutoRefresh();
             }
         });
+
+        // Update charts when theme changes
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+                    if (chartInitialized) {
+                        chartInitialized = false;
+                        initializeDashboard();
+                    }
+                }
+            });
+        });
+        observer.observe(document.documentElement, { attributes: true });
     })();
 
     // Energy Production Chart
@@ -391,11 +423,14 @@
             const chartDiv = document.getElementById('energyChart');
             if (!chartDiv || energyChartInitialized) return;
 
+            const colors = getChartColors();
             const layout = {
                 title: '',
                 xaxis: {
                     title: '',
-                    showgrid: false,
+                    showgrid: true,
+                    gridcolor: colors.gridColor,
+                    color: colors.textColor,
                     tickangle: -45
                 },
                 yaxis: {
@@ -404,7 +439,10 @@
                         standoff: 15
                     },
                     rangemode: 'tozero',
-                    ticksuffix: ' kWh'
+                    ticksuffix: ' kWh',
+                    showgrid: true,
+                    gridcolor: colors.gridColor,
+                    color: colors.textColor
                 },
                 hovermode: 'closest',
                 showlegend: false,
@@ -415,7 +453,10 @@
                     b: 80
                 },
                 plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)'
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: {
+                    color: colors.textColor
+                }
             };
 
             const config = {
@@ -550,6 +591,19 @@
 
         // Handle window resize
         window.addEventListener('resize', updateEnergyChartHeight);
+
+        // Update chart when theme changes
+        const energyObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+                    if (energyChartInitialized) {
+                        energyChartInitialized = false;
+                        initializeEnergyChart();
+                    }
+                }
+            });
+        });
+        energyObserver.observe(document.documentElement, { attributes: true });
     })();
 </script>
 

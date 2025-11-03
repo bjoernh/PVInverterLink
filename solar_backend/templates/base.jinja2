@@ -63,5 +63,22 @@
     <script src="https://unpkg.com/htmx-ext-json-enc@2.0.1/json-enc.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/theme-change@2.0.2/index.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script>
+      // Reinitialize theme-change after HTMX swaps to ensure toggle keeps working
+      document.body.addEventListener('htmx:afterSwap', function(evt) {
+        // Force theme-change to reinitialize by dispatching a custom event
+        // This ensures the toggle button in the navbar keeps working after page navigation
+        if (window.themeChange) {
+          window.themeChange.init();
+        }
+      });
+
+      // Apply saved theme immediately on page load to prevent flash
+      (function() {
+        const theme = localStorage.getItem('theme') ||
+                     (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
 </body>
 </html>

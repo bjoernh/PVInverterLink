@@ -9,10 +9,10 @@ from solar_backend.utils.query_builder import TimeSeriesQueryBuilder
 
 
 class MockRow:
-    def __init__(self, date, max_yield_wh=None, energy_kwh=None):
+    def __init__(self, date, yield_day_wh=None, energy_kwh=None):
         self.date = date
-        if max_yield_wh is not None:
-            self.max_yield_wh = max_yield_wh
+        if yield_day_wh is not None:
+            self.yield_day_wh = yield_day_wh
         if energy_kwh is not None:
             self.energy_kwh = energy_kwh
 
@@ -29,8 +29,8 @@ async def test_get_energy_production_uses_yield_data():
 
     # Mock return value for the yield query
     mock_yield_data = [
-        MockRow(date=date(2023, 1, 1), max_yield_wh=1000),
-        MockRow(date=date(2023, 1, 2), max_yield_wh=1500),
+        MockRow(date=date(2023, 1, 1), yield_day_wh=1000),
+        MockRow(date=date(2023, 1, 2), yield_day_wh=1500),
     ]
     mock_result = MagicMock()
     mock_result.__iter__.return_value = iter(mock_yield_data)
@@ -64,7 +64,7 @@ async def test_get_energy_production_falls_back_to_integration():
     builder = TimeSeriesQueryBuilder(session=mock_session, user_id=1, inverter_id=1)
 
     # Mock return value for the first (yield) query - only one row
-    mock_yield_data = [MockRow(date=date(2023, 1, 1), max_yield_wh=1000)]
+    mock_yield_data = [MockRow(date=date(2023, 1, 1), yield_day_wh=1000)]
     mock_yield_result = MagicMock()
     mock_yield_result.__iter__.return_value = iter(mock_yield_data)
 
