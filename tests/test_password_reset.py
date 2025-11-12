@@ -1,8 +1,8 @@
 """
 Tests for password reset functionality.
 """
+
 import pytest
-from httpx import AsyncClient
 
 
 @pytest.mark.integration
@@ -12,12 +12,9 @@ async def test_request_password_reset(client, test_user, mocker):
     # Mock email sending
     mail_mock = mocker.AsyncMock()
     mail_mock.return_value = True
-    mocker.patch('solar_backend.users.send_reset_passwort_mail', mail_mock)
+    mocker.patch("solar_backend.users.send_reset_passwort_mail", mail_mock)
 
-    response = await client.post(
-        "/request_reset_password",
-        headers={"HX-Prompt": "testuser@example.com"}
-    )
+    response = await client.post("/request_reset_password", headers={"HX-Prompt": "testuser@example.com"})
 
     assert response.status_code == 200
     assert "Email wurde verschickt" in response.text
@@ -40,24 +37,16 @@ async def test_reset_password_with_valid_token(client, test_user, mocker):
     # First request password reset to get token
     mail_mock = mocker.AsyncMock()
     mail_mock.return_value = True
-    mocker.patch('solar_backend.users.send_reset_passwort_mail', mail_mock)
+    mocker.patch("solar_backend.users.send_reset_passwort_mail", mail_mock)
 
-    await client.post(
-        "/request_reset_password",
-        headers={"HX-Prompt": "testuser@example.com"}
-    )
+    await client.post("/request_reset_password", headers={"HX-Prompt": "testuser@example.com"})
 
     # Get token from mocked email call (positional arg)
     token = mail_mock.call_args[0][1]  # Second positional argument
 
     # Reset password with valid token
     response = await client.post(
-        "/reset_password",
-        data={
-            "token": token,
-            "new_password1": "NewPassword123",
-            "new_password2": "NewPassword123"
-        }
+        "/reset_password", data={"token": token, "new_password1": "NewPassword123", "new_password2": "NewPassword123"}
     )
 
     assert response.status_code == 200
@@ -65,8 +54,7 @@ async def test_reset_password_with_valid_token(client, test_user, mocker):
 
     # Verify can login with new password
     login_response = await client.post(
-        "/login",
-        data={"username": "testuser@example.com", "password": "NewPassword123"}
+        "/login", data={"username": "testuser@example.com", "password": "NewPassword123"}
     )
     assert login_response.status_code == 200
 
@@ -78,23 +66,15 @@ async def test_reset_password_with_mismatched_passwords(client, test_user, mocke
     # First request password reset to get token
     mail_mock = mocker.AsyncMock()
     mail_mock.return_value = True
-    mocker.patch('solar_backend.users.send_reset_passwort_mail', mail_mock)
+    mocker.patch("solar_backend.users.send_reset_passwort_mail", mail_mock)
 
-    await client.post(
-        "/request_reset_password",
-        headers={"HX-Prompt": "testuser@example.com"}
-    )
+    await client.post("/request_reset_password", headers={"HX-Prompt": "testuser@example.com"})
 
     token = mail_mock.call_args[0][1]  # Second positional argument
 
     # Try to reset with mismatched passwords
     response = await client.post(
-        "/reset_password",
-        data={
-            "token": token,
-            "new_password1": "password1",
-            "new_password2": "password2"
-        }
+        "/reset_password", data={"token": token, "new_password1": "password1", "new_password2": "password2"}
     )
 
     assert response.status_code == 200
@@ -107,11 +87,7 @@ async def test_reset_password_with_invalid_token(client):
     """Test password reset fails with invalid token."""
     response = await client.post(
         "/reset_password",
-        data={
-            "token": "invalid-token-12345",
-            "new_password1": "NewPassword123",
-            "new_password2": "NewPassword123"
-        }
+        data={"token": "invalid-token-12345", "new_password1": "NewPassword123", "new_password2": "NewPassword123"},
     )
 
     assert response.status_code == 200
@@ -125,23 +101,15 @@ async def test_reset_password_token_cannot_be_reused(client, test_user, mocker):
     # Request password reset
     mail_mock = mocker.AsyncMock()
     mail_mock.return_value = True
-    mocker.patch('solar_backend.users.send_reset_passwort_mail', mail_mock)
+    mocker.patch("solar_backend.users.send_reset_passwort_mail", mail_mock)
 
-    await client.post(
-        "/request_reset_password",
-        headers={"HX-Prompt": "testuser@example.com"}
-    )
+    await client.post("/request_reset_password", headers={"HX-Prompt": "testuser@example.com"})
 
     token = mail_mock.call_args[0][1]  # Second positional argument
 
     # Use token first time
     response1 = await client.post(
-        "/reset_password",
-        data={
-            "token": token,
-            "new_password1": "NewPassword123",
-            "new_password2": "NewPassword123"
-        }
+        "/reset_password", data={"token": token, "new_password1": "NewPassword123", "new_password2": "NewPassword123"}
     )
     assert response1.status_code == 200
     assert "erfolgreich" in response1.text
@@ -149,11 +117,7 @@ async def test_reset_password_token_cannot_be_reused(client, test_user, mocker):
     # Try to use same token again
     response2 = await client.post(
         "/reset_password",
-        data={
-            "token": token,
-            "new_password1": "AnotherPassword456",
-            "new_password2": "AnotherPassword456"
-        }
+        data={"token": token, "new_password1": "AnotherPassword456", "new_password2": "AnotherPassword456"},
     )
     assert response2.status_code == 200
     assert "ungültig" in response2.text
@@ -166,12 +130,9 @@ async def test_password_reset_email_content(client, test_user, mocker):
     mail_mock = mocker.AsyncMock()
     mail_mock.return_value = True
     # Patch where it's used, not where it's defined
-    email_spy = mocker.patch('solar_backend.users.send_reset_passwort_mail', mail_mock)
+    email_spy = mocker.patch("solar_backend.users.send_reset_passwort_mail", mail_mock)
 
-    await client.post(
-        "/request_reset_password",
-        headers={"HX-Prompt": "testuser@example.com"}
-    )
+    await client.post("/request_reset_password", headers={"HX-Prompt": "testuser@example.com"})
 
     # Verify email was sent with correct parameters
     email_spy.assert_called_once()

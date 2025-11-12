@@ -5,6 +5,7 @@ router = APIRouter(
     tags=["healthcheck"],
 )
 
+
 @router.get("")
 async def healthcheck() -> dict[str, str]:
     """Serve healthcheck API request."""

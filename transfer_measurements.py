@@ -27,13 +27,11 @@ Usage:
 import argparse
 import asyncio
 import sys
-from datetime import datetime, date
-from typing import Dict, List, Tuple, Optional
-from collections import defaultdict
+from datetime import date, datetime, timedelta
 
-from sqlalchemy import text, select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 import structlog
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 # Configure logging
 structlog.configure(
@@ -71,12 +69,12 @@ class MeasurementTransfer:
         self.end_date = end_date
         self.batch_size = batch_size
         self.dry_run = dry_run
-        self.transfer_users = transfer_users
-        self.transfer_inverters = transfer_inverters
+        self.should_transfer_users = transfer_users
+        self.should_transfer_inverters = transfer_inverters
 
         # ID mappings: source_id -> target_id
-        self.user_id_map: Dict[int, int] = {}
-        self.inverter_id_map: Dict[int, int] = {}
+        self.user_id_map: dict[int, int] = {}
+        self.inverter_id_map: dict[int, int] = {}
 
         # Engines and sessions
         self.source_engine = None
@@ -100,7 +98,7 @@ class MeasurementTransfer:
         if self.target_engine:
             await self.target_engine.dispose()
 
-    async def transfer_users(self) -> Tuple[int, int]:
+    async def transfer_users(self) -> tuple[int, int]:
         """
         Transfer User data from source to target.
         Returns tuple of (processed_count, inserted_count).
@@ -133,7 +131,6 @@ class MeasurementTransfer:
 
         # Insert users into target with ON CONFLICT UPDATE
         inserted_count = 0
-        updated_count = 0
         async with self.target_sessionmaker() as target_session:
             for row in source_rows:
                 # Insert or update user
@@ -188,7 +185,7 @@ class MeasurementTransfer:
         )
         return len(source_rows), inserted_count
 
-    async def transfer_inverters(self) -> Tuple[int, int]:
+    async def transfer_inverters(self) -> tuple[int, int]:
         """
         Transfer Inverter data from source to target.
         Returns tuple of (processed_count, inserted_count).
@@ -287,15 +284,11 @@ class MeasurementTransfer:
         logger.info("Building user ID mapping")
 
         async with self.source_sessionmaker() as source_session:
-            result = await source_session.execute(
-                text("SELECT id, email FROM \"user\" ORDER BY id")
-            )
+            result = await source_session.execute(text('SELECT id, email FROM "user" ORDER BY id'))
             source_users = {email: user_id for user_id, email in result.fetchall()}
 
         async with self.target_sessionmaker() as target_session:
-            result = await target_session.execute(
-                text("SELECT id, email FROM \"user\" ORDER BY id")
-            )
+            result = await target_session.execute(text('SELECT id, email FROM "user" ORDER BY id'))
             target_users = {email: user_id for user_id, email in result.fetchall()}
 
         # Build mapping
@@ -333,20 +326,12 @@ class MeasurementTransfer:
         logger.info("Building inverter ID mapping")
 
         async with self.source_sessionmaker() as source_session:
-            result = await source_session.execute(
-                text("SELECT id, serial_logger, user_id FROM inverter ORDER BY id")
-            )
-            source_inverters = {
-                serial: (inv_id, user_id) for inv_id, serial, user_id in result.fetchall()
-            }
+            result = await source_session.execute(text("SELECT id, serial_logger, user_id FROM inverter ORDER BY id"))
+            source_inverters = {serial: (inv_id, user_id) for inv_id, serial, user_id in result.fetchall()}
 
         async with self.target_sessionmaker() as target_session:
-            result = await target_session.execute(
-                text("SELECT id, serial_logger, user_id FROM inverter ORDER BY id")
-            )
-            target_inverters = {
-                serial: (inv_id, user_id) for inv_id, serial, user_id in result.fetchall()
-            }
+            result = await target_session.execute(text("SELECT id, serial_logger, user_id FROM inverter ORDER BY id"))
+            target_inverters = {serial: (inv_id, user_id) for inv_id, serial, user_id in result.fetchall()}
 
         # Build mapping
         missing_inverters = []
@@ -391,7 +376,7 @@ class MeasurementTransfer:
         )
         return True
 
-    async def transfer_inverter_measurements(self) -> Tuple[int, int]:
+    async def transfer_inverter_measurements(self) -> tuple[int, int]:
         """
         Transfer InverterMeasurement data.
         Returns tuple of (processed_count, inserted_count).
@@ -403,16 +388,19 @@ class MeasurementTransfer:
         )
 
         # Query source data
+        # Calculate end datetime (end_date + 1 day) to include all of end_date
+        end_datetime = self.end_date + timedelta(days=1)
+
         async with self.source_sessionmaker() as source_session:
             query = text("""
                 SELECT time, user_id, inverter_id, total_output_power, yield_day_wh, yield_total_kwh
                 FROM inverter_measurements
-                WHERE time >= :start_date AND time < :end_date + INTERVAL '1 day'
+                WHERE time >= :start_date AND time < :end_datetime
                 ORDER BY time, user_id, inverter_id
             """)
             result = await source_session.execute(
                 query,
-                {"start_date": self.start_date, "end_date": self.end_date},
+                {"start_date": self.start_date, "end_datetime": end_datetime},
             )
             source_rows = result.fetchall()
 
@@ -437,14 +425,16 @@ class MeasurementTransfer:
                 skipped_count += 1
                 continue
 
-            target_rows.append({
-                "time": row.time,
-                "user_id": self.user_id_map[source_user_id],
-                "inverter_id": self.inverter_id_map[source_inverter_id],
-                "total_output_power": row.total_output_power,
-                "yield_day_wh": row.yield_day_wh,
-                "yield_total_kwh": row.yield_total_kwh,
-            })
+            target_rows.append(
+                {
+                    "time": row.time,
+                    "user_id": self.user_id_map[source_user_id],
+                    "inverter_id": self.inverter_id_map[source_inverter_id],
+                    "total_output_power": row.total_output_power,
+                    "yield_day_wh": row.yield_day_wh,
+                    "yield_total_kwh": row.yield_total_kwh,
+                }
+            )
 
         if skipped_count > 0:
             logger.warning("Skipped measurements due to missing mappings", count=skipped_count)
@@ -455,7 +445,7 @@ class MeasurementTransfer:
             logger.info("DRY RUN: Would insert measurements", count=len(target_rows))
             return len(source_rows), 0
 
-        # Insert into target in batches with ON CONFLICT DO NOTHING
+        # Insert into target in batches
         inserted_count = 0
         async with self.target_sessionmaker() as target_session:
             for i in range(0, len(target_rows), self.batch_size):
@@ -465,7 +455,6 @@ class MeasurementTransfer:
                     INSERT INTO inverter_measurements
                     (time, user_id, inverter_id, total_output_power, yield_day_wh, yield_total_kwh)
                     VALUES (:time, :user_id, :inverter_id, :total_output_power, :yield_day_wh, :yield_total_kwh)
-                    ON CONFLICT (time, user_id, inverter_id) DO NOTHING
                 """)
 
                 result = await target_session.execute(insert_query, batch)
@@ -490,7 +479,7 @@ class MeasurementTransfer:
         )
         return len(source_rows), inserted_count
 
-    async def transfer_dc_channel_measurements(self) -> Tuple[int, int]:
+    async def transfer_dc_channel_measurements(self) -> tuple[int, int]:
         """
         Transfer DCChannelMeasurement data.
         Returns tuple of (processed_count, inserted_count).
@@ -502,17 +491,20 @@ class MeasurementTransfer:
         )
 
         # Query source data
+        # Calculate end datetime (end_date + 1 day) to include all of end_date
+        end_datetime = self.end_date + timedelta(days=1)
+
         async with self.source_sessionmaker() as source_session:
             query = text("""
                 SELECT time, user_id, inverter_id, channel, name,
                        power, voltage, current, yield_day_wh, yield_total_kwh, irradiation
                 FROM dc_channel_measurements
-                WHERE time >= :start_date AND time < :end_date + INTERVAL '1 day'
+                WHERE time >= :start_date AND time < :end_datetime
                 ORDER BY time, user_id, inverter_id, channel
             """)
             result = await source_session.execute(
                 query,
-                {"start_date": self.start_date, "end_date": self.end_date},
+                {"start_date": self.start_date, "end_datetime": end_datetime},
             )
             source_rows = result.fetchall()
 
@@ -537,24 +529,24 @@ class MeasurementTransfer:
                 skipped_count += 1
                 continue
 
-            target_rows.append({
-                "time": row.time,
-                "user_id": self.user_id_map[source_user_id],
-                "inverter_id": self.inverter_id_map[source_inverter_id],
-                "channel": row.channel,
-                "name": row.name,
-                "power": row.power,
-                "voltage": row.voltage,
-                "current": row.current,
-                "yield_day_wh": row.yield_day_wh,
-                "yield_total_kwh": row.yield_total_kwh,
-                "irradiation": row.irradiation,
-            })
+            target_rows.append(
+                {
+                    "time": row.time,
+                    "user_id": self.user_id_map[source_user_id],
+                    "inverter_id": self.inverter_id_map[source_inverter_id],
+                    "channel": row.channel,
+                    "name": row.name,
+                    "power": row.power,
+                    "voltage": row.voltage,
+                    "current": row.current,
+                    "yield_day_wh": row.yield_day_wh,
+                    "yield_total_kwh": row.yield_total_kwh,
+                    "irradiation": row.irradiation,
+                }
+            )
 
         if skipped_count > 0:
-            logger.warning(
-                "Skipped DC channel measurements due to missing mappings", count=skipped_count
-            )
+            logger.warning("Skipped DC channel measurements due to missing mappings", count=skipped_count)
 
         logger.info("Prepared target DC channel measurements", count=len(target_rows))
 
@@ -562,7 +554,7 @@ class MeasurementTransfer:
             logger.info("DRY RUN: Would insert DC channel measurements", count=len(target_rows))
             return len(source_rows), 0
 
-        # Insert into target in batches with ON CONFLICT DO NOTHING
+        # Insert into target in batches
         inserted_count = 0
         async with self.target_sessionmaker() as target_session:
             for i in range(0, len(target_rows), self.batch_size):
@@ -607,7 +599,7 @@ class MeasurementTransfer:
             # Step 1: Transfer users if requested
             users_processed = 0
             users_inserted = 0
-            if self.transfer_users:
+            if self.should_transfer_users:
                 users_processed, users_inserted = await self.transfer_users()
             else:
                 # Build user mapping from existing data
@@ -618,7 +610,7 @@ class MeasurementTransfer:
             # Step 2: Transfer inverters if requested (depends on users)
             inverters_processed = 0
             inverters_inserted = 0
-            if self.transfer_inverters:
+            if self.should_transfer_inverters:
                 inverters_processed, inverters_inserted = await self.transfer_inverters()
             else:
                 # Build inverter mapping from existing data
@@ -639,11 +631,11 @@ class MeasurementTransfer:
                 "dry_run": self.dry_run,
             }
 
-            if self.transfer_users:
+            if self.should_transfer_users:
                 summary_data["users_processed"] = users_processed
                 summary_data["users_inserted"] = users_inserted
 
-            if self.transfer_inverters:
+            if self.should_transfer_inverters:
                 summary_data["inverters_processed"] = inverters_processed
                 summary_data["inverters_inserted"] = inverters_inserted
 

@@ -3,16 +3,16 @@ Tests for measurements endpoint with API key authentication.
 """
 
 import pytest
-from httpx import AsyncClient
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_post_measurement_with_api_key(client, test_user, db_session):
     """Test posting measurement data using API key authentication."""
-    from tests.helpers import create_inverter_in_db
-    from solar_backend.utils.api_keys import generate_api_key
     from sqlalchemy import update
+
+    from solar_backend.utils.api_keys import generate_api_key
+    from tests.helpers import create_inverter_in_db
 
     # Generate and assign API key to test user
     test_api_key = generate_api_key()
@@ -50,7 +50,7 @@ async def test_post_measurement_with_api_key(client, test_user, db_session):
                         "current_ac": 0.07,
                         "frequency": 49.99,
                         "power_factor": 0.617,
-                        "power_dc": 17
+                        "power_dc": 17,
                     },
                     "dc_channels": [
                         {
@@ -61,11 +61,11 @@ async def test_post_measurement_with_api_key(client, test_user, db_session):
                             "current": 0.11,
                             "yield_day": 337,
                             "yield_total": 444.671,
-                            "irradiation": 1.545455
+                            "irradiation": 1.545455,
                         }
-                    ]
+                    ],
                 }
-            ]
+            ],
         },
         headers={"X-API-Key": test_api_key},
     )
@@ -112,7 +112,7 @@ async def test_post_measurement_without_api_key(client, test_user, db_session):
                         "current_ac": 0.07,
                         "frequency": 49.99,
                         "power_factor": 0.617,
-                        "power_dc": 17
+                        "power_dc": 17,
                     },
                     "dc_channels": [
                         {
@@ -123,11 +123,11 @@ async def test_post_measurement_without_api_key(client, test_user, db_session):
                             "current": 0.11,
                             "yield_day": 337,
                             "yield_total": 444.671,
-                            "irradiation": 1.545455
+                            "irradiation": 1.545455,
                         }
-                    ]
+                    ],
                 }
-            ]
+            ],
         },
     )
 
@@ -139,9 +139,10 @@ async def test_post_measurement_without_api_key(client, test_user, db_session):
 @pytest.mark.asyncio
 async def test_post_measurement_multiple_inverters(client, test_user, db_session):
     """Test posting measurement data with multiple inverters."""
-    from tests.helpers import create_inverter_in_db
-    from solar_backend.utils.api_keys import generate_api_key
     from sqlalchemy import update
+
+    from solar_backend.utils.api_keys import generate_api_key
+    from tests.helpers import create_inverter_in_db
 
     # Generate and assign API key to test user
     test_api_key = generate_api_key()
@@ -183,9 +184,9 @@ async def test_post_measurement_multiple_inverters(client, test_user, db_session
                         "current_ac": 0.07,
                         "frequency": 49.99,
                         "power_factor": 0.617,
-                        "power_dc": 17
+                        "power_dc": 17,
                     },
-                    "dc_channels": []
+                    "dc_channels": [],
                 },
                 {
                     "serial": "116183771005",
@@ -199,11 +200,11 @@ async def test_post_measurement_multiple_inverters(client, test_user, db_session
                         "current_ac": 0.11,
                         "frequency": 50.01,
                         "power_factor": 0.625,
-                        "power_dc": 26
+                        "power_dc": 26,
                     },
-                    "dc_channels": []
-                }
-            ]
+                    "dc_channels": [],
+                },
+            ],
         },
         headers={"X-API-Key": test_api_key},
     )
@@ -219,9 +220,10 @@ async def test_post_measurement_multiple_inverters(client, test_user, db_session
 @pytest.mark.asyncio
 async def test_post_measurement_mixed_results(client, test_user, db_session):
     """Test posting measurement data where some inverters are found and others not."""
-    from tests.helpers import create_inverter_in_db
-    from solar_backend.utils.api_keys import generate_api_key
     from sqlalchemy import update
+
+    from solar_backend.utils.api_keys import generate_api_key
+    from tests.helpers import create_inverter_in_db
 
     # Generate and assign API key to test user
     test_api_key = generate_api_key()
@@ -257,9 +259,9 @@ async def test_post_measurement_mixed_results(client, test_user, db_session):
                         "current_ac": 0.07,
                         "frequency": 49.99,
                         "power_factor": 0.617,
-                        "power_dc": 17
+                        "power_dc": 17,
                     },
-                    "dc_channels": []
+                    "dc_channels": [],
                 },
                 {
                     "serial": "999999999999",
@@ -273,11 +275,11 @@ async def test_post_measurement_mixed_results(client, test_user, db_session):
                         "current_ac": 0.11,
                         "frequency": 50.01,
                         "power_factor": 0.625,
-                        "power_dc": 26
+                        "power_dc": 26,
                     },
-                    "dc_channels": []
-                }
-            ]
+                    "dc_channels": [],
+                },
+            ],
         },
         headers={"X-API-Key": test_api_key},
     )
@@ -320,11 +322,11 @@ async def test_post_measurement_all_unknown_inverters(client, test_user, db_sess
                         "current_ac": 0.07,
                         "frequency": 49.99,
                         "power_factor": 0.617,
-                        "power_dc": 17
+                        "power_dc": 17,
                     },
-                    "dc_channels": []
+                    "dc_channels": [],
                 }
-            ]
+            ],
         },
         headers={"X-API-Key": "test-api-key-here"},
     )
@@ -341,10 +343,11 @@ async def test_post_measurement_all_unknown_inverters(client, test_user, db_sess
 @pytest.mark.asyncio
 async def test_post_measurement_with_yield_aggregation(client, test_user, db_session):
     """Test that yield values from DC channels are aggregated into inverter_measurements."""
-    from tests.helpers import create_inverter_in_db
-    from solar_backend.utils.api_keys import generate_api_key
-    from sqlalchemy import update, select
+    from sqlalchemy import select, update
+
     from solar_backend.db import InverterMeasurement
+    from solar_backend.utils.api_keys import generate_api_key
+    from tests.helpers import create_inverter_in_db
 
     # Generate and assign API key to test user
     test_api_key = generate_api_key()
@@ -437,10 +440,11 @@ async def test_post_measurement_with_yield_aggregation(client, test_user, db_ses
 @pytest.mark.asyncio
 async def test_post_measurement_without_dc_channels(client, test_user, db_session):
     """Test that yield values are NULL when no DC channel data is provided."""
-    from tests.helpers import create_inverter_in_db
-    from solar_backend.utils.api_keys import generate_api_key
-    from sqlalchemy import update, select
+    from sqlalchemy import select, update
+
     from solar_backend.db import InverterMeasurement
+    from solar_backend.utils.api_keys import generate_api_key
+    from tests.helpers import create_inverter_in_db
 
     # Generate and assign API key to test user
     test_api_key = generate_api_key()

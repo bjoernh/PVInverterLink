@@ -1,33 +1,28 @@
 import structlog
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi_htmx import htmx
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from solar_backend.db import get_async_session, User
-from solar_backend.limiter import limiter
-from solar_backend.constants import UNAUTHORIZED_MESSAGE
-from solar_backend.users import current_active_user
 from solar_backend.config import settings
-from solar_backend.services.inverter_service import InverterService
+from solar_backend.constants import UNAUTHORIZED_MESSAGE
+from solar_backend.db import User, get_async_session
 from solar_backend.services.exceptions import InverterNotFoundException
+from solar_backend.services.inverter_service import InverterService
+from solar_backend.users import current_active_user
 from solar_backend.utils.timeseries import (
-    TimeRange,
     EnergyPeriod,
+    NoDataException,
+    TimeRange,
+    TimeSeriesException,
+    get_current_month_energy_production,
+    get_current_week_energy_production,
+    get_hourly_energy_production,
+    get_last_hour_average,
     get_power_timeseries,
     get_today_energy_production,
     get_today_maximum_power,
-    get_last_hour_average,
-    get_daily_energy_production,
-    get_hourly_energy_production,
-    get_current_week_energy_production,
-    get_current_month_energy_production,
-    set_rls_context,
-    reset_rls_context,
     rls_context,
-    NoDataException,
-    TimeSeriesException,
 )
 
 logger = structlog.get_logger()
@@ -66,11 +61,11 @@ async def get_dashboard(
         inverter_service = InverterService(session)
         try:
             inverter = await inverter_service.get_user_inverter(user.id, inverter_id)
-        except InverterNotFoundException:
+        except InverterNotFoundException as e:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Inverter nicht gefunden oder keine Berechtigung",
-            )
+            ) from e
 
     # Validate and convert time range
     try:
@@ -127,10 +122,8 @@ async def get_dashboard_data(
         inverter_service = InverterService(session)
         try:
             inverter = await inverter_service.get_user_inverter(user.id, inverter_id)
-        except InverterNotFoundException:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Inverter not found"
-            )
+        except InverterNotFoundException as e:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inverter not found") from e
 
         # Validate and convert time range
         try:
@@ -154,27 +147,19 @@ async def get_dashboard_data(
 
                 # Get statistics
                 try:
-                    max_today = await get_today_maximum_power(
-                        session, user.id, inverter.id
-                    )
+                    max_today = await get_today_maximum_power(session, user.id, inverter.id)
                 except Exception as e:
                     logger.warning("Failed to get today's maximum power", error=str(e))
                     max_today = 0
 
                 try:
-                    today_kwh = await get_today_energy_production(
-                        session, user.id, inverter.id
-                    )
+                    today_kwh = await get_today_energy_production(session, user.id, inverter.id)
                 except Exception as e:
-                    logger.warning(
-                        "Failed to get today's energy production", error=str(e)
-                    )
+                    logger.warning("Failed to get today's energy production", error=str(e))
                     today_kwh = 0.0
 
                 try:
-                    avg_last_hour = await get_last_hour_average(
-                        session, user.id, inverter.id
-                    )
+                    avg_last_hour = await get_last_hour_average(session, user.id, inverter.id)
                 except Exception as e:
                     logger.warning("Failed to get last hour average", error=str(e))
                     avg_last_hour = 0
@@ -266,7 +251,7 @@ async def get_dashboard_data(
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Fehler beim Abrufen der Daten",
-            )
+            ) from e
 
 
 @router.get("/api/dashboard/{inverter_id}/energy-data")
@@ -298,10 +283,8 @@ async def get_dashboard_energy_data(
         inverter_service = InverterService(session)
         try:
             inverter = await inverter_service.get_user_inverter(user.id, inverter_id)
-        except InverterNotFoundException:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Inverter not found"
-            )
+        except InverterNotFoundException as e:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inverter not found") from e
 
         # Validate and convert period to enum
         try:
@@ -315,9 +298,7 @@ async def get_dashboard_energy_data(
                 # Get energy data based on period
                 if period_enum == EnergyPeriod.DAY:
                     # Get hourly data for today
-                    hourly_data = await get_hourly_energy_production(
-                        session, user.id, inverter.id
-                    )
+                    hourly_data = await get_hourly_energy_production(session, user.id, inverter.id)
 
                     # Format data for response
                     data_points = [
@@ -330,9 +311,7 @@ async def get_dashboard_energy_data(
 
                 elif period_enum == EnergyPeriod.MONTH:
                     # Get daily data for current month
-                    daily_data = await get_current_month_energy_production(
-                        session, user.id, inverter.id
-                    )
+                    daily_data = await get_current_month_energy_production(session, user.id, inverter.id)
 
                     # Format data for response with German date format
                     data_points = []
@@ -349,9 +328,7 @@ async def get_dashboard_energy_data(
 
                 else:  # Default to EnergyPeriod.WEEK
                     # Get daily data for current week (Monday-Sunday)
-                    daily_data = await get_current_week_energy_production(
-                        session, user.id, inverter.id
-                    )
+                    daily_data = await get_current_week_energy_production(session, user.id, inverter.id)
 
                     # Format data for response with German date format
                     data_points = []

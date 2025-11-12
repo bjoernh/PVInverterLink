@@ -1,11 +1,12 @@
 """
 Helper functions for common test operations.
 """
+
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-from solar_backend.db import User, Inverter
+
+from solar_backend.db import Inverter, User
 from solar_backend.schemas import UserCreate
-from tests.factories import UserCreateFactory, InverterAddFactory
+from tests.factories import UserCreateFactory
 
 
 async def create_user_in_db(session, **kwargs) -> User:
@@ -20,6 +21,7 @@ async def create_user_in_db(session, **kwargs) -> User:
         Created User object
     """
     from fastapi_users.password import PasswordHelper
+
     from solar_backend.db import sessionmanager
 
     password_helper = PasswordHelper()
@@ -42,7 +44,6 @@ async def create_user_in_db(session, **kwargs) -> User:
         await db_session.commit()
         await db_session.refresh(user)
         # Detach from session by accessing ID to ensure it's loaded
-        user_id = user.id
         return user
 
 
@@ -76,7 +77,6 @@ async def create_inverter_in_db(session, user_id: int, **kwargs) -> Inverter:
         await db_session.commit()
         await db_session.refresh(inverter)
         # Detach from session by accessing ID to ensure it's loaded
-        inv_id = inverter.id
         return inverter
 
 
@@ -92,10 +92,7 @@ async def login_user(client: AsyncClient, email: str, password: str) -> dict:
     Returns:
         Response dict from login endpoint
     """
-    response = await client.post(
-        "/login",
-        data={"username": email, "password": password}
-    )
+    response = await client.post("/login", data={"username": email, "password": password})
     return response
 
 
@@ -111,10 +108,7 @@ async def get_bearer_token(client: AsyncClient, email: str, password: str) -> st
     Returns:
         JWT bearer token string
     """
-    response = await client.post(
-        "/auth/jwt/login",
-        data={"username": email, "password": password}
-    )
+    response = await client.post("/auth/jwt/login", data={"username": email, "password": password})
     if response.status_code == 200:
         return response.json()["access_token"]
     raise ValueError(f"Login failed with status {response.status_code}")
@@ -132,22 +126,19 @@ async def register_and_verify_user(client: AsyncClient, mocker, user_data: dict 
     Returns:
         Tuple of (UserCreate object, verification token)
     """
-    if user_data is None:
-        test_user = UserCreateFactory()
-    else:
-        test_user = UserCreate(**user_data)
+    test_user = UserCreateFactory() if user_data is None else UserCreate(**user_data)
 
     # Mock email sending
     mail_mock = mocker.AsyncMock()
     mail_mock.return_value = True
-    mocker.patch('solar_backend.users.send_verify_mail', mail_mock)
+    mocker.patch("solar_backend.users.send_verify_mail", mail_mock)
 
     # Register
     response = await client.post("/signup", data=dict(test_user))
     assert response.status_code == 200
 
     # Get token from mocked email call
-    token = mail_mock.call_args[1]['token']
+    token = mail_mock.call_args[1]["token"]
 
     # Verify email
     verify_response = await client.get(f"/verify?token={token}")

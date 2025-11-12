@@ -1,3 +1,4 @@
+import contextlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from jinja2 import Environment, FileSystemLoader
@@ -5,10 +6,8 @@ from jinja2 import Environment, FileSystemLoader
 environment = Environment(loader=FileSystemLoader("./"))
 
 
+data = {"title": "Test"}
 
-data = {
-    "title": "Test"
-}
 
 class Jinja2HTTP(BaseHTTPRequestHandler):
     def do_HEAD(self):
@@ -21,17 +20,15 @@ class Jinja2HTTP(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-cache")
         self.end_headers()
         html = template.render(data)
-        self.wfile.write(bytes(html, 'utf-8'))
+        self.wfile.write(bytes(html, "utf-8"))
 
 
-if __name__ == "__main__":        
+if __name__ == "__main__":
     webServer = HTTPServer(("localhost", 3030), Jinja2HTTP)
-    print("Server started http://%s:%s" % ("localhost", 3030))
+    print("Server started http://{}:{}".format("localhost", 3030))
 
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         webServer.serve_forever()
-    except KeyboardInterrupt:
-        pass
 
     webServer.server_close()
     print("Server stopped.")

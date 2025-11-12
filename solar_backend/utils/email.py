@@ -1,7 +1,9 @@
-import structlog
 from pathlib import Path
-from jinja2 import Environment, FileSystemLoader
+
+import structlog
 from fastapi_mail import MessageSchema, MessageType
+from jinja2 import Environment, FileSystemLoader
+
 from solar_backend.config import fastmail, settings
 
 logger = structlog.get_logger()
@@ -23,7 +25,7 @@ async def send_verify_mail(email: str, token: str) -> bool:
         subject="E-Mail-Adresse bestätigen / Verify Email Address - Deye Hard",
         recipients=[email],
         body=html,
-        subtype=MessageType.html
+        subtype=MessageType.html,
     )
 
     try:
@@ -47,7 +49,7 @@ async def send_reset_passwort_mail(email: str, token: str) -> bool:
         subject="Passwort zurücksetzen / Reset Password - Deye Hard",
         recipients=[email],
         body=html,
-        subtype=MessageType.html
+        subtype=MessageType.html,
     )
 
     try:

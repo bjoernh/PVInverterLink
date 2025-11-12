@@ -4,16 +4,14 @@ Tests for the real-time power dashboard feature (REQ-DASH-001).
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from solar_backend.db import User, Inverter
+from solar_backend.db import Inverter, User
 
 
 @pytest.mark.asyncio
-async def test_dashboard_page_loads(
-    authenticated_client: AsyncClient, test_user: User, test_inverter: Inverter
-):
+async def test_dashboard_page_loads(authenticated_client: AsyncClient, test_user: User, test_inverter: Inverter):
     """Test that dashboard page loads for authenticated user."""
     response = await authenticated_client.get(f"/dashboard/{test_inverter.id}")
 
@@ -24,9 +22,7 @@ async def test_dashboard_page_loads(
 
 
 @pytest.mark.asyncio
-async def test_dashboard_requires_authentication(
-    async_client: AsyncClient, test_inverter: Inverter
-):
+async def test_dashboard_requires_authentication(async_client: AsyncClient, test_inverter: Inverter):
     """Test that dashboard requires authentication."""
     response = await async_client.get(f"/dashboard/{test_inverter.id}")
 
@@ -35,9 +31,7 @@ async def test_dashboard_requires_authentication(
 
 
 @pytest.mark.asyncio
-async def test_dashboard_nonexistent_inverter(
-    authenticated_client: AsyncClient, test_user: User
-):
+async def test_dashboard_nonexistent_inverter(authenticated_client: AsyncClient, test_user: User):
     """Test dashboard with non-existent inverter ID."""
     response = await authenticated_client.get("/dashboard/999999")
 
@@ -45,27 +39,19 @@ async def test_dashboard_nonexistent_inverter(
 
 
 @pytest.mark.asyncio
-async def test_dashboard_time_range_parameter(
-    authenticated_client: AsyncClient, test_inverter: Inverter
-):
+async def test_dashboard_time_range_parameter(authenticated_client: AsyncClient, test_inverter: Inverter):
     """Test that time range parameter is accepted."""
     for time_range in ["1 hour", "6 hours", "24 hours", "7 days", "30 days"]:
-        response = await authenticated_client.get(
-            f"/dashboard/{test_inverter.id}?time_range={time_range}"
-        )
+        response = await authenticated_client.get(f"/dashboard/{test_inverter.id}?time_range={time_range}")
 
         assert response.status_code == 200
         assert f"'{time_range}'" in response.text  # Check JS variable
 
 
 @pytest.mark.asyncio
-async def test_dashboard_invalid_time_range_defaults_to_24h(
-    authenticated_client: AsyncClient, test_inverter: Inverter
-):
+async def test_dashboard_invalid_time_range_defaults_to_24h(authenticated_client: AsyncClient, test_inverter: Inverter):
     """Test that invalid time range defaults to 24h."""
-    response = await authenticated_client.get(
-        f"/dashboard/{test_inverter.id}?time_range=invalid"
-    )
+    response = await authenticated_client.get(f"/dashboard/{test_inverter.id}?time_range=invalid")
 
     assert response.status_code == 200
     assert "'24 hours'" in response.text  # Defaults to 24 hours
@@ -79,9 +65,7 @@ async def test_dashboard_api_data_endpoint(
     without_influx,
 ):
     """Test the API endpoint that returns dashboard data."""
-    response = await authenticated_client.get(
-        f"/api/dashboard/{test_inverter.id}/data?time_range=24 hours"
-    )
+    response = await authenticated_client.get(f"/api/dashboard/{test_inverter.id}/data?time_range=24 hours")
 
     assert response.status_code == 200
     data = response.json()
@@ -105,9 +89,7 @@ async def test_dashboard_api_data_endpoint(
 
 
 @pytest.mark.asyncio
-async def test_dashboard_api_requires_authentication(
-    async_client: AsyncClient, test_inverter: Inverter
-):
+async def test_dashboard_api_requires_authentication(async_client: AsyncClient, test_inverter: Inverter):
     """Test that API endpoint requires authentication."""
     response = await async_client.get(f"/api/dashboard/{test_inverter.id}/data")
 
@@ -123,9 +105,7 @@ async def test_dashboard_api_all_time_ranges(
     time_ranges = ["1 hour", "6 hours", "24 hours", "7 days", "30 days"]
 
     for time_range in time_ranges:
-        response = await authenticated_client.get(
-            f"/api/dashboard/{test_inverter.id}/data?time_range={time_range}"
-        )
+        response = await authenticated_client.get(f"/api/dashboard/{test_inverter.id}/data?time_range={time_range}")
 
         assert response.status_code == 200
         data = response.json()
@@ -137,9 +117,7 @@ async def test_dashboard_api_invalid_time_range(
     authenticated_client: AsyncClient, test_inverter: Inverter, without_influx
 ):
     """Test that API handles invalid time range gracefully."""
-    response = await authenticated_client.get(
-        f"/api/dashboard/{test_inverter.id}/data?time_range=invalid"
-    )
+    response = await authenticated_client.get(f"/api/dashboard/{test_inverter.id}/data?time_range=invalid")
 
     # Should default to 24 hours and return success
     assert response.status_code == 200
@@ -155,9 +133,7 @@ async def test_dashboard_shows_inverter_metadata(
     """Test that dashboard displays inverter metadata when available."""
     # Set metadata
     async with db_session as session:
-        result = await session.execute(
-            select(Inverter).where(Inverter.id == test_inverter.id)
-        )
+        result = await session.execute(select(Inverter).where(Inverter.id == test_inverter.id))
         inverter = result.scalar_one()
         inverter.rated_power = 600
         inverter.number_of_mppts = 2
@@ -171,9 +147,7 @@ async def test_dashboard_shows_inverter_metadata(
 
 
 @pytest.mark.asyncio
-async def test_dashboard_page_includes_plotly(
-    authenticated_client: AsyncClient, test_inverter: Inverter
-):
+async def test_dashboard_page_includes_plotly(authenticated_client: AsyncClient, test_inverter: Inverter):
     """Test that dashboard includes Plotly library."""
     response = await authenticated_client.get(f"/dashboard/{test_inverter.id}")
 
@@ -182,9 +156,7 @@ async def test_dashboard_page_includes_plotly(
 
 
 @pytest.mark.asyncio
-async def test_dashboard_time_range_selector_exists(
-    authenticated_client: AsyncClient, test_inverter: Inverter
-):
+async def test_dashboard_time_range_selector_exists(authenticated_client: AsyncClient, test_inverter: Inverter):
     """Test that dashboard has time range selector buttons."""
     response = await authenticated_client.get(f"/dashboard/{test_inverter.id}")
 
@@ -195,9 +167,7 @@ async def test_dashboard_time_range_selector_exists(
 
 
 @pytest.mark.asyncio
-async def test_dashboard_has_statistics_cards(
-    authenticated_client: AsyncClient, test_inverter: Inverter
-):
+async def test_dashboard_has_statistics_cards(authenticated_client: AsyncClient, test_inverter: Inverter):
     """Test that dashboard displays statistics cards."""
     response = await authenticated_client.get(f"/dashboard/{test_inverter.id}")
 
@@ -210,9 +180,7 @@ async def test_dashboard_has_statistics_cards(
 
 
 @pytest.mark.asyncio
-async def test_dashboard_has_auto_refresh(
-    authenticated_client: AsyncClient, test_inverter: Inverter
-):
+async def test_dashboard_has_auto_refresh(authenticated_client: AsyncClient, test_inverter: Inverter):
     """Test that dashboard includes auto-refresh functionality."""
     response = await authenticated_client.get(f"/dashboard/{test_inverter.id}")
 
@@ -223,9 +191,7 @@ async def test_dashboard_has_auto_refresh(
 
 
 @pytest.mark.asyncio
-async def test_dashboard_back_button_to_home(
-    authenticated_client: AsyncClient, test_inverter: Inverter
-):
+async def test_dashboard_back_button_to_home(authenticated_client: AsyncClient, test_inverter: Inverter):
     """Test that dashboard has back button to home."""
     response = await authenticated_client.get(f"/dashboard/{test_inverter.id}")
 
@@ -235,9 +201,7 @@ async def test_dashboard_back_button_to_home(
 
 
 @pytest.mark.asyncio
-async def test_dashboard_api_nonexistent_inverter(
-    authenticated_client: AsyncClient, without_influx
-):
+async def test_dashboard_api_nonexistent_inverter(authenticated_client: AsyncClient, without_influx):
     """Test API with non-existent inverter."""
     response = await authenticated_client.get("/api/dashboard/999999/data")
 
@@ -255,9 +219,7 @@ async def test_energy_data_api_endpoint(
     periods = ["day", "week", "month"]
 
     for period in periods:
-        response = await authenticated_client.get(
-            f"/api/dashboard/{test_inverter.id}/energy-data?period={period}"
-        )
+        response = await authenticated_client.get(f"/api/dashboard/{test_inverter.id}/energy-data?period={period}")
 
         assert response.status_code == 200
         data = response.json()
@@ -282,9 +244,7 @@ async def test_energy_data_api_invalid_period_defaults(
     authenticated_client: AsyncClient, test_inverter: Inverter, without_influx
 ):
     """Test that API handles invalid period gracefully and defaults to 'day'."""
-    response = await authenticated_client.get(
-        f"/api/dashboard/{test_inverter.id}/energy-data?period=invalid"
-    )
+    response = await authenticated_client.get(f"/api/dashboard/{test_inverter.id}/energy-data?period=invalid")
 
     # Should default to 'day' and return success
     assert response.status_code == 200
@@ -293,13 +253,9 @@ async def test_energy_data_api_invalid_period_defaults(
 
 
 @pytest.mark.asyncio
-async def test_energy_data_api_requires_authentication(
-    async_client: AsyncClient, test_inverter: Inverter
-):
+async def test_energy_data_api_requires_authentication(async_client: AsyncClient, test_inverter: Inverter):
     """Test that energy data API endpoint requires authentication."""
-    response = await async_client.get(
-        f"/api/dashboard/{test_inverter.id}/energy-data"
-    )
+    response = await async_client.get(f"/api/dashboard/{test_inverter.id}/energy-data")
 
     # Should be unauthorized
     assert response.status_code in [401, 303]

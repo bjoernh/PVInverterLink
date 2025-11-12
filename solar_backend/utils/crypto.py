@@ -1,12 +1,14 @@
-from cryptography.fernet import Fernet, InvalidToken
 import structlog
+from cryptography.fernet import Fernet, InvalidToken
 
 logger = structlog.get_logger()
+
 
 class CryptoManager:
     """
     A manager for encrypting and decrypting data using Fernet symmetric encryption.
     """
+
     def __init__(self, key: str):
         """
         Initializes the CryptoManager with a Fernet key.
@@ -51,4 +53,3 @@ class CryptoManager:
         except Exception as e:
             logger.error(f"An unexpected error occurred during decryption: {e}", exc_info=True)
             return None
-

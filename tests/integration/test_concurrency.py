@@ -1,15 +1,18 @@
-import pytest
 import asyncio
-from httpx import AsyncClient, ASGITransport
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+
 from solar_backend.app import app
+from solar_backend.db import get_async_session, sessionmanager
 from tests.helpers import create_user_in_db, login_user
-from solar_backend.db import sessionmanager, get_async_session
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_concurrent_inverter_creation_with_same_serial():
     """Test that concurrent requests with same serial only create one inverter"""
+
     async def get_db_override_isolated():
         async with sessionmanager.session() as session:
             yield session
@@ -17,7 +20,7 @@ async def test_concurrent_inverter_creation_with_same_serial():
     app.dependency_overrides[get_async_session] = get_db_override_isolated
 
     async with sessionmanager.session() as session:
-        user = await create_user_in_db(session, email="test@test.com")
+        await create_user_in_db(session, email="test@test.com")
 
     async def create_inverter():
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:

@@ -1,10 +1,12 @@
 """
 Unit tests for timeseries utilities.
 """
-import pytest
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from solar_backend.utils.timeseries import rls_context, set_rls_context, reset_rls_context
+import pytest
+
+from solar_backend.utils.timeseries import reset_rls_context, rls_context, set_rls_context
 
 
 @pytest.mark.unit

@@ -1,9 +1,11 @@
 """
 Unit tests for the TimeSeriesQueryBuilder.
 """
-import pytest
-from unittest.mock import AsyncMock, MagicMock
+
 from datetime import date
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from solar_backend.utils.query_builder import TimeSeriesQueryBuilder
 
@@ -24,7 +26,7 @@ async def test_get_energy_production_uses_yield_data():
     # Arrange
     mock_session = MagicMock()
     mock_session.execute = AsyncMock()
-    
+
     builder = TimeSeriesQueryBuilder(session=mock_session, user_id=1, inverter_id=1)
 
     # Mock return value for the yield query
@@ -39,14 +41,13 @@ async def test_get_energy_production_uses_yield_data():
     # Act
     # Set threshold to 2, which is met by the 2 rows of mock data
     energy_data = await builder.get_energy_production(
-        time_filter_clause="time > now() - interval '7 days'",
-        yield_threshold=2
+        time_filter_clause="time > now() - interval '7 days'", yield_threshold=2
     )
 
     # Assert
     # Should have called execute once for the yield query
     mock_session.execute.assert_called_once()
-    
+
     # Check that the returned data is correctly transformed from yield data
     assert len(energy_data) == 2
     assert energy_data[0] == {"date": "2023-01-01", "energy_kwh": 1.0}
@@ -60,7 +61,7 @@ async def test_get_energy_production_falls_back_to_integration():
     # Arrange
     mock_session = MagicMock()
     mock_session.execute = AsyncMock()
-    
+
     builder = TimeSeriesQueryBuilder(session=mock_session, user_id=1, inverter_id=1)
 
     # Mock return value for the first (yield) query - only one row
@@ -82,14 +83,13 @@ async def test_get_energy_production_falls_back_to_integration():
     # Act
     # Set threshold to 2, which is NOT met by the 1 row of mock yield data
     energy_data = await builder.get_energy_production(
-        time_filter_clause="time > now() - interval '7 days'",
-        yield_threshold=2
+        time_filter_clause="time > now() - interval '7 days'", yield_threshold=2
     )
 
     # Assert
     # Should have called execute twice: once for yield, once for integration
     assert mock_session.execute.call_count == 2
-    
+
     # Check that the returned data is correctly transformed from the integration data
     assert len(energy_data) == 2
     assert energy_data[0] == {"date": "2023-01-01", "energy_kwh": 1.1}

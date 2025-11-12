@@ -1,11 +1,11 @@
-import pytest
-from solar_backend.schemas import UserCreate
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 import factory
+import pytest
 from faker import Faker
-import os
+
+from solar_backend.schemas import UserCreate
 
 faker = Faker()
+
 
 class UserFactory(factory.Factory):
     class Meta:
@@ -23,27 +23,27 @@ class UserFactory(factory.Factory):
 async def test_register(client, mocker):
     response = await client.get("/")
     assert response.status_code == 303
-    
+
     response = await client.get("/signup")
     assert response.status_code == 200
-    
+
     test_user = UserFactory()
 
     # mocking send verify email
     mail_mock = mocker.AsyncMock()
     mail_mock.return_value = True
-    mocker.patch('solar_backend.users.send_verify_mail', mail_mock)
+    mocker.patch("solar_backend.users.send_verify_mail", mail_mock)
 
     response = await client.post("/signup", data=dict(test_user))
     assert response.status_code == 200
-    
-    assert mail_mock.call_args[1]['email'] == test_user.email
-    token = mail_mock.call_args[1]['token']
+
+    assert mail_mock.call_args[1]["email"] == test_user.email
+    token = mail_mock.call_args[1]["token"]
 
     response = await client.get(f"/verify?token={token}")
     assert response.status_code == 200
 
-    response = await client.get(f"/login")
+    response = await client.get("/login")
     assert response.status_code == 200
     login_data = {
         "username": test_user.email,

@@ -1,20 +1,17 @@
-import structlog
-from fastapi_users import BaseUserManager
-
 from typing import Annotated
-from fastapi import APIRouter, Depends, Request, Form, status
-from fastapi.security import OAuth2PasswordRequestForm
+
+import structlog
+from fastapi import APIRouter, Depends, Form, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.security import OAuth2PasswordRequestForm
+from fastapi_csrf_protect import CsrfProtect
 from fastapi_htmx import htmx
-from solar_backend.db import User
+from fastapi_users import BaseUserManager, exceptions, models
 
-
-from solar_backend.users import get_user_manager, current_active_user
-from solar_backend.limiter import limiter
 from solar_backend.constants import LOGIN_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT
-
-from fastapi_users import models, exceptions
-from solar_backend.users import auth_backend_user, get_jwt_strategy
+from solar_backend.db import User
+from solar_backend.limiter import limiter
+from solar_backend.users import auth_backend_user, current_active_user, get_jwt_strategy, get_user_manager
 
 logger = structlog.get_logger()
 
@@ -26,20 +23,18 @@ router = APIRouter()
 async def get_login(request: Request, user: User = Depends(current_active_user)) -> dict:
     return {"user": user}
 
-from fastapi_csrf_protect import CsrfProtect
-
 
 @router.post("/login", response_class=HTMLResponse)
 @limiter.limit(LOGIN_RATE_LIMIT)
-async def post_login(username: Annotated[str, Form()],
-                     password: Annotated[str, Form()],
-                     request: Request,
-                     user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
-                     csrf_protect: CsrfProtect = Depends()):
-    
-
+async def post_login(
+    username: Annotated[str, Form()],
+    password: Annotated[str, Form()],
+    request: Request,
+    user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
+    csrf_protect: CsrfProtect = Depends(),
+):
     user = await user_manager.authenticate(credentials=OAuth2PasswordRequestForm(username=username, password=password))
-    
+
     if user is None or not user.is_active:
         return HTMLResponse("""<div class="alert alert-error">
                                 <span><i class="fa-solid fa-circle-xmark"></i> Username oder Passwort falsch</span>
@@ -47,29 +42,28 @@ async def post_login(username: Annotated[str, Form()],
 
     response = await auth_backend_user.login(get_jwt_strategy(), user)
     await user_manager.on_after_login(user, request, response)
-    
+
     response.headers.append("HX-Redirect", "/")
-    
-    return RedirectResponse(
-        '/',
-        headers=response.headers,
-        status_code=status.HTTP_200_OK)
+
+    return RedirectResponse("/", headers=response.headers, status_code=status.HTTP_200_OK)
+
 
 @router.get("/logout")
 async def get_logout(request: Request, user: User = Depends(current_active_user)):
     if user is None:
-        return RedirectResponse('/login', status_code=status.HTTP_302_FOUND)
+        return RedirectResponse("/login", status_code=status.HTTP_302_FOUND)
     response = await auth_backend_user.logout(get_jwt_strategy(), user, None)
-    return RedirectResponse(
-        '/login',
-        headers=response.headers,
-        status_code=status.HTTP_302_FOUND)
+    return RedirectResponse("/login", headers=response.headers, status_code=status.HTTP_302_FOUND)
 
 
 @router.post("/request_reset_password", response_class=HTMLResponse)
 @limiter.limit(PASSWORD_RESET_RATE_LIMIT)
-async def post_request_reset_password(request: Request, user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager), csrf_protect: CsrfProtect = Depends()) -> HTMLResponse:
-    email = request.headers.get('HX-Prompt')
+async def post_request_reset_password(
+    request: Request,
+    user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
+    csrf_protect: CsrfProtect = Depends(),
+) -> HTMLResponse:
+    email = request.headers.get("HX-Prompt")
     user = await user_manager.get_by_email(email)
     await user_manager.forgot_password(user)
     return HTMLResponse("""<div class="alert alert-info">
@@ -79,7 +73,12 @@ async def post_request_reset_password(request: Request, user_manager: BaseUserMa
 
 @router.get("/reset_password")
 @htmx("new_password", "new_password")
-async def get_reset_password(token: str, request: Request, user: User = Depends(current_active_user), user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager)) -> dict:
+async def get_reset_password(
+    token: str,
+    request: Request,
+    user: User = Depends(current_active_user),
+    user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
+) -> dict:
     return {"token": token, "user": user}
 
 
@@ -88,10 +87,10 @@ async def post_reset_password(
     token: Annotated[str, Form()],
     new_password1: Annotated[str, Form()],
     new_password2: Annotated[str, Form()],
-    request: Request, 
+    request: Request,
     user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
-    csrf_protect: CsrfProtect = Depends()
-    ) -> HTMLResponse:
+    csrf_protect: CsrfProtect = Depends(),
+) -> HTMLResponse:
     if new_password1 != new_password2:
         return HTMLResponse("""<div class="alert alert-error">
                                 <span><i class="fa-solid fa-circle-xmark"></i> Beide neuen Passwörter müssen gleich sein!</span>

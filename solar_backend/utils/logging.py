@@ -1,11 +1,20 @@
-import structlog
-from structlog.processors import JSONRenderer, TimeStamper, format_exc_info, StackInfoRenderer, CallsiteParameterAdder, CallsiteParameter
-from structlog.dev import ConsoleRenderer
-from structlog.stdlib import add_logger_name, add_log_level, PositionalArgumentsFormatter
-from logging import INFO, DEBUG, WARNING, ERROR, CRITICAL
 import logging
+from logging import CRITICAL, DEBUG, ERROR, INFO, WARNING
+
+import structlog
+from structlog.dev import ConsoleRenderer
+from structlog.processors import (
+    CallsiteParameter,
+    CallsiteParameterAdder,
+    JSONRenderer,
+    StackInfoRenderer,
+    TimeStamper,
+    format_exc_info,
+)
+from structlog.stdlib import PositionalArgumentsFormatter, add_log_level, add_logger_name
 
 from solar_backend.config import settings
+
 
 def configure_logging():
     """Configures structlog for consistent logging across the application."""
@@ -27,39 +36,33 @@ def configure_logging():
         StackInfoRenderer(),
         format_exc_info,
         PositionalArgumentsFormatter(),
-        CallsiteParameterAdder({
-            CallsiteParameter.FILENAME,
-            CallsiteParameter.LINENO,
-            CallsiteParameter.FUNC_NAME,
-        }),
+        CallsiteParameterAdder(
+            {
+                CallsiteParameter.FILENAME,
+                CallsiteParameter.LINENO,
+                CallsiteParameter.FUNC_NAME,
+            }
+        ),
     ]
 
     if settings.DEBUG:
         # Development configuration: human-readable, colored output
         structlog.configure(
-            processors=shared_processors + [
-                ConsoleRenderer(colors=True)
-            ],
+            processors=shared_processors + [ConsoleRenderer(colors=True)],
             logger_factory=structlog.stdlib.LoggerFactory(),
             cache_logger_on_first_use=False,
         )
     else:
         # Production configuration: JSON output for log aggregation
         structlog.configure(
-            processors=shared_processors + [
-                JSONRenderer()
-            ],
+            processors=shared_processors + [JSONRenderer()],
             logger_factory=structlog.stdlib.LoggerFactory(),
             cache_logger_on_first_use=False,
         )
 
     # Configure standard logging
-    logging.basicConfig(
-        level=current_log_level,
-        format="%(message)s",
-        handlers=[logging.StreamHandler()]
-    )
-    logging.getLogger("uvicorn").handlers = [] # Remove default uvicorn handlers
+    logging.basicConfig(level=current_log_level, format="%(message)s", handlers=[logging.StreamHandler()])
+    logging.getLogger("uvicorn").handlers = []  # Remove default uvicorn handlers
     logging.getLogger("uvicorn.access").handlers = []
 
     # Set root logger level

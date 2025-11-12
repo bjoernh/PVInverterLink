@@ -9,13 +9,15 @@ If no password is provided, a random password will be generated.
 """
 
 import asyncio
-import sys
 import secrets
 import string
-from sqlalchemy import select, update
-from solar_backend.db import sessionmanager, User
-from solar_backend.config import settings
+import sys
+
 from fastapi_users.password import PasswordHelper
+from sqlalchemy import select, update
+
+from solar_backend.config import settings
+from solar_backend.db import User, sessionmanager
 
 
 def generate_password(length: int = 16) -> str:
@@ -36,7 +38,7 @@ def generate_password(length: int = 16) -> str:
 
 async def reset_user_password(email: str, new_password: str | None = None):
     """Reset password for a user by email."""
-    print(f"=== Password Reset Tool ===\n")
+    print("=== Password Reset Tool ===\n")
 
     # Initialize password helper (same as UserManager uses)
     password_helper = PasswordHelper()
@@ -67,18 +69,14 @@ async def reset_user_password(email: str, new_password: str | None = None):
             hashed_password = password_helper.hash(new_password)
 
             # Update user's password
-            await session.execute(
-                update(User)
-                .where(User.id == user.id)
-                .values(hashed_password=hashed_password)
-            )
+            await session.execute(update(User).where(User.id == user.id).values(hashed_password=hashed_password))
             await session.commit()
 
-            print(f"✓ Password reset successful!")
-            print(f"\nNew credentials:")
+            print("✓ Password reset successful!")
+            print("\nNew credentials:")
             print(f"  Email: {email}")
             print(f"  Password: {new_password}")
-            print(f"\n⚠ Make sure to save this password - it won't be shown again!")
+            print("\n⚠ Make sure to save this password - it won't be shown again!")
 
             return True
 

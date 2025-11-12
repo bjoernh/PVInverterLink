@@ -1,9 +1,10 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import AnyHttpUrl, BaseModel
-from fastapi_mail import ConnectionConfig, FastMail
-from pathlib import Path
 import os
+from pathlib import Path
+
 import structlog
+from fastapi_mail import ConnectionConfig, FastMail
+from pydantic import AnyHttpUrl, BaseModel
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = structlog.get_logger()
 
@@ -37,17 +38,15 @@ class Settings(BaseSettings):
         env_nested_delimiter="__",
     )
     DATABASE_URL: str = "postgresql+asyncpg://deyehard:dev-testing-ok@localhost:5432/deyehard"  # Default for local dev
-    AUTH_SECRET: str = (
-        "development-secret-key-change-in-production"  # Default for local dev
-    )
+    AUTH_SECRET: str = "development-secret-key-change-in-production"  # Default for local dev
     ENCRYPTION_KEY: str = "6DLfBB4KnMuChUJZsMHWz2kJTtNRNTTtoTCCbH7CYyw="
     BASE_URL: AnyHttpUrl = "http://localhost:8001"  # Default for local dev
     FASTMAIL: ConnectionConfig | None = None  # Optional for local dev
     COOKIE_SECURE: bool = False  # False for local dev, True in production
     TZ: str = "Europe/Berlin"  # Default timezone for time display (Docker convention)
     STORE_DC_CHANNEL_DATA: bool = True  # Store detailed DC channel (MPPT) measurements from inverters
-    LOG_LEVEL: str = "INFO" # Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    DEBUG: bool = False # Enable debug mode for verbose logging and other dev features
+    LOG_LEVEL: str = "INFO"  # Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    DEBUG: bool = False  # Enable debug mode for verbose logging and other dev features
     AUTO_REFRESH_RATE: int = 120  # Auto-refresh interval in seconds for dashboard and other real-time views
 
 

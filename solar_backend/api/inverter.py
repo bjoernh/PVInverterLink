@@ -1,18 +1,19 @@
-import asyncpg
+import structlog
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi_csrf_protect import CsrfProtect
+from fastapi_htmx import htmx
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, status, Response
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi_htmx import htmx
 
 from solar_backend.db import User, get_async_session
 from solar_backend.schemas import InverterAdd, InverterAddMetadata, InverterMetadataResponse
-
-from solar_backend.users import current_active_user, current_superuser_bearer
+from solar_backend.services.exceptions import (
+    InverterNotFoundException,
+    UnauthorizedInverterAccessException,
+)
 from solar_backend.services.inverter_service import InverterService
-from fastapi_csrf_protect import CsrfProtect
-
+from solar_backend.users import current_active_user, current_superuser_bearer
 
 logger = structlog.get_logger()
 
@@ -23,7 +24,7 @@ router = APIRouter()
 @htmx("add_inverter", "add_inverter")
 async def get_add_inverter(request: Request, user: User = Depends(current_active_user)):
     if user is None:
-        return RedirectResponse('/login', status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
 
     # Block unverified users
     if not user.is_verified:
@@ -42,7 +43,7 @@ async def get_add_inverter(request: Request, user: User = Depends(current_active
                 </div>
                 <a href="/" class="btn btn-primary mt-4" hx-boost="true">Zurück zur Übersicht</a>
             </div>""",
-            status_code=status.HTTP_403_FORBIDDEN
+            status_code=status.HTTP_403_FORBIDDEN,
         )
 
     return {"user": user}
@@ -51,13 +52,11 @@ async def get_add_inverter(request: Request, user: User = Depends(current_active
 @router.get("/inverters", response_class=HTMLResponse)
 @htmx("inverters", "inverters")
 async def get_inverters(
-    request: Request,
-    user: User = Depends(current_active_user),
-    session: AsyncSession = Depends(get_async_session)
+    request: Request, user: User = Depends(current_active_user), session: AsyncSession = Depends(get_async_session)
 ):
     """Display inverter management page with list of all user's inverters"""
     if user is None:
-        return RedirectResponse('/login', status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
 
     service = InverterService(session)
     inverters = await service.get_inverters(user.id)
@@ -88,11 +87,7 @@ async def post_add_inverter(
         return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
 
     if not user.is_verified:
-        logger.warning(
-            "Unverified user attempted to add inverter",
-            user_id=user.id,
-            user_email=user.email
-        )
+        logger.warning("Unverified user attempted to add inverter", user_id=user.id, user_email=user.email)
         return HTMLResponse(
             "<p style='color:red;'>Bitte verifizieren Sie zuerst Ihre E-Mail-Adresse.</p>",
             status_code=status.HTTP_403_FORBIDDEN,
@@ -174,17 +169,11 @@ async def post_add_inverter(
                         <a href="/" hx-boost="false"><button class="btn">Weiter</button></a></div>""")
 
 
-from solar_backend.services.exceptions import (
-    InverterNotFoundException,
-    UnauthorizedInverterAccessException,
-)
-
-
 @router.put(
     "/inverter/{inverter_id}",
     response_class=HTMLResponse,
     summary="Update an inverter",
-    description="Updates an inverter\'s name and serial number based on its ID.",
+    description="Updates an inverter's name and serial number based on its ID.",
     tags=["Inverters"],
     responses={
         200: {"description": "Inverter successfully updated. Returns HTML content for HTMX."},
@@ -206,11 +195,7 @@ async def put_inverter(
         return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
 
     if not user.is_verified:
-        logger.warning(
-            "Unverified user attempted to edit inverter",
-            user_id=user.id,
-            user_email=user.email
-        )
+        logger.warning("Unverified user attempted to edit inverter", user_id=user.id, user_email=user.email)
         return HTMLResponse(
             "<tr><td colspan='4' class='text-error'>Bitte verifizieren Sie zuerst Ihre E-Mail-Adresse.</td></tr>",
             status_code=status.HTTP_403_FORBIDDEN,
@@ -224,8 +209,8 @@ async def put_inverter(
             "<tr><td colspan='4' class='text-error'>Wechselrichter nicht gefunden.</td></tr>",
             status_code=status.HTTP_404_NOT_FOUND,
         )
-    except UnauthorizedInverterAccessException:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    except UnauthorizedInverterAccessException as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN) from e
     except IntegrityError:
         return HTMLResponse(
             f"""<tr id="inverter-row-{inverter_id}">
@@ -315,10 +300,10 @@ async def delete_inverter(
     service = InverterService(session)
     try:
         await service.delete_inverter(inverter_id, user.id)
-    except InverterNotFoundException:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    except UnauthorizedInverterAccessException:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    except InverterNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND) from e
+    except UnauthorizedInverterAccessException as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN) from e
 
     return Response(status_code=status.HTTP_200_OK)
 
@@ -351,8 +336,7 @@ async def post_inverter_metadata(
         inverter = await service.update_inverter_metadata(serial_logger, data)
     except InverterNotFoundException:
         return HTMLResponse(
-            content=f"Inverter with serial {serial_logger} not found",
-            status_code=status.HTTP_404_NOT_FOUND
+            content=f"Inverter with serial {serial_logger} not found", status_code=status.HTTP_404_NOT_FOUND
         )
 
     return {
@@ -361,5 +345,5 @@ async def post_inverter_metadata(
         "name": inverter.name,
         "rated_power": inverter.rated_power,
         "number_of_mppts": inverter.number_of_mppts,
-        "sw_version": inverter.sw_version
+        "sw_version": inverter.sw_version,
     }

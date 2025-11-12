@@ -9,17 +9,18 @@ This endpoint receives data from a custom bridge script running on Venus OS that
 reads values from D-Bus and posts them here.
 """
 
-import structlog
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+
+import structlog
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from solar_backend.db import User, get_async_session
 from solar_backend.config import settings
-from solar_backend.utils.timeseries import write_measurement, write_dc_channel_measurement, TimeSeriesException
+from solar_backend.db import get_async_session
 from solar_backend.repositories.inverter_repository import InverterRepository
+from solar_backend.utils.timeseries import TimeSeriesException, write_dc_channel_measurement, write_measurement
 
 logger = structlog.get_logger()
 
@@ -55,13 +56,9 @@ class VictronDeviceData(BaseModel):
 class VictronMeasurementData(BaseModel):
     """Measurement data from Victron Venus OS device."""
 
-    timestamp: datetime = Field(
-        ..., description="Measurement timestamp (ISO 8601 with timezone)"
-    )
+    timestamp: datetime = Field(..., description="Measurement timestamp (ISO 8601 with timezone)")
     cerbo_serial: str = Field(..., description="Serial number of the Cerbo GX device")
-    devices: list[VictronDeviceData] = Field(
-        ..., description="Array of device data from Venus OS"
-    )
+    devices: list[VictronDeviceData] = Field(..., description="Array of device data from Venus OS")
 
     class Config:
         json_schema_extra = {
@@ -104,9 +101,7 @@ async def validate_api_key(
     to validate API keys on a per-device basis.
     """
     if not x_api_key:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing API key"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing API key")
 
     return x_api_key
 
@@ -304,14 +299,10 @@ async def post_victron_measurement(
 
     if error_count > 0 and success_count > 0:
         # Mixed results - use 207 Multi-Status
-        return JSONResponse(
-            status_code=status.HTTP_207_MULTI_STATUS, content=response_data
-        )
+        return JSONResponse(status_code=status.HTTP_207_MULTI_STATUS, content=response_data)
     elif error_count > 0 and success_count == 0:
         # All failed
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND, content=response_data
-        )
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content=response_data)
     else:
         # All succeeded
         return response_data

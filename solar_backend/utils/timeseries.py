@@ -3,13 +3,13 @@ Time-series data utilities for TimescaleDB.
 """
 
 import contextlib
-import structlog
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
-from typing import Optional
+from zoneinfo import ZoneInfo
+
+import structlog
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from zoneinfo import ZoneInfo
 
 from solar_backend.config import settings
 from solar_backend.utils.query_builder import TimeSeriesQueryBuilder
@@ -107,8 +107,8 @@ async def write_measurement(
     inverter_id: int,
     timestamp: datetime,
     total_output_power: int,
-    yield_day_wh: Optional[int] = None,
-    yield_total_kwh: Optional[int] = None,
+    yield_day_wh: int | None = None,
+    yield_total_kwh: int | None = None,
 ) -> None:
     """
     Write a single measurement point to TimescaleDB.
@@ -245,14 +245,10 @@ async def write_dc_channel_measurement(
             inverter_id=inverter_id,
             channel=channel,
         )
-        raise TimeSeriesException(
-            f"Failed to write DC channel measurement: {str(e)}"
-        ) from e
+        raise TimeSeriesException(f"Failed to write DC channel measurement: {str(e)}") from e
 
 
-async def get_latest_value(
-    session: AsyncSession, user_id: int, inverter_id: int
-) -> tuple[datetime, int]:
+async def get_latest_value(session: AsyncSession, user_id: int, inverter_id: int) -> tuple[datetime, int]:
     """
     Get the latest power measurement for an inverter.
 
@@ -278,9 +274,7 @@ async def get_latest_value(
             LIMIT 1
         """)
 
-        result = await session.execute(
-            query, {"user_id": user_id, "inverter_id": inverter_id}
-        )
+        result = await session.execute(query, {"user_id": user_id, "inverter_id": inverter_id})
 
         row = result.first()
         if not row:
@@ -349,9 +343,7 @@ async def get_power_timeseries(
             ORDER BY bucket_time ASC
         """)
 
-        result = await session.execute(
-            query, {"user_id": user_id, "inverter_id": inverter_id}
-        )
+        result = await session.execute(query, {"user_id": user_id, "inverter_id": inverter_id})
 
         # Get configured timezone
         tz = ZoneInfo(settings.TZ)
@@ -396,9 +388,7 @@ async def get_power_timeseries(
         raise TimeSeriesException(f"Failed to query time-series: {str(e)}") from e
 
 
-async def get_today_energy_production(
-    session: AsyncSession, user_id: int, inverter_id: int
-) -> float:
+async def get_today_energy_production(session: AsyncSession, user_id: int, inverter_id: int) -> float:
     """
     Get today's energy production in kWh.
 
@@ -455,9 +445,7 @@ async def get_today_energy_production(
             WHERE time_diff_seconds IS NOT NULL
         """)
 
-        result = await session.execute(
-            query, {"user_id": user_id, "inverter_id": inverter_id}
-        )
+        result = await session.execute(query, {"user_id": user_id, "inverter_id": inverter_id})
 
         row = result.first()
         energy_kwh = float(row.energy_kwh) if row and row.energy_kwh else 0.0
@@ -482,9 +470,7 @@ async def get_today_energy_production(
         return 0.0
 
 
-async def get_today_total_yield(
-    session: AsyncSession, user_id: int, inverter_id: int
-) -> Optional[float]:
+async def get_today_total_yield(session: AsyncSession, user_id: int, inverter_id: int) -> float | None:
     """
     Get today's total yield from inverter-provided DC channel data.
 
@@ -517,9 +503,7 @@ async def get_today_total_yield(
             FROM latest_per_channel
         """)
 
-        result = await session.execute(
-            query, {"user_id": user_id, "inverter_id": inverter_id}
-        )
+        result = await session.execute(query, {"user_id": user_id, "inverter_id": inverter_id})
 
         row = result.first()
         if not row or row.total_yield_wh == 0:
@@ -551,9 +535,7 @@ async def get_today_total_yield(
         return None
 
 
-async def get_today_maximum_power(
-    session: AsyncSession, user_id: int, inverter_id: int
-) -> int:
+async def get_today_maximum_power(session: AsyncSession, user_id: int, inverter_id: int) -> int:
     """
     Get maximum power for today.
 
@@ -574,9 +556,7 @@ async def get_today_maximum_power(
               AND time >= DATE_TRUNC('day', NOW())
         """)
 
-        result = await session.execute(
-            query, {"user_id": user_id, "inverter_id": inverter_id}
-        )
+        result = await session.execute(query, {"user_id": user_id, "inverter_id": inverter_id})
 
         row = result.first()
         max_power = int(row.max_power) if row and row.max_power else 0
@@ -593,9 +573,7 @@ async def get_today_maximum_power(
         return 0
 
 
-async def get_last_hour_average(
-    session: AsyncSession, user_id: int, inverter_id: int
-) -> int:
+async def get_last_hour_average(session: AsyncSession, user_id: int, inverter_id: int) -> int:
     """
     Get average power for the last hour.
 
@@ -616,9 +594,7 @@ async def get_last_hour_average(
               AND time > NOW() - INTERVAL '1 hour'
         """)
 
-        result = await session.execute(
-            query, {"user_id": user_id, "inverter_id": inverter_id}
-        )
+        result = await session.execute(query, {"user_id": user_id, "inverter_id": inverter_id})
 
         row = result.first()
         avg_power = int(row.avg_power) if row and row.avg_power else 0
@@ -695,9 +671,7 @@ async def rls_context(session: AsyncSession, user_id: int):
         await reset_rls_context(session)
 
 
-async def get_latest_dc_channels(
-    session: AsyncSession, user_id: int, inverter_id: int
-) -> list[dict]:
+async def get_latest_dc_channels(session: AsyncSession, user_id: int, inverter_id: int) -> list[dict]:
     """
     Get the latest DC channel measurements for an inverter.
 
@@ -739,9 +713,7 @@ async def get_latest_dc_channels(
             ORDER BY channel, time DESC
         """)
 
-        result = await session.execute(
-            query, {"user_id": user_id, "inverter_id": inverter_id}
-        )
+        result = await session.execute(query, {"user_id": user_id, "inverter_id": inverter_id})
 
         # Get configured timezone
         tz = ZoneInfo(settings.TZ)
@@ -833,9 +805,7 @@ async def get_dc_channel_timeseries(
             ORDER BY channel, bucket_time ASC
         """)
 
-        result = await session.execute(
-            query, {"user_id": user_id, "inverter_id": inverter_id}
-        )
+        result = await session.execute(query, {"user_id": user_id, "inverter_id": inverter_id})
 
         # Get configured timezone
         tz = ZoneInfo(settings.TZ)
@@ -853,12 +823,8 @@ async def get_dc_channel_timeseries(
                     "power": float(row.power) if row.power is not None else 0,
                     "voltage": float(row.voltage) if row.voltage is not None else 0,
                     "current": float(row.current) if row.current is not None else 0,
-                    "yield_day_wh": float(row.yield_day_wh)
-                    if row.yield_day_wh is not None
-                    else 0,
-                    "irradiation": float(row.irradiation)
-                    if row.irradiation is not None
-                    else 0,
+                    "yield_day_wh": float(row.yield_day_wh) if row.yield_day_wh is not None else 0,
+                    "irradiation": float(row.irradiation) if row.irradiation is not None else 0,
                 }
             )
 
@@ -935,9 +901,7 @@ async def get_raw_measurements(
         data_points = [
             {
                 "time": row.time.astimezone(tz).isoformat(),
-                "power": row.total_output_power
-                if row.total_output_power is not None
-                else 0,
+                "power": row.total_output_power if row.total_output_power is not None else 0,
             }
             for row in result
         ]
@@ -950,9 +914,7 @@ async def get_raw_measurements(
                 start_date=start_date,
                 end_date=end_date,
             )
-            raise NoDataException(
-                f"No measurements found between {start_date} and {end_date}"
-            )
+            raise NoDataException(f"No measurements found between {start_date} and {end_date}")
 
         logger.info(
             "Retrieved raw measurements",
@@ -977,9 +939,6 @@ async def get_raw_measurements(
             end_date=end_date,
         )
         raise TimeSeriesException(f"Failed to query raw measurements: {str(e)}") from e
-
-
-from solar_backend.utils.query_builder import TimeSeriesQueryBuilder
 
 
 async def get_daily_energy_production(

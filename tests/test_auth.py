@@ -1,19 +1,15 @@
 """
 Tests for authentication and authorization functionality.
 """
+
 import pytest
-from httpx import AsyncClient
-from solar_backend.db import User
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_login_with_valid_credentials(client, test_user):
     """Test successful login with valid credentials."""
-    response = await client.post(
-        "/login",
-        data={"username": "testuser@example.com", "password": "testpassword123"}
-    )
+    response = await client.post("/login", data={"username": "testuser@example.com", "password": "testpassword123"})
     assert response.status_code == 200
     # Check that auth cookie was set
     assert "fastapiusersauth" in response.cookies or "HX-Redirect" in response.headers
@@ -23,10 +19,7 @@ async def test_login_with_valid_credentials(client, test_user):
 @pytest.mark.asyncio
 async def test_login_with_invalid_password(client, test_user):
     """Test login failure with wrong password."""
-    response = await client.post(
-        "/login",
-        data={"username": "testuser@example.com", "password": "wrongpassword"}
-    )
+    response = await client.post("/login", data={"username": "testuser@example.com", "password": "wrongpassword"})
     assert response.status_code == 200
     assert "Username oder Passwort falsch" in response.text
 
@@ -35,10 +28,7 @@ async def test_login_with_invalid_password(client, test_user):
 @pytest.mark.asyncio
 async def test_login_with_nonexistent_user(client):
     """Test login failure with non-existent user."""
-    response = await client.post(
-        "/login",
-        data={"username": "nonexistent@example.com", "password": "anypassword"}
-    )
+    response = await client.post("/login", data={"username": "nonexistent@example.com", "password": "anypassword"})
     assert response.status_code == 200
     assert "Username oder Passwort falsch" in response.text
 
@@ -49,16 +39,9 @@ async def test_login_with_inactive_user(client, db_session):
     """Test login failure with inactive user."""
     from tests.helpers import create_user_in_db
 
-    inactive_user = await create_user_in_db(
-        db_session,
-        email="inactive@example.com",
-        is_active=False
-    )
+    await create_user_in_db(db_session, email="inactive@example.com", is_active=False)
 
-    response = await client.post(
-        "/login",
-        data={"username": "inactive@example.com", "password": "testpassword123"}
-    )
+    response = await client.post("/login", data={"username": "inactive@example.com", "password": "testpassword123"})
     assert response.status_code == 200
     assert "Username oder Passwort falsch" in response.text
 
@@ -69,8 +52,7 @@ async def test_logout(client, test_user):
     """Test user logout."""
     # First login
     login_response = await client.post(
-        "/login",
-        data={"username": "testuser@example.com", "password": "testpassword123"}
+        "/login", data={"username": "testuser@example.com", "password": "testpassword123"}
     )
     assert login_response.status_code == 200
 
@@ -94,8 +76,7 @@ async def test_logout_without_login(client):
 async def test_bearer_token_login(client, test_user):
     """Test getting a bearer token via JWT endpoint."""
     response = await client.post(
-        "/auth/jwt/login",
-        data={"username": "testuser@example.com", "password": "testpassword123"}
+        "/auth/jwt/login", data={"username": "testuser@example.com", "password": "testpassword123"}
     )
     assert response.status_code == 200
     data = response.json()
@@ -107,10 +88,7 @@ async def test_bearer_token_login(client, test_user):
 @pytest.mark.asyncio
 async def test_bearer_token_authentication(client, bearer_token):
     """Test accessing protected route with bearer token."""
-    response = await client.get(
-        "/authenticated-route",
-        headers={"Authorization": f"Bearer {bearer_token}"}
-    )
+    response = await client.get("/authenticated-route", headers={"Authorization": f"Bearer {bearer_token}"})
     assert response.status_code == 200
     data = response.json()
     assert "message" in data
@@ -129,10 +107,7 @@ async def test_protected_route_without_auth(client):
 @pytest.mark.asyncio
 async def test_protected_route_with_invalid_token(client):
     """Test accessing protected route with invalid bearer token."""
-    response = await client.get(
-        "/authenticated-route",
-        headers={"Authorization": "Bearer invalid-token-12345"}
-    )
+    response = await client.get("/authenticated-route", headers={"Authorization": "Bearer invalid-token-12345"})
     assert response.status_code == 401
 
 
@@ -150,10 +125,7 @@ async def test_start_page_requires_auth(client):
 async def test_start_page_with_auth(client, test_user):
     """Test that authenticated user can access start page."""
     # Login first
-    await client.post(
-        "/login",
-        data={"username": "testuser@example.com", "password": "testpassword123"}
-    )
+    await client.post("/login", data={"username": "testuser@example.com", "password": "testpassword123"})
 
     # Access start page
     response = await client.get("/")
@@ -172,10 +144,7 @@ async def test_get_login_page(client):
 @pytest.mark.asyncio
 async def test_session_expired_html_redirect(client):
     """Test that HTML requests to protected routes redirect to login on 401."""
-    response = await client.get(
-        "/authenticated-route",
-        headers={"Accept": "text/html"}
-    )
+    response = await client.get("/authenticated-route", headers={"Accept": "text/html"})
     # Should redirect to login page
     assert response.status_code == 302  # Found redirect
     assert response.headers["location"] == "/login"
@@ -185,10 +154,7 @@ async def test_session_expired_html_redirect(client):
 @pytest.mark.asyncio
 async def test_session_expired_api_error(client):
     """Test that API requests return helpful error message on 401."""
-    response = await client.get(
-        "/authenticated-route",
-        headers={"Accept": "application/json"}
-    )
+    response = await client.get("/authenticated-route", headers={"Accept": "application/json"})
     assert response.status_code == 401
     data = response.json()
     assert "message" in data

@@ -1,22 +1,22 @@
-import pytest
 from unittest.mock import Mock
+
+import pytest
 from fastapi_users.exceptions import InvalidPasswordException
-from solar_backend.users import UserManager
+
 from solar_backend.schemas import UserCreate
+from solar_backend.users import UserManager
+
 
 @pytest.fixture
 def user_manager() -> UserManager:
     mock_user_db = Mock()
     return UserManager(mock_user_db)
 
+
 @pytest.fixture
 def mock_user_create() -> UserCreate:
-    return UserCreate(
-        email="test@example.com",
-        password="",
-        first_name="Test",
-        last_name="User"
-    )
+    return UserCreate(email="test@example.com", password="", first_name="Test", last_name="User")
+
 
 @pytest.mark.unit
 @pytest.mark.asyncio
@@ -25,12 +25,14 @@ async def test_password_too_short(user_manager: UserManager, mock_user_create: U
         await user_manager.validate_password("short", mock_user_create)
     assert excinfo.value.reason == "Passwort muss mindestens 8 Zeichen lang sein"
 
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_password_no_digit(user_manager: UserManager, mock_user_create: UserCreate):
     with pytest.raises(InvalidPasswordException) as excinfo:
         await user_manager.validate_password("NoDigitPassword", mock_user_create)
     assert excinfo.value.reason == "Passwort muss mindestens eine Zahl enthalten"
+
 
 @pytest.mark.unit
 @pytest.mark.asyncio
@@ -39,12 +41,14 @@ async def test_password_no_uppercase(user_manager: UserManager, mock_user_create
         await user_manager.validate_password("nouppercase123", mock_user_create)
     assert excinfo.value.reason == "Passwort muss mindestens einen Großbuchstaben enthalten"
 
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_common_password(user_manager: UserManager, mock_user_create: UserCreate):
     with pytest.raises(InvalidPasswordException) as excinfo:
         await user_manager.validate_password("password", mock_user_create)
     assert excinfo.value.reason == "Passwort ist zu einfach"
+
 
 @pytest.mark.unit
 @pytest.mark.asyncio

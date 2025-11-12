@@ -1,22 +1,20 @@
+from datetime import datetime
+
 import structlog
-from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi_htmx import htmx
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from solar_backend.db import get_async_session, User
-from solar_backend.limiter import limiter
 from solar_backend.constants import UNAUTHORIZED_MESSAGE
-from solar_backend.users import current_active_user
-from solar_backend.services.inverter_service import InverterService
+from solar_backend.db import User, get_async_session
 from solar_backend.services.exceptions import InverterNotFoundException, UnauthorizedInverterAccessException
+from solar_backend.services.inverter_service import InverterService
+from solar_backend.users import current_active_user
 from solar_backend.utils.timeseries import (
     TimeRange,
-    get_latest_dc_channels,
     get_dc_channel_timeseries,
-    set_rls_context,
-    reset_rls_context,
+    get_latest_dc_channels,
     rls_context,
 )
 
@@ -47,18 +45,20 @@ async def get_dc_channels_page(
         HTML page with DC channel cards and comparison chart
     """
     if user is None:
-                    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MESSAGE + " Please log in again.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MESSAGE + " Please log in again."
+        )
 
     async with db_session as session:
         # Verify inverter belongs to user
         inverter_service = InverterService(session)
         try:
             inverter = await inverter_service.get_user_inverter(user.id, inverter_id)
-        except (InverterNotFoundException, UnauthorizedInverterAccessException):
+        except (InverterNotFoundException, UnauthorizedInverterAccessException) as e:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Inverter nicht gefunden oder keine Berechtigung",
-            )
+            ) from e
 
     # Validate and convert time range
     try:
@@ -105,17 +105,17 @@ async def get_dc_channels_data(
         JSON with channel data and time-series
     """
     if user is None:
-                    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MESSAGE + " Please log in again.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MESSAGE + " Please log in again."
+        )
 
     async with db_session as session:
         # Verify inverter belongs to user
         inverter_service = InverterService(session)
         try:
             inverter = await inverter_service.get_user_inverter(user.id, inverter_id)
-        except (InverterNotFoundException, UnauthorizedInverterAccessException):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Inverter not found"
-            )
+        except (InverterNotFoundException, UnauthorizedInverterAccessException) as e:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inverter not found") from e
 
         # Validate and convert time range
         try:
@@ -161,17 +161,19 @@ async def get_dc_channels_data(
                 # Format channel data for response
                 channels_data = []
                 for ch in latest_channels:
-                    channels_data.append({
-                        "channel": ch["channel"],
-                        "name": ch["name"],
-                        "power": round(ch["power"], 1),
-                        "voltage": round(ch["voltage"], 1),
-                        "current": round(ch["current"], 2),
-                        "yield_day_wh": round(ch["yield_day_wh"], 1),
-                        "yield_total_kwh": round(ch["yield_total_kwh"], 1),
-                        "irradiation": round(ch["irradiation"], 3),
-                        "time_ago": time_ago,
-                    })
+                    channels_data.append(
+                        {
+                            "channel": ch["channel"],
+                            "name": ch["name"],
+                            "power": round(ch["power"], 1),
+                            "voltage": round(ch["voltage"], 1),
+                            "current": round(ch["current"], 2),
+                            "yield_day_wh": round(ch["yield_day_wh"], 1),
+                            "yield_total_kwh": round(ch["yield_total_kwh"], 1),
+                            "irradiation": round(ch["irradiation"], 3),
+                            "time_ago": time_ago,
+                        }
+                    )
 
                 logger.info(
                     "DC Channels data retrieved",

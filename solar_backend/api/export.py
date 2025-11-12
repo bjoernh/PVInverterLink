@@ -4,31 +4,26 @@ API endpoints for exporting measurement data as CSV files.
 
 import csv
 import io
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
 import structlog
-from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi_htmx import htmx
 from sqlalchemy.ext.asyncio import AsyncSession
-from zoneinfo import ZoneInfo
 
-from solar_backend.db import User, get_async_session
-from solar_backend.limiter import limiter
-from solar_backend.constants import UNAUTHORIZED_MESSAGE
-from solar_backend.users import current_active_user
-from solar_backend.services.inverter_service import InverterService
-from solar_backend.services.exceptions import InverterNotFoundException, UnauthorizedInverterAccessException
 from solar_backend.config import settings
+from solar_backend.constants import UNAUTHORIZED_MESSAGE
+from solar_backend.db import User, get_async_session
+from solar_backend.services.exceptions import InverterNotFoundException, UnauthorizedInverterAccessException
+from solar_backend.services.inverter_service import InverterService
+from solar_backend.users import current_active_user
 from solar_backend.utils.timeseries import (
-    get_raw_measurements,
-    get_today_energy_production,
-    get_today_maximum_power,
-    get_last_hour_average,
-    set_rls_context,
-    reset_rls_context,
-    rls_context,
     NoDataException,
     TimeSeriesException,
+    get_raw_measurements,
+    rls_context,
 )
 
 logger = structlog.get_logger()
@@ -59,18 +54,20 @@ async def get_export_page(
         HTML export page
     """
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MESSAGE + " Please log in again.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MESSAGE + " Please log in again."
+        )
 
     async with db_session as session:
         # Verify inverter belongs to user
         inverter_service = InverterService(session)
         try:
             inverter = await inverter_service.get_user_inverter(user.id, inverter_id)
-        except (InverterNotFoundException, UnauthorizedInverterAccessException):
+        except (InverterNotFoundException, UnauthorizedInverterAccessException) as e:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Inverter nicht gefunden oder keine Berechtigung",
-            )
+            ) from e
 
     logger.info(
         "Export page accessed",
@@ -115,22 +112,20 @@ async def export_csv(
         CSV file as StreamingResponse
     """
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MESSAGE + " Please log in again.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MESSAGE + " Please log in again."
+        )
 
     # Parse and validate dates
     try:
         tz = ZoneInfo(settings.TZ)
-        start_dt = datetime.fromisoformat(start_date).replace(
-            hour=0, minute=0, second=0, microsecond=0, tzinfo=tz
-        )
-        end_dt = datetime.fromisoformat(end_date).replace(
-            hour=23, minute=59, second=59, microsecond=999999, tzinfo=tz
-        )
-    except ValueError:
+        start_dt = datetime.fromisoformat(start_date).replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=tz)
+        end_dt = datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=tz)
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid date format. Use YYYY-MM-DD",
-        )
+        ) from e
 
     # Validate date range
     if start_dt > end_dt:
@@ -147,10 +142,8 @@ async def export_csv(
         inverter_service = InverterService(session)
         try:
             inverter = await inverter_service.get_user_inverter(user.id, inverter_id)
-        except (InverterNotFoundException, UnauthorizedInverterAccessException):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Inverter not found"
-            )
+        except (InverterNotFoundException, UnauthorizedInverterAccessException) as e:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inverter not found") from e
 
         try:
             async with rls_context(session, user.id):
@@ -162,28 +155,6 @@ async def export_csv(
                     start_date=start_dt,
                     end_date=end_dt,
                 )
-
-                # Get statistics for header
-                try:
-                    max_power = await get_today_maximum_power(
-                        session, user.id, inverter.id
-                    )
-                except Exception:
-                    max_power = 0
-
-                try:
-                    total_energy = await get_today_energy_production(
-                        session, user.id, inverter.id
-                    )
-                except Exception:
-                    total_energy = 0.0
-
-                try:
-                    avg_power = await get_last_hour_average(
-                        session, user.id, inverter.id
-                    )
-                except Exception:
-                    avg_power = 0
 
                 # Calculate statistics from exported data
                 if data_points:
@@ -222,9 +193,7 @@ async def export_csv(
                 writer.writerow([f"# {inverter.name}", f"# {inverter.name}"])
                 writer.writerow([f"# Seriennummer: {inverter.serial_logger}"])
                 writer.writerow([f"# Benutzer: {user.first_name} {user.last_name}"])
-                writer.writerow(
-                    [f"# Exportdatum: {datetime.now(tz).isoformat()}", "# Export Date"]
-                )
+                writer.writerow([f"# Exportdatum: {datetime.now(tz).isoformat()}", "# Export Date"])
                 writer.writerow([""])
 
                 # Write date range info
@@ -244,18 +213,14 @@ async def export_csv(
                         "Statistics",
                     ]
                 )
-                writer.writerow(
-                    [f"# Maximale Leistung: {data_max} W", f"# Max Power: {data_max} W"]
-                )
+                writer.writerow([f"# Maximale Leistung: {data_max} W", f"# Max Power: {data_max} W"])
                 writer.writerow(
                     [
                         f"# Durchschnittliche Leistung: {data_avg:.1f} W",
                         f"# Average Power: {data_avg:.1f} W",
                     ]
                 )
-                writer.writerow(
-                    [f"# Minimale Leistung: {data_min} W", f"# Min Power: {data_min} W"]
-                )
+                writer.writerow([f"# Minimale Leistung: {data_min} W", f"# Min Power: {data_min} W"])
                 writer.writerow([""])
 
                 # Write column headers
@@ -274,9 +239,7 @@ async def export_csv(
                 return StreamingResponse(
                     iter([output.getvalue()]),
                     media_type="text/csv; charset=utf-8-sig",
-                    headers={
-                        "Content-Disposition": f'attachment; filename="{filename}"'
-                    },
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'},
                 )
         except NoDataException as e:
             logger.warning(
@@ -289,7 +252,7 @@ async def export_csv(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Keine Messdaten für den gewählten Zeitraum verfügbar",
-            )
+            ) from e
         except TimeSeriesException as e:
             logger.error(
                 "Time-series query failed for export",
@@ -301,7 +264,7 @@ async def export_csv(
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Fehler beim Abrufen der Daten",
-            )
+            ) from e
         except Exception as e:
             logger.error(
                 "CSV export failed",
@@ -314,4 +277,4 @@ async def export_csv(
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Fehler beim Generieren der CSV-Datei",
-            )
+            ) from e

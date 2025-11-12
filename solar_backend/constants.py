@@ -13,7 +13,7 @@ INTERNAL_SERVER_ERROR_MESSAGE = "An unexpected error occurred."
 MAX_NAME_LENGTH = 255
 MAX_SERIAL_LENGTH = 64
 MAX_EMAIL_LENGTH = 255
-MAX_PASSWORD_HASH_LENGTH = 255 # For bcrypt hashes
+MAX_PASSWORD_HASH_LENGTH = 255  # For bcrypt hashes
 
 # --- Rate Limiting ---
 DEFAULT_RATE_LIMIT = "10/minute"
@@ -27,7 +27,7 @@ PASSWORD_RESET_RATE_LIMIT = "3/hour"
 
 # --- API Keys ---
 API_KEY_PREFIX = "sk-"
-API_KEY_LENGTH = 32 # Excluding prefix
+API_KEY_LENGTH = 32  # Excluding prefix
 
 # --- Other ---
 # Add any other magic strings or numbers found during refactoring

@@ -10,22 +10,18 @@ if "ENV_FILE" not in os.environ:
     os.environ["ENV_FILE"] = "../tests/test.env"
 
 import pytest
-from fastapi_htmx import htmx_init
-from fastapi.templating import Jinja2Templates
 import pytest_asyncio
-from solar_backend.db import get_async_session, sessionmanager
-from solar_backend.app import app
+from fastapi.templating import Jinja2Templates
+from fastapi_htmx import htmx_init
 from httpx import AsyncClient
 
+from solar_backend.app import app
+from solar_backend.db import get_async_session, sessionmanager
 
 DB_TESTING_URI = "sqlite+aiosqlite://"
 
 sessionmanager.init(DB_TESTING_URI)
-htmx_init(
-    templates=Jinja2Templates(
-        directory=Path(os.getcwd()) / Path("solar_backend") / Path("templates")
-    )
-)
+htmx_init(templates=Jinja2Templates(directory=Path(os.getcwd()) / Path("solar_backend") / Path("templates")))
 
 
 @pytest.fixture(scope="session")
@@ -58,9 +54,7 @@ async def session_override(event_loop):
 async def client(event_loop):
     from httpx import ASGITransport
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as c:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
 
 
@@ -86,12 +80,11 @@ async def db_session():
 @pytest_asyncio.fixture
 async def test_user(db_session):
     """Create a test user in the database."""
-    from tests.helpers import create_user_in_db
     from sqlalchemy.orm import make_transient
 
-    user = await create_user_in_db(
-        db_session, email="testuser@example.com", first_name="Test", last_name="User"
-    )
+    from tests.helpers import create_user_in_db
+
+    user = await create_user_in_db(db_session, email="testuser@example.com", first_name="Test", last_name="User")
     # Force load all attributes before session closes
     _ = (user.id, user.email, user.first_name, user.last_name)
     # Make object transient to avoid session binding issues
@@ -117,8 +110,9 @@ async def superuser(db_session):
 @pytest_asyncio.fixture
 async def test_inverter(db_session, test_user):
     """Create a test inverter for the test user."""
-    from tests.helpers import create_inverter_in_db
     from sqlalchemy.orm import make_transient
+
+    from tests.helpers import create_inverter_in_db
 
     inverter = await create_inverter_in_db(
         db_session, user_id=test_user.id, name="Test Inverter", serial_logger="TEST-123"
@@ -190,10 +184,6 @@ def without_influx(mocker):
         side_effect=lambda *args, **kwargs: (None, 0),
     )
     mocker.patch("solar_backend.utils.timeseries.get_power_timeseries", return_value=[])
-    mocker.patch(
-        "solar_backend.utils.timeseries.get_today_energy_production", return_value=0.0
-    )
-    mocker.patch(
-        "solar_backend.utils.timeseries.get_today_maximum_power", return_value=0
-    )
+    mocker.patch("solar_backend.utils.timeseries.get_today_energy_production", return_value=0.0)
+    mocker.patch("solar_backend.utils.timeseries.get_today_maximum_power", return_value=0)
     mocker.patch("solar_backend.utils.timeseries.get_last_hour_average", return_value=0)

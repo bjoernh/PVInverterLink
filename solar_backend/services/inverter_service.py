@@ -2,21 +2,18 @@
 Service layer for inverter-related operations.
 """
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from solar_backend.db import Inverter
-from solar_backend.schemas import InverterAdd, InverterAddMetadata
 from solar_backend.repositories.inverter_repository import InverterRepository
-
-logger = structlog.get_logger()
-
-
+from solar_backend.schemas import InverterAdd, InverterAddMetadata
 from solar_backend.services.exceptions import (
     InverterNotFoundException,
     UnauthorizedInverterAccessException,
 )
+
+logger = structlog.get_logger()
 
 
 class InverterService:
@@ -39,16 +36,12 @@ class InverterService:
     async def create_inverter(self, user_id: int, inverter_to_add: InverterAdd) -> Inverter:
         return await self.repo.create(user_id, inverter_to_add)
 
-    async def update_inverter(
-        self, inverter_id: int, user_id: int, inverter_update: InverterAdd
-    ) -> Inverter:
+    async def update_inverter(self, inverter_id: int, user_id: int, inverter_update: InverterAdd) -> Inverter:
         inverter = await self.repo.get_by_id(inverter_id)
         if not inverter:
             raise InverterNotFoundException("Inverter not found")
         if inverter.user_id != user_id:
-            raise UnauthorizedInverterAccessException(
-                "User does not have access to this inverter"
-            )
+            raise UnauthorizedInverterAccessException("User does not have access to this inverter")
 
         return await self.repo.update(inverter, inverter_update)
 
@@ -57,9 +50,7 @@ class InverterService:
         if not inverter:
             raise InverterNotFoundException("Inverter not found")
         if inverter.user_id != user_id:
-            raise UnauthorizedInverterAccessException(
-                "User does not have access to this inverter"
-            )
+            raise UnauthorizedInverterAccessException("User does not have access to this inverter")
 
         await self.repo.delete(inverter)
 
@@ -69,9 +60,7 @@ class InverterService:
             raise InverterNotFoundException(f"Inverter {inverter_id} not found or unauthorized access")
         return inverter
 
-    async def update_inverter_metadata(
-        self, serial_logger: str, data: InverterAddMetadata
-    ) -> Inverter:
+    async def update_inverter_metadata(self, serial_logger: str, data: InverterAddMetadata) -> Inverter:
         inverter = await self.repo.get_by_serial(serial_logger)
 
         if not inverter:

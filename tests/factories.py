@@ -1,16 +1,18 @@
 """
 Test factories for creating test data using factory-boy and Faker.
 """
+
 import factory
 from faker import Faker
-from solar_backend.schemas import UserCreate, InverterAdd, InverterAddMetadata
-from solar_backend.db import User, Inverter
+
+from solar_backend.schemas import InverterAdd, InverterAddMetadata, UserCreate
 
 faker = Faker()
 
 
 class UserCreateFactory(factory.Factory):
     """Factory for UserCreate schema (for registration)"""
+
     class Meta:
         model = UserCreate
 
@@ -22,6 +24,7 @@ class UserCreateFactory(factory.Factory):
 
 class InverterAddFactory(factory.Factory):
     """Factory for InverterAdd schema (for creating inverters)"""
+
     class Meta:
         model = InverterAdd
 
@@ -31,6 +34,7 @@ class InverterAddFactory(factory.Factory):
 
 class InverterAddMetadataFactory(factory.Factory):
     """Factory for InverterAddMetadata schema"""
+
     class Meta:
         model = InverterAddMetadata
 
@@ -41,6 +45,7 @@ class InverterAddMetadataFactory(factory.Factory):
 # Database model factories (for when objects need to be in the DB)
 class UserDBFactory(factory.Factory):
     """Factory for User database model"""
+
     class Meta:
         model = dict  # We'll create dicts that can be used to create User objects
 
@@ -58,6 +63,7 @@ class UserDBFactory(factory.Factory):
 
 class InverterDBFactory(factory.Factory):
     """Factory for Inverter database model"""
+
     class Meta:
         model = dict  # We'll create dicts that can be used to create Inverter objects
 

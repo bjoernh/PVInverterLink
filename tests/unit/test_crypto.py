@@ -5,9 +5,11 @@ from solar_backend.utils.crypto import CryptoManager
 
 KEY = Fernet.generate_key().decode()
 
+
 @pytest.fixture
 def crypto_manager() -> CryptoManager:
     return CryptoManager(key=KEY)
+
 
 @pytest.mark.unit
 def test_encrypt_decrypt_success(crypto_manager: CryptoManager):
@@ -20,12 +22,14 @@ def test_encrypt_decrypt_success(crypto_manager: CryptoManager):
     decrypted_text = crypto_manager.decrypt(encrypted_text)
     assert decrypted_text == original_text
 
+
 @pytest.mark.unit
 def test_decrypt_invalid_token(crypto_manager: CryptoManager):
     """Tests that decryption returns None for an invalid token."""
     invalid_ciphertext = "gAAAAABm_gX2r_...invalid..._8A="
     decrypted_text = crypto_manager.decrypt(invalid_ciphertext)
     assert decrypted_text is None
+
 
 @pytest.mark.unit
 def test_decrypt_tampered_token(crypto_manager: CryptoManager):
@@ -42,17 +46,19 @@ def test_decrypt_tampered_token(crypto_manager: CryptoManager):
     decrypted_text = crypto_manager.decrypt(tampered_text)
     assert decrypted_text is None
 
+
 @pytest.mark.unit
 def test_init_with_no_key():
     """Tests that CryptoManager raises an error if initialized with no key."""
     with pytest.raises(ValueError, match="An encryption key must be provided."):
         CryptoManager(key="")
 
+
 @pytest.mark.unit
 def test_decryption_with_different_key():
     """Tests that decryption fails when using a different key."""
     original_text = "super secret"
-    
+
     # Encrypt with the first key
     manager1 = CryptoManager(key=KEY)
     encrypted_text = manager1.encrypt(original_text)

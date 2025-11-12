@@ -9,18 +9,20 @@ This script simulates OpenDTU data posting and verifies:
 
 import asyncio
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from sqlalchemy import select, text
-from solar_backend.db import sessionmanager, User, Inverter
-from solar_backend.utils.timeseries import (
-    write_measurement,
-    write_dc_channel_measurement,
-    get_today_total_yield,
-    get_today_energy_production,
-    set_rls_context,
-    reset_rls_context,
-)
+
 from solar_backend.config import settings
+from solar_backend.db import Inverter, User, sessionmanager
+from solar_backend.utils.timeseries import (
+    get_today_energy_production,
+    get_today_total_yield,
+    reset_rls_context,
+    set_rls_context,
+    write_dc_channel_measurement,
+    write_measurement,
+)
 
 
 async def test_dc_channels():
@@ -38,9 +40,7 @@ async def test_dc_channels():
             print("❌ No users found. Please create a user first.")
             return False
 
-        result = await session.execute(
-            select(Inverter).where(Inverter.user_id == user.id).limit(1)
-        )
+        result = await session.execute(select(Inverter).where(Inverter.user_id == user.id).limit(1))
         inverter = result.scalar_one_or_none()
 
         if not inverter:
@@ -52,7 +52,7 @@ async def test_dc_channels():
 
         # Test 1: Write DC channel measurements (simulating OpenDTU data)
         print("Test 1: Writing DC channel measurements...")
-        timestamp = datetime.now(timezone.utc)
+        timestamp = datetime.now(UTC)
 
         # Simulate 4 DC channels (MPPTs)
         dc_channels = [
@@ -124,7 +124,7 @@ async def test_dc_channels():
                 irradiation=dc["irradiation"],
             )
 
-        print(f"✓ Wrote AC measurement: 22W")
+        print("✓ Wrote AC measurement: 22W")
         print(f"✓ Wrote {len(dc_channels)} DC channel measurements\n")
 
         # Test 2: Query DC channel data
@@ -139,9 +139,7 @@ async def test_dc_channels():
             ORDER BY channel
         """)
 
-        result = await session.execute(
-            query, {"user_id": user.id, "inverter_id": inverter.id}
-        )
+        result = await session.execute(query, {"user_id": user.id, "inverter_id": inverter.id})
 
         rows = result.fetchall()
         if rows:

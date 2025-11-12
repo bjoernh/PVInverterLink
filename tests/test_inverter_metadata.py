@@ -1,12 +1,13 @@
 """
 Tests for inverter metadata endpoint.
 """
+
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from solar_backend.db import User, Inverter
+from solar_backend.db import Inverter, User
 
 
 @pytest.mark.asyncio
@@ -21,15 +22,10 @@ async def test_update_inverter_metadata_success(
     # We'll update them to different values
 
     # Update metadata
-    metadata = {
-        "rated_power": 600,
-        "number_of_mppts": 2
-    }
+    metadata = {"rated_power": 600, "number_of_mppts": 2}
 
     response = await async_client.post(
-        f"/inverter_metadata/{test_inverter.serial_logger}",
-        json=metadata,
-        headers=superuser_token_headers
+        f"/inverter_metadata/{test_inverter.serial_logger}", json=metadata, headers=superuser_token_headers
     )
 
     # Verify response
@@ -48,15 +44,12 @@ async def test_update_inverter_metadata_not_found(
     superuser_token_headers: dict,
 ):
     """Test metadata update for non-existent inverter."""
-    metadata = {
-        "rated_power": 600,
-        "number_of_mppts": 2
-    }
+    metadata = {"rated_power": 600, "number_of_mppts": 2}
 
     response = await async_client.post(
         "/inverter_metadata/9999999999",  # Non-existent serial
         json=metadata,
-        headers=superuser_token_headers
+        headers=superuser_token_headers,
     )
 
     assert response.status_code == 404
@@ -70,15 +63,10 @@ async def test_update_inverter_metadata_unauthorized(
     user_token_headers: dict,
 ):
     """Test that regular users cannot update metadata."""
-    metadata = {
-        "rated_power": 600,
-        "number_of_mppts": 2
-    }
+    metadata = {"rated_power": 600, "number_of_mppts": 2}
 
     response = await async_client.post(
-        f"/inverter_metadata/{test_inverter.serial_logger}",
-        json=metadata,
-        headers=user_token_headers
+        f"/inverter_metadata/{test_inverter.serial_logger}", json=metadata, headers=user_token_headers
     )
 
     # Should be forbidden (403) since only superusers can update metadata
@@ -91,15 +79,9 @@ async def test_update_inverter_metadata_no_auth(
     test_inverter: Inverter,
 ):
     """Test that unauthenticated requests are rejected."""
-    metadata = {
-        "rated_power": 600,
-        "number_of_mppts": 2
-    }
+    metadata = {"rated_power": 600, "number_of_mppts": 2}
 
-    response = await async_client.post(
-        f"/inverter_metadata/{test_inverter.serial_logger}",
-        json=metadata
-    )
+    response = await async_client.post(f"/inverter_metadata/{test_inverter.serial_logger}", json=metadata)
 
     # Should be unauthorized (401)
     assert response.status_code == 401
@@ -114,15 +96,10 @@ async def test_update_inverter_metadata_multiple_times(
 ):
     """Test that metadata can be updated multiple times."""
     # First update
-    metadata1 = {
-        "rated_power": 300,
-        "number_of_mppts": 1
-    }
+    metadata1 = {"rated_power": 300, "number_of_mppts": 1}
 
     response1 = await async_client.post(
-        f"/inverter_metadata/{test_inverter.serial_logger}",
-        json=metadata1,
-        headers=superuser_token_headers
+        f"/inverter_metadata/{test_inverter.serial_logger}", json=metadata1, headers=superuser_token_headers
     )
 
     assert response1.status_code == 200
@@ -131,15 +108,10 @@ async def test_update_inverter_metadata_multiple_times(
     assert data1["number_of_mppts"] == 1
 
     # Second update (overwrite)
-    metadata2 = {
-        "rated_power": 600,
-        "number_of_mppts": 2
-    }
+    metadata2 = {"rated_power": 600, "number_of_mppts": 2}
 
     response2 = await async_client.post(
-        f"/inverter_metadata/{test_inverter.serial_logger}",
-        json=metadata2,
-        headers=superuser_token_headers
+        f"/inverter_metadata/{test_inverter.serial_logger}", json=metadata2, headers=superuser_token_headers
     )
 
     assert response2.status_code == 200
@@ -148,9 +120,7 @@ async def test_update_inverter_metadata_multiple_times(
     assert data2["number_of_mppts"] == 2
 
     # Verify in database by querying fresh
-    result = await db_session.execute(
-        select(Inverter).where(Inverter.serial_logger == test_inverter.serial_logger)
-    )
+    result = await db_session.execute(select(Inverter).where(Inverter.serial_logger == test_inverter.serial_logger))
     updated_inverter = result.scalar_one()
     assert updated_inverter.rated_power == 600
     assert updated_inverter.number_of_mppts == 2
@@ -170,9 +140,7 @@ async def test_update_inverter_metadata_invalid_data(
     }
 
     response = await async_client.post(
-        f"/inverter_metadata/{test_inverter.serial_logger}",
-        json=metadata_missing,
-        headers=superuser_token_headers
+        f"/inverter_metadata/{test_inverter.serial_logger}", json=metadata_missing, headers=superuser_token_headers
     )
 
     assert response.status_code == 422  # Unprocessable Entity
@@ -185,15 +153,10 @@ async def test_update_inverter_metadata_zero_values(
     superuser_token_headers: dict,
 ):
     """Test that zero values are accepted (edge case)."""
-    metadata = {
-        "rated_power": 0,
-        "number_of_mppts": 0
-    }
+    metadata = {"rated_power": 0, "number_of_mppts": 0}
 
     response = await async_client.post(
-        f"/inverter_metadata/{test_inverter.serial_logger}",
-        json=metadata,
-        headers=superuser_token_headers
+        f"/inverter_metadata/{test_inverter.serial_logger}", json=metadata, headers=superuser_token_headers
     )
 
     assert response.status_code == 200
@@ -213,14 +176,12 @@ async def test_update_inverter_metadata_typical_values(
         {"rated_power": 300, "number_of_mppts": 1},  # SUN300G3
         {"rated_power": 600, "number_of_mppts": 2},  # SUN600G3
         {"rated_power": 800, "number_of_mppts": 2},  # SUN800G3
-        {"rated_power": 1200, "number_of_mppts": 4}, # SUN1200G3
+        {"rated_power": 1200, "number_of_mppts": 4},  # SUN1200G3
     ]
 
     for metadata in test_cases:
         response = await async_client.post(
-            f"/inverter_metadata/{test_inverter.serial_logger}",
-            json=metadata,
-            headers=superuser_token_headers
+            f"/inverter_metadata/{test_inverter.serial_logger}", json=metadata, headers=superuser_token_headers
         )
 
         assert response.status_code == 200

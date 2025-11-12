@@ -1,10 +1,12 @@
 """
 Time-series query builder for TimescaleDB.
 """
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
+
 from zoneinfo import ZoneInfo
+
 import structlog
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from solar_backend.config import settings
 
@@ -30,9 +32,7 @@ class TimeSeriesQueryBuilder:
         self.inverter_id = inverter_id
         self.tz = ZoneInfo(settings.TZ)
 
-    async def get_energy_production(
-        self, time_filter_clause: str, yield_threshold: int
-    ) -> list[dict]:
+    async def get_energy_production(self, time_filter_clause: str, yield_threshold: int) -> list[dict]:
         """
         Get daily energy production for a given time period.
 
@@ -89,10 +89,7 @@ class TimeSeriesQueryBuilder:
                 "timezone": str(self.tz),
             },
         )
-        integrated_data = [
-            {"date": row.date.isoformat(), "energy_kwh": float(row.energy_kwh)}
-            for row in result
-        ]
+        integrated_data = [{"date": row.date.isoformat(), "energy_kwh": float(row.energy_kwh)} for row in result]
 
         logger.debug(
             "Calculated daily energy from power integration",

@@ -3,16 +3,16 @@ Tests for Victron measurements endpoint with API key authentication.
 """
 
 import pytest
-from httpx import AsyncClient
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_post_victron_measurement_with_api_key(client, test_user, db_session):
     """Test posting Victron measurement data using API key authentication."""
-    from tests.helpers import create_inverter_in_db
-    from solar_backend.utils.api_keys import generate_api_key
     from sqlalchemy import update
+
+    from solar_backend.utils.api_keys import generate_api_key
+    from tests.helpers import create_inverter_in_db
 
     # Generate and assign API key to test user
     test_api_key = generate_api_key()
@@ -57,7 +57,7 @@ async def test_post_victron_measurement_with_api_key(client, test_user, db_sessi
                         }
                     ],
                 }
-            ]
+            ],
         },
         headers={"X-API-Key": test_api_key},
     )
@@ -106,7 +106,7 @@ async def test_post_victron_measurement_without_api_key(client, test_user, db_se
                     "yield_total_kwh": 1234.56,
                     "trackers": [],
                 }
-            ]
+            ],
         },
     )
 
@@ -118,9 +118,10 @@ async def test_post_victron_measurement_without_api_key(client, test_user, db_se
 @pytest.mark.asyncio
 async def test_post_victron_measurement_multiple_devices(client, test_user, db_session):
     """Test posting Victron measurement data with multiple devices from one Cerbo GX."""
-    from tests.helpers import create_inverter_in_db
-    from solar_backend.utils.api_keys import generate_api_key
     from sqlalchemy import update
+
+    from solar_backend.utils.api_keys import generate_api_key
+    from tests.helpers import create_inverter_in_db
 
     # Generate and assign API key to test user
     test_api_key = generate_api_key()
@@ -177,8 +178,8 @@ async def test_post_victron_measurement_multiple_devices(client, test_user, db_s
                     "yield_power_w": 312.8,
                     "yield_total_kwh": 987.65,
                     "trackers": [],
-                }
-            ]
+                },
+            ],
         },
         headers={"X-API-Key": test_api_key},
     )
@@ -194,9 +195,10 @@ async def test_post_victron_measurement_multiple_devices(client, test_user, db_s
 @pytest.mark.asyncio
 async def test_post_victron_measurement_with_multi_tracker(client, test_user, db_session):
     """Test posting Victron measurement with multiple MPPT trackers."""
-    from tests.helpers import create_inverter_in_db
-    from solar_backend.utils.api_keys import generate_api_key
     from sqlalchemy import update
+
+    from solar_backend.utils.api_keys import generate_api_key
+    from tests.helpers import create_inverter_in_db
 
     # Generate and assign API key to test user
     test_api_key = generate_api_key()
@@ -259,7 +261,7 @@ async def test_post_victron_measurement_with_multi_tracker(client, test_user, db
                         },
                     ],
                 }
-            ]
+            ],
         },
         headers={"X-API-Key": test_api_key},
     )
@@ -274,8 +276,9 @@ async def test_post_victron_measurement_with_multi_tracker(client, test_user, db
 @pytest.mark.asyncio
 async def test_post_victron_measurement_unknown_device(client, test_user, db_session):
     """Test posting Victron measurement for unknown device."""
-    from solar_backend.utils.api_keys import generate_api_key
     from sqlalchemy import update
+
+    from solar_backend.utils.api_keys import generate_api_key
 
     # Generate and assign API key to test user
     test_api_key = generate_api_key()
@@ -303,7 +306,7 @@ async def test_post_victron_measurement_unknown_device(client, test_user, db_ses
                     "yield_total_kwh": 1234.56,
                     "trackers": [],
                 }
-            ]
+            ],
         },
         headers={"X-API-Key": test_api_key},
     )
@@ -320,9 +323,10 @@ async def test_post_victron_measurement_unknown_device(client, test_user, db_ses
 @pytest.mark.asyncio
 async def test_post_victron_measurement_mixed_results(client, test_user, db_session):
     """Test posting Victron measurements with one valid and one invalid device (207 Multi-Status)."""
-    from tests.helpers import create_inverter_in_db
-    from solar_backend.utils.api_keys import generate_api_key
     from sqlalchemy import update
+
+    from solar_backend.utils.api_keys import generate_api_key
+    from tests.helpers import create_inverter_in_db
 
     # Generate and assign API key to test user
     test_api_key = generate_api_key()
@@ -371,8 +375,8 @@ async def test_post_victron_measurement_mixed_results(client, test_user, db_sess
                     "yield_power_w": 100.0,
                     "yield_total_kwh": 500.0,
                     "trackers": [],
-                }
-            ]
+                },
+            ],
         },
         headers={"X-API-Key": test_api_key},
     )

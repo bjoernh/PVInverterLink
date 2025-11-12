@@ -1,15 +1,16 @@
-from typing import AsyncGenerator, List, Optional, AsyncIterator
 import contextlib
+from collections.abc import AsyncGenerator, AsyncIterator
 from datetime import datetime
+
 from fastapi import Depends
 from fastapi_users.db import SQLAlchemyBaseUserTable, SQLAlchemyUserDatabase
-from sqlalchemy import ForeignKey, Integer, String, Float, TIMESTAMP
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine, AsyncEngine, AsyncConnection
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqladmin import ModelView
+from sqlalchemy import TIMESTAMP, Float, ForeignKey, Integer, String
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from solar_backend.config import settings, DEBUG
-from solar_backend.constants import MAX_NAME_LENGTH, MAX_SERIAL_LENGTH, API_KEY_LENGTH
+from solar_backend.config import DEBUG
+from solar_backend.constants import API_KEY_LENGTH, MAX_NAME_LENGTH, MAX_SERIAL_LENGTH
 
 
 class Base(DeclarativeBase):
@@ -23,9 +24,9 @@ class Inverter(Base):
     users = relationship("User", back_populates="inverters", lazy="selectin")
     name: Mapped[str] = mapped_column(String(MAX_NAME_LENGTH))
     serial_logger: Mapped[str] = mapped_column(String(MAX_SERIAL_LENGTH), unique=True)
-    sw_version: Mapped[Optional[str]] = mapped_column(String)
-    rated_power: Mapped[Optional[int]] = mapped_column(Integer)
-    number_of_mppts: Mapped[Optional[int]] = mapped_column(Integer)
+    sw_version: Mapped[str | None] = mapped_column(String)
+    rated_power: Mapped[int | None] = mapped_column(Integer)
+    number_of_mppts: Mapped[int | None] = mapped_column(Integer)
 
     def __repr__(self):
         return f"{self.id} - {self.name}"
@@ -33,16 +34,24 @@ class Inverter(Base):
     class Config:
         orm_mode = True
 
+
 class InverterMeasurement(Base):
     """Time-series measurement data for inverters stored in TimescaleDB hypertable."""
+
     __tablename__ = "inverter_measurements"
 
     time: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), primary_key=True, nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), primary_key=True, nullable=False)
-    inverter_id: Mapped[int] = mapped_column(ForeignKey("inverter.id", ondelete="CASCADE"), primary_key=True, nullable=False)
+    inverter_id: Mapped[int] = mapped_column(
+        ForeignKey("inverter.id", ondelete="CASCADE"), primary_key=True, nullable=False
+    )
     total_output_power: Mapped[int] = mapped_column(Integer, nullable=False)
-    yield_day_wh: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # Daily yield in Wh, aggregated from DC channels
-    yield_total_kwh: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # Total lifetime yield in kWh, aggregated from DC channels
+    yield_day_wh: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )  # Daily yield in Wh, aggregated from DC channels
+    yield_total_kwh: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )  # Total lifetime yield in kWh, aggregated from DC channels
 
     # Relationships (optional, for ORM convenience)
     user = relationship("User", lazy="noload")
@@ -54,11 +63,14 @@ class InverterMeasurement(Base):
 
 class DCChannelMeasurement(Base):
     """DC channel (MPPT) measurement data stored in TimescaleDB hypertable."""
+
     __tablename__ = "dc_channel_measurements"
 
     time: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), primary_key=True, nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), primary_key=True, nullable=False)
-    inverter_id: Mapped[int] = mapped_column(ForeignKey("inverter.id", ondelete="CASCADE"), primary_key=True, nullable=False)
+    inverter_id: Mapped[int] = mapped_column(
+        ForeignKey("inverter.id", ondelete="CASCADE"), primary_key=True, nullable=False
+    )
     channel: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
     name: Mapped[str] = mapped_column(String(MAX_NAME_LENGTH), nullable=False)
     power: Mapped[float] = mapped_column(Float, nullable=False)
@@ -78,6 +90,7 @@ class DCChannelMeasurement(Base):
 
 class InverterAdmin(ModelView, model=Inverter):
     """Admin interface for Inverter model."""
+
     column_list = [Inverter.id, Inverter.name, Inverter.serial_logger, Inverter.user_id]
     name = "Inverter"
     column_searchable_list = [Inverter.name, Inverter.serial_logger]
@@ -88,6 +101,7 @@ class InverterAdmin(ModelView, model=Inverter):
 
 class DCChannelMeasurementAdmin(ModelView, model=DCChannelMeasurement):
     """Admin interface for DC Channel Measurement model."""
+
     column_list = [
         DCChannelMeasurement.time,
         DCChannelMeasurement.inverter_id,
@@ -106,12 +120,13 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     inverters = relationship("Inverter", back_populates="users", lazy="selectin")
-    first_name: Mapped[str]  = mapped_column(String(MAX_NAME_LENGTH))
+    first_name: Mapped[str] = mapped_column(String(MAX_NAME_LENGTH))
     last_name: Mapped[str] = mapped_column(String(MAX_NAME_LENGTH))
-    api_key: Mapped[Optional[str]] = mapped_column(String(API_KEY_LENGTH), nullable=True, unique=True)
+    api_key: Mapped[str | None] = mapped_column(String(API_KEY_LENGTH), nullable=True, unique=True)
 
     def __repr__(self):
         return f"{self.id} - {self.first_name} {self.last_name}"
+
 
 class DatabaseSessionManager:
     def __init__(self):
@@ -168,6 +183,7 @@ class DatabaseSessionManager:
     async def drop_all(self, connection: AsyncConnection):
         await connection.run_sync(Base.metadata.drop_all)
 
+
 sessionmanager = DatabaseSessionManager()
 
 
@@ -176,7 +192,7 @@ async def create_db_and_tables():
         await conn.run_sync(Base.metadata.create_all)
 
 
-async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_async_session() -> AsyncGenerator[AsyncSession]:
     async with sessionmanager.session() as session:
         yield session
 

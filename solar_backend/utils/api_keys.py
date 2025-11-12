@@ -23,5 +23,5 @@ def generate_api_key(length: int = 16) -> str:
     key = "".join(secrets.choice(alphabet) for _ in range(length))
 
     # Format with hyphens for readability: xxxx-xxxx-xxxx-xxxx
-    parts = [key[i:i+4] for i in range(0, len(key), 4)]
+    parts = [key[i : i + 4] for i in range(0, len(key), 4)]
     return "-".join(parts)

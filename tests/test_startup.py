@@ -1,5 +1,5 @@
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from solar_backend.app import app
 
@@ -8,8 +8,8 @@ from solar_backend.app import app
 @pytest.mark.smoke
 @pytest.mark.asyncio
 async def test_openapi_spec():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as client:
-        response = await client.get('/openapi.json')
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/openapi.json")
         assert response.status_code == 200
         assert isinstance(response.json(), dict)
 
@@ -18,8 +18,7 @@ async def test_openapi_spec():
 @pytest.mark.smoke
 @pytest.mark.asyncio
 async def test_healthcheck():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as client:
-        response = await client.get('/healthcheck')
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/healthcheck")
         assert response.status_code == 200
         assert response.json()["FastAPI"] == "OK"
-

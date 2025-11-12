@@ -2,8 +2,8 @@
 Repository for inverter-related database operations.
 """
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from solar_backend.db import Inverter
 from solar_backend.schemas import InverterAdd, InverterAddMetadata
@@ -27,15 +27,11 @@ class InverterRepository:
         return await self.session.get(Inverter, inverter_id)
 
     async def get_by_serial(self, serial_logger: str) -> Inverter | None:
-        result = await self.session.execute(
-            select(Inverter).where(Inverter.serial_logger == serial_logger)
-        )
+        result = await self.session.execute(select(Inverter).where(Inverter.serial_logger == serial_logger))
         return result.scalar_one_or_none()
 
     async def get_all_by_user_id(self, user_id: int) -> list[Inverter]:
-        result = await self.session.execute(
-            select(Inverter).where(Inverter.user_id == user_id)
-        )
+        result = await self.session.execute(select(Inverter).where(Inverter.user_id == user_id))
         return list(result.scalars().all())
 
     async def create(self, user_id: int, inverter_to_add: InverterAdd) -> Inverter:

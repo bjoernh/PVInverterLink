@@ -1,8 +1,5 @@
-from typing import Optional
-from pydantic.dataclasses import dataclass
 from fastapi_users import schemas
-from solar_backend.db import User
-
+from pydantic.dataclasses import dataclass
 
 
 class UserRead(schemas.BaseUser[int]):
@@ -22,14 +19,15 @@ class UserUpdate(schemas.BaseUserUpdate):
 
 @dataclass
 class InverterAdd:
-        name: str
-        serial: str
+    name: str
+    serial: str
 
 
 @dataclass
 class InverterAddMetadata:
-        rated_power: int
-        number_of_mppts: int
+    rated_power: int
+    number_of_mppts: int
+
 
 @dataclass
 class Inverter:
@@ -38,10 +36,10 @@ class Inverter:
     serial_logger: str
     sw_version: str
     user: schemas.BaseUser[int]
-    current_power: Optional[int] = None
-    last_update: Optional[str] = None
-    rated_power: Optional[int] = None
-    number_of_mppts: Optional[int] = None
+    current_power: int | None = None
+    last_update: str | None = None
+    rated_power: int | None = None
+    number_of_mppts: int | None = None
 
 
 @dataclass
@@ -49,6 +47,6 @@ class InverterMetadataResponse:
     id: int
     serial_logger: str
     name: str
-    rated_power: Optional[int]
-    number_of_mppts: Optional[int]
+    rated_power: int | None
+    number_of_mppts: int | None
     sw_version: str

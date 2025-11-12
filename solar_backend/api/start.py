@@ -1,28 +1,21 @@
-import structlog
-from datetime import datetime, timezone, timedelta
-from pprint import pprint
-from pydantic import ValidationError
+from datetime import UTC, datetime, timedelta
+
 import humanize
-
+import structlog
 from fastapi import APIRouter, Depends, Request, status
-
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi_htmx import htmx
-from solar_backend.db import User, get_async_session
 
-from solar_backend.users import current_active_user
+from solar_backend.db import User, get_async_session
 from solar_backend.repositories.inverter_repository import InverterRepository
+from solar_backend.users import current_active_user
 from solar_backend.utils.timeseries import (
-    get_latest_value,
-    get_today_energy_production,
-    set_rls_context,
-    reset_rls_context,
-    rls_context,
     NoDataException,
     TimeSeriesException,
+    get_latest_value,
+    get_today_energy_production,
+    rls_context,
 )
-from solar_backend.schemas import UserCreate
-from fastapi_users import models, exceptions
 
 logger = structlog.get_logger()
 
@@ -51,16 +44,14 @@ async def get_start(
             inverters = await inverter_repo.get_all_by_user_id(user.id)
 
             # Define 5-minute threshold for "current" power values
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             five_minutes_ago = now - timedelta(minutes=5)
 
             # Extend with current power and last update
             for inverter in inverters:
                 try:
                     time, power = await get_latest_value(session, user.id, inverter.id)
-                    inverter.last_update_time = (
-                        time  # Store timestamp for later filtering
-                    )
+                    inverter.last_update_time = time  # Store timestamp for later filtering
 
                     # Only show power if within last 5 minutes
                     if time >= five_minutes_ago:
@@ -104,9 +95,7 @@ async def get_start(
 
                 # Get today's energy
                 try:
-                    energy = await get_today_energy_production(
-                        session, user.id, inverter.id
-                    )
+                    energy = await get_today_energy_production(session, user.id, inverter.id)
                     if energy >= 0:
                         total_production += energy
                         production_available = True
@@ -133,7 +122,3 @@ async def get_test(request: Request) -> dict:
 @router.post("/post_test")
 async def post_test():
     return HTMLResponse("""<a href="/" hx-boost="false">weiter</a>""")
-    # extra_headers = {"HX-Redirect": "/", "HX-Refresh":"true"}
-    return RedirectResponse("/", status_code=status.HTTP_200_OK, headers=extra_headers)
-    # return HTMLResponse("", headers=extra_headers)
-    # return HTMLResponse("Seriennummer existiert bereits", status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)

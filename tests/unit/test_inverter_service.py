@@ -1,14 +1,16 @@
 """
 Unit tests for the InverterService.
 """
-import pytest
+
 from unittest.mock import AsyncMock, MagicMock
 
-from solar_backend.services.inverter_service import InverterService
+import pytest
+
+from solar_backend.db import Inverter
 from solar_backend.services.exceptions import InverterNotFoundException, UnauthorizedInverterAccessException
-from solar_backend.db import Inverter, User
-from solar_backend.schemas import InverterAdd
-from tests.factories import InverterAddFactory, UserDBFactory, InverterDBFactory
+from solar_backend.services.inverter_service import InverterService
+from tests.factories import InverterAddFactory
+
 
 @pytest.mark.unit
 @pytest.mark.asyncio
@@ -38,6 +40,7 @@ async def test_get_inverters_for_user():
     assert inverters[0].name == "Inverter 1"
     assert mock_session.execute.call_count == 1
 
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_create_inverter():
@@ -61,6 +64,7 @@ async def test_create_inverter():
     mock_session.commit.assert_called_once()
     mock_session.refresh.assert_called_once()
 
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_update_inverter_success():
@@ -80,7 +84,9 @@ async def test_update_inverter_success():
     service = InverterService(session=mock_session)
 
     # Act
-    updated_inverter = await service.update_inverter(inverter_id=inverter_id, user_id=user_id, inverter_update=inverter_update_data)
+    updated_inverter = await service.update_inverter(
+        inverter_id=inverter_id, user_id=user_id, inverter_update=inverter_update_data
+    )
 
     # Assert
     assert updated_inverter.name == "Updated Name"
@@ -88,6 +94,7 @@ async def test_update_inverter_success():
     mock_session.get.assert_called_once_with(Inverter, inverter_id)
     mock_session.commit.assert_called_once()
     mock_session.refresh.assert_called_once()
+
 
 @pytest.mark.unit
 @pytest.mark.asyncio
@@ -111,6 +118,7 @@ async def test_update_inverter_not_found():
     mock_session.get.assert_called_once_with(Inverter, inverter_id)
     mock_session.commit.assert_not_called()
 
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_update_inverter_unauthorized():
@@ -131,10 +139,13 @@ async def test_update_inverter_unauthorized():
 
     # Act & Assert
     with pytest.raises(UnauthorizedInverterAccessException):
-        await service.update_inverter(inverter_id=inverter_id, user_id=attacker_user_id, inverter_update=inverter_update_data)
+        await service.update_inverter(
+            inverter_id=inverter_id, user_id=attacker_user_id, inverter_update=inverter_update_data
+        )
 
     mock_session.get.assert_called_once_with(Inverter, inverter_id)
     mock_session.commit.assert_not_called()
+
 
 @pytest.mark.unit
 @pytest.mark.asyncio
@@ -161,6 +172,7 @@ async def test_delete_inverter_success():
     mock_session.delete.assert_called_once_with(mock_inverter)
     mock_session.commit.assert_called_once()
 
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_inverter_not_found():
@@ -181,6 +193,7 @@ async def test_delete_inverter_not_found():
 
     mock_session.get.assert_called_once_with(Inverter, inverter_id)
     mock_session.delete.assert_not_called()
+
 
 @pytest.mark.unit
 @pytest.mark.asyncio
