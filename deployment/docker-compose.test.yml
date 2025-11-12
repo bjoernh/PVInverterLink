@@ -4,7 +4,7 @@ services:
 
     # Backend Service (Test)
     backend-test:
-        image: git.64b.de/bjoern/deye_hard:${IMAGE_TAG:-test}
+        image: ghcr.io/bjoernh/pvinverterlink:${IMAGE_TAG:-test}
         container_name: backend-test
         pull_policy: always
         restart: unless-stopped
@@ -67,7 +67,7 @@ services:
 
     # Rust Collector (Test)
     collector-test:
-        image: git.64b.de/bjoern/inverter-collector:latest
+        image: ghcr.io/bjoernh/solarmancollector:latest
         container_name: collector-test
         restart: unless-stopped
         env_file:

@@ -3,7 +3,7 @@ version: "3.8"
 services:
   # Backend Service (Staging)
   backend-staging:
-    image: git.64b.de/bjoern/deye_hard:${IMAGE_TAG:-staging}
+    image: ghcr.io/bjoernh/pvinverterlink:${IMAGE_TAG:-staging}
     container_name: backend-staging
     pull_policy: always
     restart: unless-stopped

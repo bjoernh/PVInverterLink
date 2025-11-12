@@ -123,7 +123,7 @@ docker-compose down
 
 **Production Deployments:**
 
-Production deployments use pre-built Docker images from `git.64b.de/bjoern/deye_hard` registry.
+Production deployments use pre-built Docker images from `ghcr.io/bjoernh/pvinverterlink` registry.
 
 ```bash
 # Set registry credentials
@@ -135,7 +135,7 @@ export IMAGE_TAG="v1.2.3"  # or 'prod', 'staging', 'test'
 deployment/scripts/deploy-prod.sh
 
 # Or manually
-docker login git.64b.de
+docker login ghcr.io
 docker compose -f deployment/docker-compose.prod.yml pull
 docker compose -f deployment/docker-compose.prod.yml up -d
 ```
@@ -394,7 +394,7 @@ HTMX by default only processes 200-series HTTP responses. To display error messa
 
 ### Automated Docker Builds
 
-The project uses GitHub Actions to automatically build and push Docker images to `git.64b.de/bjoern/deye_hard`.
+The project uses GitHub Actions to automatically build and push Docker images to `ghcr.io/bjoernh/pvinverterlink`.
 
 **Workflow file**: `.github/workflows/docker-build-push.yml`
 

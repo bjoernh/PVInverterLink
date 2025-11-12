@@ -15,8 +15,8 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-REGISTRY="git.64b.de"
-IMAGE_NAME="bjoern/deye_hard"
+REGISTRY="ghcr.io"
+IMAGE_NAME="bjoernh/pvinverterlink"
 FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
 
 # Default to latest if no tag specified

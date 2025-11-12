@@ -34,7 +34,7 @@ fi
 # Docker registry authentication
 echo -e "${YELLOW}Logging in to Docker registry...${NC}"
 if [ -n "$DOCKER_REGISTRY_USERNAME" ] && [ -n "$DOCKER_REGISTRY_PASSWORD" ]; then
-    echo "$DOCKER_REGISTRY_PASSWORD" | docker login git.64b.de -u "$DOCKER_REGISTRY_USERNAME" --password-stdin
+    echo "$DOCKER_REGISTRY_PASSWORD" | docker login ghcr.io -u "$DOCKER_REGISTRY_USERNAME" --password-stdin
     if [ $? -ne 0 ]; then
         echo -e "${RED}Failed to authenticate with Docker registry!${NC}"
         echo "Please set DOCKER_REGISTRY_USERNAME and DOCKER_REGISTRY_PASSWORD environment variables."
@@ -53,7 +53,7 @@ if ! docker network ls | grep -q "traefik-public"; then
 fi
 
 # Pull latest images
-echo -e "${YELLOW}Pulling Docker image: git.64b.de/bjoern/deye_hard:${IMAGE_TAG}...${NC}"
+echo -e "${YELLOW}Pulling Docker image: ghcr.io/bjoernh/pvinverterlink:${IMAGE_TAG}...${NC}"
 docker compose -f "$COMPOSE_FILE" pull
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to pull Docker images!${NC}"
@@ -90,7 +90,7 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  Deployment Complete!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
-echo "Image deployed: git.64b.de/bjoern/deye_hard:${IMAGE_TAG}"
+echo "Image deployed: ghcr.io/bjoernh/pvinverterlink:${IMAGE_TAG}"
 echo ""
 echo "Services:"
 echo "  - Backend: http://test.solar.64b.de"

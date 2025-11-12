@@ -392,7 +392,7 @@ All alerts sent via email configured in SignOz. Email notifications configured v
 ```yaml
 # In SignOz notification settings
 Provider: SMTP
-Host: smtp.gmail.com (or your provider)
+Host: mail.example.com
 Port: 587
 From: monitoring@yourcompany.com
 TLS: Yes
@@ -453,7 +453,7 @@ services:
 ```
 ┌─────────────────────────────────────────────────────┐
 │ System Status Widget                                │
-│ • Backend uptime | Collector uptime | DB uptime    │
+│ • Backend uptime | Collector uptime | DB uptime     │
 │ • Data ingestion rate (msgs/sec)                    │
 │ • Active users (last 24h)                           │
 └─────────────────────────────────────────────────────┘
@@ -487,7 +487,7 @@ services:
 │ Request Breakdown (by endpoint)                     │
 │ • GET /api/dashboard: 150ms p95                     │
 │ • POST /api/measurements: 45ms p95                  │
-│ • GET /api/inverter/{id}: 200ms p95                │
+│ • GET /api/inverter/{id}: 200ms p95                 │
 └─────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────┐
@@ -509,10 +509,10 @@ services:
 ```
 ┌─────────────────────────────────────────────────────┐
 │ Per-Logger Status                                   │
-│ • Logger ID | Conn Status | Last Message | Rate    │
+│ • Logger ID | Conn Status | Last Message | Rate     │
 │ • 4142050081 | ✅ Connected | 2 min ago | 0.3 msg/s │
 │ • 4142050082 | ✅ Connected | 5 sec ago | 0.4 msg/s │
-│ • 4142050083 | ❌ Offline | 45 min ago | 0 msg/s  │
+│ • 4142050083 | ❌ Offline | 45 min ago | 0 msg/s     │
 └─────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────┐
@@ -522,52 +522,6 @@ services:
 │ • Backend auth failures (time series)               │
 └─────────────────────────────────────────────────────┘
 ```
-
----
-
-## Implementation Phases
-
-### Phase 1: Core Infrastructure (2-3 hours)
-- [ ] Add SignOz to docker-compose.yml
-- [ ] Add PostgreSQL exporter to docker-compose.yml
-- [ ] Deploy stack locally and verify SignOz UI loads
-- [ ] Create basic Prometheus scrape config for postgres-exporter
-
-### Phase 2: FastAPI Instrumentation (3-4 hours)
-- [ ] Add OpenTelemetry dependencies to pyproject.toml
-- [ ] Configure OTel SDK in app.py (tracer, meter, logger providers)
-- [ ] Auto-instrument: FastAPI, SQLAlchemy, requests
-- [ ] Replace structlog with OTel-native logging
-- [ ] Add custom metrics for measurement ingestion
-- [ ] Verify traces appear in SignOz
-
-### Phase 3: Rust Collector Instrumentation (2-3 hours)
-- [ ] Add OpenTelemetry Rust crates to Cargo.toml
-- [ ] Configure OTel exporter to SignOz endpoint
-- [ ] Replace emoji logs with structured OTel logs
-- [ ] Add metrics: connection count, message rate, parse errors
-- [ ] Add spans for connection handling, packet processing
-- [ ] Verify traces appear in SignOz
-
-### Phase 4: Alerting Setup (1-2 hours)
-- [ ] Configure SMTP in SignOz
-- [ ] Create critical alerts (collector down, error rate spikes)
-- [ ] Create warning alerts (slow queries, low data rate)
-- [ ] Test email delivery
-- [ ] Document alert response procedures
-
-### Phase 5: Dashboard Creation (2-3 hours)
-- [ ] Create home dashboard (overview)
-- [ ] Create FastAPI details dashboard
-- [ ] Create Collector details dashboard
-- [ ] Create PostgreSQL monitoring dashboard
-- [ ] Add links between dashboards
-
-### Phase 6: Documentation & Runbooks (1-2 hours)
-- [ ] Create runbook for each alert tier
-- [ ] Document how to find root cause using traces
-- [ ] Document how to add new metrics/alerts
-- [ ] Create glossary of key observability terms
 
 ---
 

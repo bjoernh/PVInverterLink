@@ -34,16 +34,35 @@ Use this checklist before deploying to each environment to ensure all requiremen
 
 ### Repository Setup
 
-- [ ] Repository cloned with submodules: `git clone --recursive [url]`
+- [ ] Repository cloned with submodules: `git clone --recursive https://github.com/bjoernh/PVInverterLink.git`
 - [ ] Latest code pulled: `git pull origin main`
-- [ ] Submodules updated: `git submodule update --init --recursive`
 
-### Directory Structure
+### GitHub Container Registry Authentication
 
-- [ ] Data directories created: `mkdir -p data/{test,staging,prod}/{postgres,signoz,backups}`
-- [ ] Log directories created: `mkdir -p logs/{test,staging,prod}`
-- [ ] Traefik directories created: `mkdir -p traefik/{dynamic,certs}`
-- [ ] Permissions set: `chmod 700 data logs`
+- [ ] GitHub Personal Access Token (PAT) created with `read:packages` scope:
+  - [ ] Go to: https://github.com/settings/tokens
+  - [ ] Generate new token (classic)
+  - [ ] Select scope: `read:packages`
+  - [ ] Copy token securely
+- [ ] Registry credentials set as environment variables:
+  - [ ] `export DOCKER_REGISTRY_USERNAME="your-github-username"`
+  - [ ] `export DOCKER_REGISTRY_PASSWORD="ghp_xxxxx"` (your PAT)
+- [ ] Docker login to ghcr.io successful: `docker login ghcr.io`
+- [ ] Test pull: `docker pull ghcr.io/bjoernh/pvinverterlink:latest`
+
+
+### CI/CD & Image Versioning
+
+- [ ] GitHub Actions workflow verified: https://github.com/bjoernh/PVInverterLink/actions
+- [ ] Latest image build successful
+- [ ] Image tag determined for deployment:
+  - [ ] Test: `test` or `sha-abc1234`
+  - [ ] Staging: `v1.2.3-rc.1` or `staging`
+  - [ ] Production: `v1.2.3` (semantic version only!)
+- [ ] Image exists in registry: `docker pull ghcr.io/bjoernh/pvinverterlink:${IMAGE_TAG}`
+- [ ] `IMAGE_TAG` environment variable set: `export IMAGE_TAG="v1.2.3"`
+
+**📖 See [CICD.md](CICD.md) for complete CI/CD documentation**
 
 ---
 
@@ -63,8 +82,11 @@ Use this checklist before deploying to each environment to ensure all requiremen
 ### Deployment
 
 - [ ] Traefik network created: `docker network create traefik-public`
-- [ ] Deployment script executed: `./scripts/deploy-test.sh`
-- [ ] All containers running: `docker compose -f docker-compose.test.yml ps`
+- [ ] Registry credentials configured (see "GitHub Container Registry Authentication" above)
+- [ ] Image tag set: `export IMAGE_TAG="test"` (or specific SHA)
+- [ ] Deployment script executed: `./deployment/scripts/deploy-test.sh`
+- [ ] Image pulled from ghcr.io successfully
+- [ ] All containers running: `docker compose -f deployment/docker-compose.test.yml ps`
 - [ ] Database migrations applied
 - [ ] Admin user created
 
@@ -76,98 +98,6 @@ Use this checklist before deploying to each environment to ensure all requiremen
 - [ ] SignOz UI accessible: `curl -I http://signoz.yourdomain.com/test`
 - [ ] Can log in with admin credentials
 - [ ] Collector listening on port 10000: `netstat -tlnp | grep 10000`
-
----
-
-## Staging Environment Checklist
-
-### Configuration
-
-- [ ] `.env.staging` created from `.env.staging.example`
-- [ ] **Different** passwords from test environment:
-  - [ ] `POSTGRES_PASSWORD` (new random password)
-  - [ ] `AUTH_SECRET` (new random secret)
-  - [ ] `ENCRYPTION_KEY` (new Fernet key)
-- [ ] `BASE_URL` set to `http://staging.yourdomain.com`
-- [ ] `COOKIE_SECURE` set to `False` (HTTP mode)
-- [ ] Email configuration tested (SMTP settings)
-- [ ] File permissions restricted: `chmod 600 .env.staging`
-
-### Deployment
-
-- [ ] Deployment script executed: `./scripts/deploy-staging.sh`
-- [ ] All containers running: `docker compose -f docker-compose.staging.yml ps`
-- [ ] Database migrations applied
-- [ ] Admin user created
-
-### Verification
-
-- [ ] Health endpoint responding: `curl http://staging.yourdomain.com/healthcheck`
-- [ ] All endpoints accessible
-- [ ] SignOz monitoring working
-- [ ] Can send and receive emails
-- [ ] Data import from test environment (if needed)
-- [ ] Full application workflow tested
-
----
-
-## Production Environment Checklist
-
-### Security Requirements (CRITICAL!)
-
-- [ ] **Strong, unique passwords** (minimum 20 characters):
-  - [ ] `POSTGRES_PASSWORD`
-  - [ ] `AUTH_SECRET`
-  - [ ] `ENCRYPTION_KEY`
-  - [ ] `CLICKHOUSE_PASSWORD`
-- [ ] All passwords **different** from test and staging
-- [ ] `COOKIE_SECURE` set to `True`
-- [ ] `BASE_URL` using HTTPS: `https://yourdomain.com`
-- [ ] Email sending configured and tested
-- [ ] File permissions restricted: `chmod 600 .env.prod`
-- [ ] Environment file not committed to git
-
-### SSL/TLS Configuration
-
-- [ ] SSL certificates obtained (Let's Encrypt or custom)
-- [ ] Certificates installed in `traefik/certs/`
-- [ ] Traefik HTTPS configured
-- [ ] Certificate auto-renewal configured (if using Let's Encrypt)
-- [ ] HTTPS redirection enabled
-
-### Monitoring Setup
-
-- [ ] SignOz configured with production credentials
-- [ ] SMTP alerts configured
-- [ ] Alert rules created:
-  - [ ] Critical alerts (Tier 1)
-  - [ ] Warning alerts (Tier 2)
-- [ ] Email alert delivery tested
-- [ ] Dashboards created and verified
-
-### Backup Configuration
-
-- [ ] Backup script tested: `./scripts/backup-db.sh prod`
-- [ ] Cron job configured for daily backups at 2 AM
-- [ ] Backup retention policy verified
-- [ ] Test restore performed on staging
-
-### Pre-Deployment Testing
-
-- [ ] All features tested in staging environment
-- [ ] Load testing performed (if applicable)
-- [ ] Database migration tested on staging
-- [ ] Rollback procedure documented and tested
-- [ ] Monitoring dashboards reviewed
-
-### Deployment
-
-- [ ] Pre-deployment backup created
-- [ ] Deployment script executed: `./scripts/deploy-prod.sh`
-- [ ] All containers running: `docker compose -f docker-compose.prod.yml ps`
-- [ ] Database migrations applied successfully
-- [ ] Admin user created
-- [ ] Post-deployment backup created
 
 ### Post-Deployment Verification
 
@@ -196,22 +126,6 @@ Use this checklist before deploying to each environment to ensure all requiremen
 
 ## Security Hardening Checklist (Production)
 
-### SSH Security
-
-- [ ] SSH key-based authentication enabled
-- [ ] Password authentication disabled: `PasswordAuthentication no` in `/etc/ssh/sshd_config`
-- [ ] Root login disabled: `PermitRootLogin no`
-- [ ] fail2ban monitoring SSH attempts
-- [ ] Non-standard SSH port considered (optional)
-
-### Docker Security
-
-- [ ] Docker daemon socket not exposed
-- [ ] Containers run as non-root users
-- [ ] Resource limits configured (CPU, memory)
-- [ ] Log rotation configured
-- [ ] Docker images regularly updated
-
 ### Network Security
 
 - [ ] Firewall active and configured
@@ -224,6 +138,7 @@ Use this checklist before deploying to each environment to ensure all requiremen
 - [ ] Admin interface restricted (IP whitelist or VPN)
 - [ ] SignOz UI password-protected
 - [ ] Traefik dashboard secured or disabled
+- [ ] /docs is password protected
 - [ ] API rate limiting configured
 - [ ] CORS policies configured
 - [ ] Security headers enabled (CSP, HSTS, etc.)
@@ -231,9 +146,7 @@ Use this checklist before deploying to each environment to ensure all requiremen
 ### Data Security
 
 - [ ] Database not exposed to internet
-- [ ] Backup encryption enabled
 - [ ] Secrets not logged
-- [ ] PII handling compliant
 
 ### Monitoring & Logging
 
@@ -245,90 +158,24 @@ Use this checklist before deploying to each environment to ensure all requiremen
 
 ---
 
-## Maintenance Checklist
-
-### Daily
-
-- [ ] Check monitoring dashboard
-- [ ] Review error logs
-- [ ] Verify backups completed
-- [ ] Check disk space
-
-### Weekly
-
-- [ ] Review resource usage trends
-- [ ] Check for security updates
-- [ ] Review slow queries
-- [ ] Test backup restore (monthly)
-
-### Monthly
-
-- [ ] Review user access
-- [ ] Analyze performance trends
-- [ ] Update dependencies
-- [ ] Review and update documentation
-
-### Quarterly
-
-- [ ] Security audit
-- [ ] Disaster recovery drill
-- [ ] Capacity planning review
-- [ ] Update SSL certificates (if not auto-renewed)
-
----
-
 ## Rollback Checklist
 
 If deployment fails or issues are discovered:
 
 - [ ] Stop affected services
 - [ ] Restore pre-deployment database backup
-- [ ] Revert code to previous version: `git checkout [commit]`
-- [ ] Rebuild and restart services
+- [ ] Deploy previous image version: `export IMAGE_TAG="v1.2.2"` (previous working version)
+- [ ] Re-run deployment script: `./deployment/scripts/deploy-[environment].sh`
+- [ ] Verify image rollback: `docker inspect [container] | grep Image`
 - [ ] Verify functionality restored
+- [ ] Monitor for errors
 - [ ] Document issue and root cause
 - [ ] Create post-mortem report
 
----
-
-## Emergency Contact Information
-
-Maintain a list of emergency contacts:
-
-- **Primary Administrator**: [Name, Phone, Email]
-- **Backup Administrator**: [Name, Phone, Email]
-- **Hosting Provider Support**: [Phone, Email]
-- **DNS Provider Support**: [Phone, Email]
-- **SSL Certificate Provider**: [Phone, Email]
+**Note:** With ghcr.io registry, rollbacks are fast (pull previous image, no rebuild needed)
 
 ---
 
-## Sign-Off
-
-### Test Environment
-
-- Deployed by: ________________
-- Date: ________________
-- Verified by: ________________
-- Date: ________________
-
-### Staging Environment
-
-- Deployed by: ________________
-- Date: ________________
-- Verified by: ________________
-- Date: ________________
-
-### Production Environment
-
-- Deployed by: ________________
-- Date: ________________
-- Verified by: ________________
-- Date: ________________
-- Approved by: ________________
-- Date: ________________
-
----
-
-**Document Version:** 1.0
-**Last Updated:** October 2025
+**Document Version:** 2.0
+**Last Updated:** November 2025
+**Changes:** Added GitHub Container Registry (ghcr.io) authentication and CI/CD workflow integration

@@ -579,7 +579,7 @@ FASTMAIL__MAIL_FROM=noreply@example.com
 
 ### Docker Deployment
 
-The project uses pre-built Docker images from `git.64b.de/bjoern/deye_hard` for deployments. Images are built automatically via CI/CD.
+The project uses pre-built Docker images from `ghcr.io/bjoernh/pvinverterlink` for deployments. Images are built automatically via CI/CD.
 
 ```bash
 # Set registry credentials (required)
@@ -596,7 +596,7 @@ cd deployment
 ./scripts/deploy-test.sh     # Test
 
 # Or manually with docker compose
-docker login git.64b.de -u "$DOCKER_REGISTRY_USERNAME"
+docker login ghcr.io -u "$DOCKER_REGISTRY_USERNAME"
 docker compose -f deployment/docker-compose.prod.yml pull
 docker compose -f deployment/docker-compose.prod.yml up -d
 

@@ -3,7 +3,7 @@ version: "3.8"
 services:
   # Backend Service (Production)
   backend-prod:
-    image: git.64b.de/bjoern/deye_hard:${IMAGE_TAG:-prod}
+    image: ghcr.io/bjoernh/pvinverterlink:${IMAGE_TAG:-prod}
     container_name: backend-prod
     pull_policy: always
     restart: always
