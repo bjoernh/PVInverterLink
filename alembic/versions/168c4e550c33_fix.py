@@ -28,10 +28,10 @@ def upgrade() -> None:
     op.drop_index(op.f('inverter_measurements_time_idx'), table_name='inverter_measurements')
     op.drop_index(op.f('inverter_measurements_user_id_time_idx'), table_name='inverter_measurements')
     op.add_column('user', sa.Column('tmp_pass', sa.String(), nullable=True))
-    op.add_column('user', sa.Column('api_key', sa.String(length=32), nullable=True))
-    op.drop_constraint(op.f('user_email_key'), 'user', type_='unique')
-    op.create_index(op.f('ix_user_email'), 'user', ['email'], unique=True)
-    op.create_unique_constraint(None, 'user', ['api_key'])
+    # op.add_column('user', sa.Column('api_key', sa.String(length=32), nullable=True))
+    # op.drop_constraint(op.f('user_email_key'), 'user', type_='unique')
+    # op.create_index(op.f('ix_user_email'), 'user', ['email'], unique=True)
+    # op.create_unique_constraint(None, 'user', ['api_key'])
     # ### end Alembic commands ###
 
 
