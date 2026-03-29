@@ -129,17 +129,18 @@ class MeasurementTransfer:
                 self.user_id_map[row.id] = row.id
             return len(source_rows), 0
 
-        # Insert users into target with ON CONFLICT UPDATE
+        # Insert users into target with ON CONFLICT UPDATE, preserving source IDs
         inserted_count = 0
         async with self.target_sessionmaker() as target_session:
             for row in source_rows:
-                # Insert or update user
+                # Insert or update user, preserving source id to keep measurement FK references valid
                 insert_query = text("""
-                    INSERT INTO "user" (email, hashed_password, is_active, is_superuser, is_verified,
+                    INSERT INTO "user" (id, email, hashed_password, is_active, is_superuser, is_verified,
                                         first_name, last_name, api_key)
-                    VALUES (:email, :hashed_password, :is_active, :is_superuser, :is_verified,
+                    VALUES (:id, :email, :hashed_password, :is_active, :is_superuser, :is_verified,
                             :first_name, :last_name, :api_key)
-                    ON CONFLICT (email) DO UPDATE SET
+                    ON CONFLICT (id) DO UPDATE SET
+                        email = EXCLUDED.email,
                         hashed_password = EXCLUDED.hashed_password,
                         is_active = EXCLUDED.is_active,
                         is_superuser = EXCLUDED.is_superuser,
@@ -153,6 +154,7 @@ class MeasurementTransfer:
                 result = await target_session.execute(
                     insert_query,
                     {
+                        "id": row.id,
                         "email": row.email,
                         "hashed_password": row.hashed_password,
                         "is_active": row.is_active,
@@ -166,7 +168,6 @@ class MeasurementTransfer:
                 target_id = result.scalar()
                 self.user_id_map[row.id] = target_id
 
-                # Check if this was insert or update (simple heuristic)
                 if target_id:
                     inserted_count += 1
                     logger.debug(
@@ -176,6 +177,13 @@ class MeasurementTransfer:
                         target_id=target_id,
                     )
 
+            # Advance the sequence past the max inserted id to avoid future conflicts
+            await target_session.execute(
+                text(
+                    "SELECT setval(pg_get_serial_sequence('\"user\"', 'id'), "
+                    'COALESCE(MAX(id), 0) + 1, false) FROM "user"'
+                )
+            )
             await target_session.commit()
 
         logger.info(
@@ -228,19 +236,20 @@ class MeasurementTransfer:
                 self.inverter_id_map[row.id] = row.id
             return len(source_rows), 0
 
-        # Insert inverters into target with ON CONFLICT UPDATE
+        # Insert inverters into target with ON CONFLICT UPDATE, preserving source IDs
         inserted_count = 0
         async with self.target_sessionmaker() as target_session:
             for row in source_rows:
                 target_user_id = self.user_id_map[row.user_id]
 
-                # Insert or update inverter
+                # Insert or update inverter, preserving source id to keep measurement FK references valid
                 insert_query = text("""
-                    INSERT INTO inverter (user_id, name, serial_logger, sw_version, rated_power, number_of_mppts)
-                    VALUES (:user_id, :name, :serial_logger, :sw_version, :rated_power, :number_of_mppts)
-                    ON CONFLICT (serial_logger) DO UPDATE SET
+                    INSERT INTO inverter (id, user_id, name, serial_logger, sw_version, rated_power, number_of_mppts)
+                    VALUES (:id, :user_id, :name, :serial_logger, :sw_version, :rated_power, :number_of_mppts)
+                    ON CONFLICT (id) DO UPDATE SET
                         user_id = EXCLUDED.user_id,
                         name = EXCLUDED.name,
+                        serial_logger = EXCLUDED.serial_logger,
                         sw_version = EXCLUDED.sw_version,
                         rated_power = EXCLUDED.rated_power,
                         number_of_mppts = EXCLUDED.number_of_mppts
@@ -250,6 +259,7 @@ class MeasurementTransfer:
                 result = await target_session.execute(
                     insert_query,
                     {
+                        "id": row.id,
                         "user_id": target_user_id,
                         "name": row.name,
                         "serial_logger": row.serial_logger,
@@ -270,6 +280,13 @@ class MeasurementTransfer:
                         target_id=target_id,
                     )
 
+            # Advance the sequence past the max inserted id to avoid future conflicts
+            await target_session.execute(
+                text(
+                    "SELECT setval(pg_get_serial_sequence('inverter', 'id'), "
+                    "COALESCE(MAX(id), 0) + 1, false) FROM inverter"
+                )
+            )
             await target_session.commit()
 
         logger.info(
@@ -716,8 +733,8 @@ Examples:
     parser.add_argument(
         "--batch-size",
         type=int,
-        default=1000,
-        help="Batch size for inserts (default: 1000)",
+        default=10000,
+        help="Batch size for inserts (default: 10000)",
     )
     parser.add_argument(
         "--dry-run",

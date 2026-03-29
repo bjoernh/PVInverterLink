@@ -1,0 +1,469 @@
+{% extends "base.jinja2" %}
+{% block title %}Gesamtübersicht - Dashboard{% endblock %}
+{% block content %}
+
+<div class="mx-auto w-full px-2 md:px-4 py-4 md:py-6 max-w-7xl">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold">Gesamtübersicht</h1>
+                <p class="text-sm opacity-70">Alle {{ inverters|length }} Wechselrichter zusammengefasst</p>
+            </div>
+            <div>
+                <a href="/" class="btn btn-ghost">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Zurück
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Metrics Section Header -->
+    <div class="mb-4">
+        <h2 class="text-lg font-semibold">Heutige Metriken (Gesamt)</h2>
+        <p class="text-sm opacity-70">Aktuelle Gesamtwerte aller Wechselrichter</p>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body p-4">
+                <h3 class="text-sm font-medium opacity-70">Aktuell (Gesamt)</h3>
+                <p id="stat-current" class="text-2xl font-bold">-- W</p>
+            </div>
+        </div>
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body p-4">
+                <h3 class="text-sm font-medium opacity-70">Maximum heute (Gesamt)</h3>
+                <p id="stat-max" class="text-2xl font-bold">-- W</p>
+            </div>
+        </div>
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body p-4">
+                <h3 class="text-sm font-medium opacity-70">Produktion Heute (Gesamt)</h3>
+                <p id="stat-today-kwh" class="text-2xl font-bold">-- kWh</p>
+            </div>
+        </div>
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body p-4">
+                <h3 class="text-sm font-medium opacity-70">Durchschnitt (letzte Stunde)</h3>
+                <p id="stat-avg-hour" class="text-2xl font-bold">-- W</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historic Data Section Header -->
+    <div class="mb-4 mt-8">
+        <h2 class="text-lg font-semibold">Leistungsverlauf</h2>
+        <p class="text-sm opacity-70">Gesamt und pro Wechselrichter</p>
+    </div>
+
+    <!-- Power Chart Card -->
+    <div class="card bg-base-100 shadow-md mb-6">
+        <div class="card-body p-2 md:p-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 mb-4">
+                <h2 class="card-title text-xl md:text-2xl truncate">Leistungsverlauf</h2>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="text-sm opacity-70 whitespace-nowrap">Letztes Update: <span id="last-update">--</span></span>
+                    <button id="refresh-btn" class="btn btn-circle btn-sm btn-ghost" onclick="loadSummaryData()">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Time Range Buttons -->
+            <div class="btn-group mb-4 flex-wrap">
+                {% for range in valid_ranges %}
+                <button class="btn btn-sm time-range-btn {% if range == time_range %}btn-active{% endif %}"
+                        data-range="{{ range }}"
+                        onclick="changeTimeRange('{{ range }}')">
+                    {{ range_labels[range] }}
+                </button>
+                {% endfor %}
+            </div>
+
+            <!-- Chart Container -->
+            <div id="powerChart" class="relative w-full" style="height: 350px;"></div>
+
+            <!-- Loading/Error States -->
+            <div id="loading-state" class="text-center py-8 hidden">
+                <span class="loading loading-spinner loading-lg"></span>
+                <p class="mt-2 opacity-70">Daten werden geladen...</p>
+            </div>
+            <div id="error-state" class="alert alert-warning hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span id="error-message">Keine Daten verfügbar</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Energy Production Section Header -->
+    <div class="mb-4 mt-8">
+        <h2 class="text-lg font-semibold">Energieproduktion</h2>
+        <p class="text-sm opacity-70">Gestapelt nach Wechselrichter</p>
+    </div>
+
+    <!-- Energy Production Chart Card -->
+    <div class="card bg-base-100 shadow-md mb-6">
+        <div class="card-body p-2 md:p-6">
+            <h2 class="card-title mb-4">Energieproduktion</h2>
+
+            <!-- Period Selector Buttons -->
+            <div class="btn-group mb-4 flex-wrap">
+                <button class="btn btn-sm energy-period-tab btn-active" data-period="day" onclick="changeEnergyPeriod('day')">
+                    Tag
+                </button>
+                <button class="btn btn-sm energy-period-tab" data-period="week" onclick="changeEnergyPeriod('week')">
+                    Woche
+                </button>
+                <button class="btn btn-sm energy-period-tab" data-period="month" onclick="changeEnergyPeriod('month')">
+                    Monat
+                </button>
+            </div>
+
+            <!-- Description Text -->
+            <p id="energy-period-description" class="text-sm opacity-70 mb-4">
+                Stündliche Energieproduktion für heute
+            </p>
+
+            <!-- Chart Container -->
+            <div id="energyChart" class="relative w-full" style="height: 350px;"></div>
+
+            <!-- Loading/Error States -->
+            <div id="energy-loading-state" class="text-center py-8 hidden">
+                <span class="loading loading-spinner loading-lg"></span>
+                <p class="mt-2 opacity-70">Daten werden geladen...</p>
+            </div>
+            <div id="energy-error-state" class="alert alert-warning hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span id="energy-error-message">Keine Daten verfügbar</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function getChartColors() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        return {
+            gridColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+            textColor: isDark ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)',
+            totalColor: isDark ? 'rgb(96, 165, 250)' : 'rgb(59, 130, 246)',
+        };
+    }
+
+    // Per-inverter line colors — matches dc_channels.jinja2 channelColors palette
+    const INVERTER_COLORS = [
+        'rgb(34, 197, 94)',    // green
+        'rgb(249, 115, 22)',   // orange
+        'rgb(168, 85, 247)',   // purple
+        'rgb(236, 72, 153)',   // pink
+        'rgb(14, 165, 233)',   // sky
+    ];
+
+    // Power Chart
+    (function() {
+        let currentTimeRange = '{{ time_range }}';
+        let autoRefreshInterval = null;
+        let chartInitialized = false;
+
+        function initChart(inverterNames) {
+            const chartDiv = document.getElementById('powerChart');
+            if (!chartDiv || chartInitialized) return;
+
+            const colors = getChartColors();
+
+            const layout = {
+                xaxis: { title: '', type: 'date', showgrid: true, gridcolor: colors.gridColor, color: colors.textColor },
+                yaxis: { title: 'Leistung (W)', rangemode: 'tozero', ticksuffix: ' W', showgrid: true, gridcolor: colors.gridColor, color: colors.textColor },
+                hovermode: 'x unified',
+                showlegend: true,
+                legend: { orientation: 'h', y: -0.2 },
+                margin: { l: 60, r: 30, t: 30, b: 80 },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: colors.textColor },
+            };
+
+            const config = { responsive: true, displayModeBar: false, displaylogo: false };
+
+            // Per-inverter stacked area traces
+            const traces = inverterNames.map((name, i) => {
+                const color = INVERTER_COLORS[i % INVERTER_COLORS.length];
+                return {
+                    x: [], y: [],
+                    type: 'scatter', mode: 'lines',
+                    stackgroup: 'one',
+                    line: { color: color, width: 1, shape: 'spline' },
+                    fillcolor: color.replace('rgb', 'rgba').replace(')', ', 0.6)'),
+                    name: name,
+                };
+            });
+
+            Plotly.newPlot('powerChart', traces, layout, config);
+            chartInitialized = true;
+        }
+
+        async function loadSummaryData() {
+            const loadingState = document.getElementById('loading-state');
+            const errorState = document.getElementById('error-state');
+            const chartDiv = document.getElementById('powerChart');
+
+            loadingState.classList.remove('hidden');
+            errorState.classList.add('hidden');
+            chartDiv.classList.add('opacity-50');
+
+            try {
+                const response = await fetch(`/api/summary/data?time_range=${currentTimeRange}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    const perInverter = result.per_inverter || [];
+                    const names = perInverter.map(inv => inv.name);
+
+                    if (!chartInitialized) {
+                        initChart(names);
+                    }
+
+                    // traces 0..n-1 = per inverter (stacked)
+                    const xArrays = perInverter.map(inv => inv.data.map(d => d.time));
+                    const yArrays = perInverter.map(inv => inv.data.map(d => d.power));
+                    const traceIndices = perInverter.map((_, i) => i);
+
+                    Plotly.update('powerChart', { x: xArrays, y: yArrays }, {}, traceIndices);
+
+                    // Update stats
+                    document.getElementById('stat-current').textContent = result.stats.current + ' W';
+                    document.getElementById('stat-max').textContent = result.stats.max + ' W';
+                    document.getElementById('stat-today-kwh').textContent = result.stats.today_kwh.toFixed(2) + ' kWh';
+                    document.getElementById('stat-avg-hour').textContent = result.stats.avg_last_hour + ' W';
+
+                    document.getElementById('last-update').textContent = new Date().toLocaleTimeString('de-DE');
+                    errorState.classList.add('hidden');
+                    chartDiv.classList.remove('opacity-50');
+                } else {
+                    document.getElementById('error-message').textContent = result.message || 'Keine Daten verfügbar';
+                    errorState.classList.remove('hidden');
+                    chartDiv.classList.add('opacity-50');
+                }
+            } catch (error) {
+                console.error('Failed to load summary data:', error);
+                document.getElementById('error-message').textContent = 'Fehler beim Laden der Daten';
+                errorState.classList.remove('hidden');
+                chartDiv.classList.add('opacity-50');
+            } finally {
+                loadingState.classList.add('hidden');
+            }
+        }
+
+        function changeTimeRange(range) {
+            currentTimeRange = range;
+            document.querySelectorAll('.time-range-btn').forEach(btn => {
+                btn.classList.toggle('btn-active', btn.dataset.range === range);
+            });
+            loadSummaryData();
+            const url = new URL(window.location);
+            url.searchParams.set('time_range', range);
+            window.history.pushState({}, '', url);
+        }
+
+        function startAutoRefresh() {
+            stopAutoRefresh();
+            autoRefreshInterval = setInterval(loadSummaryData, {{ auto_refresh_rate }} * 1000);
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) { clearInterval(autoRefreshInterval); autoRefreshInterval = null; }
+        }
+
+        function initializePowerChart() {
+            chartInitialized = false;
+            loadSummaryData();
+            startAutoRefresh();
+        }
+
+        window.changeTimeRange = changeTimeRange;
+        window.loadSummaryData = loadSummaryData;
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializePowerChart);
+        } else {
+            initializePowerChart();
+        }
+
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.querySelector('#powerChart')) {
+                chartInitialized = false;
+                stopAutoRefresh();
+                initializePowerChart();
+            }
+        });
+
+        window.addEventListener('beforeunload', stopAutoRefresh);
+        document.body.addEventListener('htmx:beforeRequest', function(evt) {
+            if (!evt.detail.path || !evt.detail.path.includes('/dashboard/summary')) {
+                stopAutoRefresh();
+            }
+        });
+
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+                    if (chartInitialized) { chartInitialized = false; initializePowerChart(); }
+                }
+            });
+        });
+        observer.observe(document.documentElement, { attributes: true });
+    })();
+
+    // Energy Chart
+    (function() {
+        let currentEnergyPeriod = 'day';
+        let energyChartInitialized = false;
+
+        function initEnergyChart(inverterNames) {
+            const chartDiv = document.getElementById('energyChart');
+            if (!chartDiv || energyChartInitialized) return;
+
+            const colors = getChartColors();
+
+            const layout = {
+                xaxis: { title: '', showgrid: true, gridcolor: colors.gridColor, color: colors.textColor, tickangle: -45 },
+                yaxis: {
+                    title: { text: 'Energie (kWh)', standoff: 15 },
+                    rangemode: 'tozero', ticksuffix: ' kWh',
+                    showgrid: true, gridcolor: colors.gridColor, color: colors.textColor,
+                },
+                barmode: 'stack',
+                hovermode: 'x unified',
+                showlegend: true,
+                legend: { orientation: 'h', y: -0.3 },
+                margin: { l: 100, r: 30, t: 30, b: 100 },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: colors.textColor },
+            };
+
+            const config = { responsive: true, displayModeBar: false, displaylogo: false };
+
+            const traces = inverterNames.map((name, i) => ({
+                x: [], y: [],
+                type: 'bar',
+                name: name,
+                marker: {
+                    color: INVERTER_COLORS[i % INVERTER_COLORS.length],
+                    line: { width: 1 },
+                },
+                hovertemplate: '<b>%{x}</b><br>' + name + ': %{y:.2f} kWh<extra></extra>',
+            }));
+
+            // Fallback: if no inverters yet, show a placeholder trace
+            if (traces.length === 0) {
+                traces.push({ x: [], y: [], type: 'bar', name: 'Energie' });
+            }
+
+            Plotly.newPlot('energyChart', traces, layout, config);
+            energyChartInitialized = true;
+        }
+
+        async function loadEnergyData() {
+            const loadingState = document.getElementById('energy-loading-state');
+            const errorState = document.getElementById('energy-error-state');
+            const chartDiv = document.getElementById('energyChart');
+
+            loadingState.classList.remove('hidden');
+            errorState.classList.add('hidden');
+            chartDiv.classList.add('opacity-50');
+
+            try {
+                const response = await fetch(`/api/summary/energy-data?period=${currentEnergyPeriod}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    const perInverter = result.per_inverter || [];
+                    const names = perInverter.map(inv => inv.name);
+
+                    if (!energyChartInitialized) {
+                        initEnergyChart(names);
+                    }
+
+                    const xArrays = perInverter.map(inv => inv.data.map(d => d.label));
+                    const yArrays = perInverter.map(inv => inv.data.map(d => d.energy_kwh));
+                    const traceIndices = perInverter.map((_, i) => i);
+
+                    if (traceIndices.length > 0) {
+                        Plotly.update('energyChart', { x: xArrays, y: yArrays }, {}, traceIndices);
+                    }
+
+                    errorState.classList.add('hidden');
+                    chartDiv.classList.remove('opacity-50');
+                } else {
+                    document.getElementById('energy-error-message').textContent = result.message || 'Keine Daten verfügbar';
+                    errorState.classList.remove('hidden');
+                    chartDiv.classList.add('opacity-50');
+                }
+            } catch (error) {
+                console.error('Failed to load energy data:', error);
+                document.getElementById('energy-error-message').textContent = 'Fehler beim Laden der Daten';
+                errorState.classList.remove('hidden');
+                chartDiv.classList.add('opacity-50');
+            } finally {
+                loadingState.classList.add('hidden');
+            }
+        }
+
+        function changeEnergyPeriod(period) {
+            currentEnergyPeriod = period;
+            document.querySelectorAll('.energy-period-tab').forEach(btn => {
+                btn.classList.toggle('btn-active', btn.dataset.period === period);
+            });
+            const descriptions = {
+                day: 'Stündliche Energieproduktion für heute',
+                week: 'Tägliche Energieproduktion dieser Woche',
+                month: 'Tägliche Energieproduktion dieses Monats',
+            };
+            document.getElementById('energy-period-description').textContent = descriptions[period];
+            loadEnergyData();
+        }
+
+        function initializeEnergyChart() {
+            energyChartInitialized = false;
+            loadEnergyData();
+        }
+
+        window.changeEnergyPeriod = changeEnergyPeriod;
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeEnergyChart);
+        } else {
+            initializeEnergyChart();
+        }
+
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.querySelector('#energyChart')) {
+                energyChartInitialized = false;
+                initializeEnergyChart();
+            }
+        });
+
+        const energyObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+                    if (energyChartInitialized) { energyChartInitialized = false; initializeEnergyChart(); }
+                }
+            });
+        });
+        energyObserver.observe(document.documentElement, { attributes: true });
+    })();
+</script>
+
+{% endblock %}
