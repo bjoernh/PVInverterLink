@@ -152,36 +152,35 @@
 </div>
 
 <script>
-    function getChartColors() {
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        return {
-            gridColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-            textColor: isDark ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)',
-            totalColor: isDark ? 'rgb(96, 165, 250)' : 'rgb(59, 130, 246)',
-        };
-    }
-
-    // Per-inverter line colors — matches dc_channels.jinja2 channelColors palette
-    const INVERTER_COLORS = [
-        'rgb(34, 197, 94)',    // green
-        'rgb(249, 115, 22)',   // orange
-        'rgb(168, 85, 247)',   // purple
-        'rgb(236, 72, 153)',   // pink
-        'rgb(14, 165, 233)',   // sky
-    ];
-
-    // Power Chart
+    // Management for charts on Summary page
     (function() {
         let currentTimeRange = '{{ time_range }}';
-        let autoRefreshInterval = null;
         let chartInitialized = false;
+        let energyChartInitialized = false;
 
-        function initChart(inverterNames) {
+        function getChartColors() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            return {
+                gridColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                textColor: isDark ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)',
+                totalColor: isDark ? 'rgb(96, 165, 250)' : 'rgb(59, 130, 246)',
+            };
+        }
+
+        const INVERTER_COLORS = [
+            'rgb(34, 197, 94)',    // green
+            'rgb(249, 115, 22)',   // orange
+            'rgb(168, 85, 247)',   // purple
+            'rgb(236, 72, 153)',   // pink
+            'rgb(14, 165, 233)',   // sky
+        ];
+
+        // Power Chart Initialization
+        function initPowerChart(inverterNames) {
             const chartDiv = document.getElementById('powerChart');
             if (!chartDiv || chartInitialized) return;
 
             const colors = getChartColors();
-
             const layout = {
                 xaxis: { title: '', type: 'date', showgrid: true, gridcolor: colors.gridColor, color: colors.textColor },
                 yaxis: { title: 'Leistung (W)', rangemode: 'tozero', ticksuffix: ' W', showgrid: true, gridcolor: colors.gridColor, color: colors.textColor },
@@ -196,7 +195,6 @@
 
             const config = { responsive: true, displayModeBar: false, displaylogo: false };
 
-            // Per-inverter stacked area traces
             const traces = inverterNames.map((name, i) => {
                 const color = INVERTER_COLORS[i % INVERTER_COLORS.length];
                 return {
@@ -214,9 +212,11 @@
         }
 
         async function loadSummaryData() {
+            const chartDiv = document.getElementById('powerChart');
+            if (!chartDiv) return;
+
             const loadingState = document.getElementById('loading-state');
             const errorState = document.getElementById('error-state');
-            const chartDiv = document.getElementById('powerChart');
 
             loadingState.classList.remove('hidden');
             errorState.classList.add('hidden');
@@ -231,17 +231,15 @@
                     const names = perInverter.map(inv => inv.name);
 
                     if (!chartInitialized) {
-                        initChart(names);
+                        initPowerChart(names);
                     }
 
-                    // traces 0..n-1 = per inverter (stacked)
                     const xArrays = perInverter.map(inv => inv.data.map(d => d.time));
                     const yArrays = perInverter.map(inv => inv.data.map(d => d.power));
                     const traceIndices = perInverter.map((_, i) => i);
 
                     Plotly.update('powerChart', { x: xArrays, y: yArrays }, {}, traceIndices);
 
-                    // Update stats
                     document.getElementById('stat-current').textContent = result.stats.current + ' W';
                     document.getElementById('stat-max').textContent = result.stats.max + ' W';
                     document.getElementById('stat-today-kwh').textContent = result.stats.today_kwh.toFixed(2) + ' kWh';
@@ -253,89 +251,20 @@
                 } else {
                     document.getElementById('error-message').textContent = result.message || 'Keine Daten verfügbar';
                     errorState.classList.remove('hidden');
-                    chartDiv.classList.add('opacity-50');
                 }
             } catch (error) {
                 console.error('Failed to load summary data:', error);
-                document.getElementById('error-message').textContent = 'Fehler beim Laden der Daten';
-                errorState.classList.remove('hidden');
-                chartDiv.classList.add('opacity-50');
             } finally {
                 loadingState.classList.add('hidden');
             }
         }
 
-        function changeTimeRange(range) {
-            currentTimeRange = range;
-            document.querySelectorAll('.time-range-btn').forEach(btn => {
-                btn.classList.toggle('btn-active', btn.dataset.range === range);
-            });
-            loadSummaryData();
-            const url = new URL(window.location);
-            url.searchParams.set('time_range', range);
-            window.history.pushState({}, '', url);
-        }
-
-        function startAutoRefresh() {
-            stopAutoRefresh();
-            autoRefreshInterval = setInterval(loadSummaryData, {{ auto_refresh_rate }} * 1000);
-        }
-
-        function stopAutoRefresh() {
-            if (autoRefreshInterval) { clearInterval(autoRefreshInterval); autoRefreshInterval = null; }
-        }
-
-        function initializePowerChart() {
-            chartInitialized = false;
-            loadSummaryData();
-            startAutoRefresh();
-        }
-
-        window.changeTimeRange = changeTimeRange;
-        window.loadSummaryData = loadSummaryData;
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializePowerChart);
-        } else {
-            initializePowerChart();
-        }
-
-        document.body.addEventListener('htmx:afterSwap', function(evt) {
-            if (evt.detail.target.querySelector('#powerChart')) {
-                chartInitialized = false;
-                stopAutoRefresh();
-                initializePowerChart();
-            }
-        });
-
-        window.addEventListener('beforeunload', stopAutoRefresh);
-        document.body.addEventListener('htmx:beforeRequest', function(evt) {
-            if (!evt.detail.path || !evt.detail.path.includes('/dashboard/summary')) {
-                stopAutoRefresh();
-            }
-        });
-
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
-                    if (chartInitialized) { chartInitialized = false; initializePowerChart(); }
-                }
-            });
-        });
-        observer.observe(document.documentElement, { attributes: true });
-    })();
-
-    // Energy Chart
-    (function() {
-        let currentEnergyPeriod = 'day';
-        let energyChartInitialized = false;
-
+        // Energy Chart Initialization
         function initEnergyChart(inverterNames) {
             const chartDiv = document.getElementById('energyChart');
             if (!chartDiv || energyChartInitialized) return;
 
             const colors = getChartColors();
-
             const layout = {
                 xaxis: { title: '', showgrid: true, gridcolor: colors.gridColor, color: colors.textColor, tickangle: -45 },
                 yaxis: {
@@ -354,31 +283,27 @@
             };
 
             const config = { responsive: true, displayModeBar: false, displaylogo: false };
-
             const traces = inverterNames.map((name, i) => ({
                 x: [], y: [],
                 type: 'bar',
                 name: name,
-                marker: {
-                    color: INVERTER_COLORS[i % INVERTER_COLORS.length],
-                    line: { width: 1 },
-                },
+                marker: { color: INVERTER_COLORS[i % INVERTER_COLORS.length], line: { width: 1 } },
                 hovertemplate: '<b>%{x}</b><br>' + name + ': %{y:.2f} kWh<extra></extra>',
             }));
 
-            // Fallback: if no inverters yet, show a placeholder trace
-            if (traces.length === 0) {
-                traces.push({ x: [], y: [], type: 'bar', name: 'Energie' });
-            }
+            if (traces.length === 0) traces.push({ x: [], y: [], type: 'bar', name: 'Energie' });
 
             Plotly.newPlot('energyChart', traces, layout, config);
             energyChartInitialized = true;
         }
 
         async function loadEnergyData() {
+            const chartDiv = document.getElementById('energyChart');
+            if (!chartDiv) return;
+
+            const currentEnergyPeriod = window.summaryCurrentEnergyPeriod || 'day';
             const loadingState = document.getElementById('energy-loading-state');
             const errorState = document.getElementById('energy-error-state');
-            const chartDiv = document.getElementById('energyChart');
 
             loadingState.classList.remove('hidden');
             errorState.classList.add('hidden');
@@ -392,9 +317,7 @@
                     const perInverter = result.per_inverter || [];
                     const names = perInverter.map(inv => inv.name);
 
-                    if (!energyChartInitialized) {
-                        initEnergyChart(names);
-                    }
+                    if (!energyChartInitialized) initEnergyChart(names);
 
                     const xArrays = perInverter.map(inv => inv.data.map(d => d.label));
                     const yArrays = perInverter.map(inv => inv.data.map(d => d.energy_kwh));
@@ -409,20 +332,27 @@
                 } else {
                     document.getElementById('energy-error-message').textContent = result.message || 'Keine Daten verfügbar';
                     errorState.classList.remove('hidden');
-                    chartDiv.classList.add('opacity-50');
                 }
             } catch (error) {
                 console.error('Failed to load energy data:', error);
-                document.getElementById('energy-error-message').textContent = 'Fehler beim Laden der Daten';
-                errorState.classList.remove('hidden');
-                chartDiv.classList.add('opacity-50');
             } finally {
                 loadingState.classList.add('hidden');
             }
         }
 
-        function changeEnergyPeriod(period) {
-            currentEnergyPeriod = period;
+        window.changeTimeRange = function(range) {
+            currentTimeRange = range;
+            document.querySelectorAll('.time-range-btn').forEach(btn => {
+                btn.classList.toggle('btn-active', btn.dataset.range === range);
+            });
+            loadSummaryData();
+            const url = new URL(window.location);
+            url.searchParams.set('time_range', range);
+            window.history.pushState({}, '', url);
+        };
+
+        window.changeEnergyPeriod = function(period) {
+            window.summaryCurrentEnergyPeriod = period;
             document.querySelectorAll('.energy-period-tab').forEach(btn => {
                 btn.classList.toggle('btn-active', btn.dataset.period === period);
             });
@@ -433,36 +363,31 @@
             };
             document.getElementById('energy-period-description').textContent = descriptions[period];
             loadEnergyData();
-        }
+        };
 
-        function initializeEnergyChart() {
+        window.initializeSummaryDashboard = function() {
+            console.log('Initializing Summary Dashboard');
+            chartInitialized = false;
             energyChartInitialized = false;
+            
+            // Clean up old Plotly instances if they exist
+            if (document.getElementById('powerChart')) Plotly.purge('powerChart');
+            if (document.getElementById('energyChart')) Plotly.purge('energyChart');
+
+            loadSummaryData();
             loadEnergyData();
-        }
 
-        window.changeEnergyPeriod = changeEnergyPeriod;
+            // Set up auto-refresh
+            window.stopActiveInterval();
+            window.currentInterval = setInterval(loadSummaryData, {{ auto_refresh_rate }} * 1000);
+        };
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeEnergyChart);
-        } else {
-            initializeEnergyChart();
-        }
-
-        document.body.addEventListener('htmx:afterSwap', function(evt) {
-            if (evt.detail.target.querySelector('#energyChart')) {
-                energyChartInitialized = false;
-                initializeEnergyChart();
-            }
-        });
-
-        const energyObserver = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
-                    if (energyChartInitialized) { energyChartInitialized = false; initializeEnergyChart(); }
-                }
-            });
-        });
-        energyObserver.observe(document.documentElement, { attributes: true });
+        // Graphs will re-render automatically on navigation.
+        // Re-initialization for manual theme toggle is now handled by base.jinja2
+        // or a global event for better efficiency.
+        
+        // Initial load
+        window.initializeSummaryDashboard();
     })();
 </script>
 

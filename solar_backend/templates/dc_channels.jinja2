@@ -113,7 +113,6 @@
         let channelData = null;
         let timeseriesData = null;
 
-        // Get current theme-aware colors
         function getChartColors() {
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             return {
@@ -122,327 +121,128 @@
             };
         }
 
-        // Channel color mapping
         const channelColors = {
-            1: 'rgb(34, 197, 94)',   // green
-            2: 'rgb(59, 130, 246)',   // blue
-            3: 'rgb(249, 115, 22)',   // orange
-            4: 'rgb(168, 85, 247)',   // purple
-            5: 'rgb(236, 72, 153)',   // pink
-            6: 'rgb(14, 165, 233)',   // sky
+            1: 'rgb(34, 197, 94)', 2: 'rgb(59, 130, 246)', 3: 'rgb(249, 115, 22)',
+            4: 'rgb(168, 85, 247)', 5: 'rgb(236, 72, 153)', 6: 'rgb(14, 165, 233)',
         };
 
         const channelBorderColors = {
-            1: 'border-green-500',
-            2: 'border-blue-500',
-            3: 'border-orange-500',
-            4: 'border-purple-500',
-            5: 'border-pink-500',
-            6: 'border-sky-500',
+            1: 'border-green-500', 2: 'border-blue-500', 3: 'border-orange-500',
+            4: 'border-purple-500', 5: 'border-pink-500', 6: 'border-sky-500',
         };
 
-        // Initialize Plotly chart
         function initChart() {
             const chartDiv = document.getElementById('comparisonChart');
             if (!chartDiv || chartInitialized) return;
 
             const colors = getChartColors();
             const layout = {
-                xaxis: {
-                    title: 'Zeit',
-                    type: 'date',
-                    showgrid: true,
-                    gridcolor: colors.gridColor,
-                    color: colors.textColor
-                },
-                yaxis: {
-                    title: 'Leistung (W)',
-                    rangemode: 'tozero',
-                    showgrid: true,
-                    gridcolor: colors.gridColor,
-                    color: colors.textColor
-                },
-                hovermode: 'x unified',
-                showlegend: true,
-                legend: {
-                    x: 0.5,
-                    y: 1.15,
-                    xanchor: 'center',
-                    yanchor: 'bottom',
-                    orientation: 'h',
-                    font: {
-                        color: colors.textColor
-                    }
-                },
-                margin: {
-                    l: 60,
-                    r: 30,
-                    t: 80,
-                    b: 50
-                },
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                font: {
-                    color: colors.textColor
-                }
+                xaxis: { title: 'Zeit', type: 'date', showgrid: true, gridcolor: colors.gridColor, color: colors.textColor },
+                yaxis: { title: 'Leistung (W)', rangemode: 'tozero', showgrid: true, gridcolor: colors.gridColor, color: colors.textColor },
+                hovermode: 'x unified', showlegend: true,
+                legend: { x: 0.5, y: 1.15, xanchor: 'center', yanchor: 'bottom', orientation: 'h', font: { color: colors.textColor } },
+                margin: { l: 60, r: 30, t: 80, b: 50 },
+                plot_bgcolor: 'rgba(0,0,0,0)', paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: colors.textColor }
             };
 
-            const config = {
-                responsive: true,
-                displayModeBar: false
-            };
-
+            const config = { responsive: true, displayModeBar: false };
             Plotly.newPlot('comparisonChart', [], layout, config);
             chartInitialized = true;
         }
 
-        // Render channel cards
         function renderChannelCards(channels) {
             const container = document.getElementById('channel-cards');
             if (!channels || channels.length === 0) {
-                container.innerHTML = `
-                    <div class="col-span-full alert alert-info">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>Keine Modul-Daten verfügbar.</span>
-                    </div>
-                `;
+                container.innerHTML = `<div class="col-span-full alert alert-info"><span>Keine Modul-Daten verfügbar.</span></div>`;
                 return;
             }
-
             let html = '';
             channels.forEach(ch => {
                 const borderColor = channelBorderColors[ch.channel] || 'border-gray-500';
                 const color = channelColors[ch.channel] || 'rgb(100, 100, 100)';
-
-                html += `
-                    <div class="card bg-base-100 shadow-lg border-l-4 ${borderColor}">
-                        <div class="card-body p-4">
-                            <h3 class="text-lg font-bold" style="color: ${color}">
-                                <i class="fa-solid fa-plug-circle-bolt"></i> ${ch.name}
-                            </h3>
-                            <p class="text-sm opacity-70 mb-2">${ch.time_ago}</p>
-
-                            <div class="divider my-1"></div>
-
-                            <div class="mb-2">
-                                <span class="text-xs opacity-70">Leistung</span>
-                                <p class="text-2xl font-bold" style="color: ${color}">${ch.power} W</p>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-2 mb-2">
-                                <div>
-                                    <span class="text-xs opacity-70">Spannung</span>
-                                    <p class="text-sm font-semibold">${ch.voltage} V</p>
-                                </div>
-                                <div>
-                                    <span class="text-xs opacity-70">Strom</span>
-                                    <p class="text-sm font-semibold">${ch.current} A</p>
-                                </div>
-                            </div>
-
-                            <div class="mb-2">
-                                <span class="text-xs opacity-70">Ertrag Heute</span>
-                                <p class="text-lg font-bold">${ch.yield_day_wh} Wh</p>
-                            </div>
-
-                            <div>
-                                <span class="text-xs opacity-70">Gesamtertrag</span>
-                                <p class="text-sm font-semibold opacity-80">${ch.yield_total_kwh} kWh</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                html += `<div class="card bg-base-100 shadow-lg border-l-4 ${borderColor}"><div class="card-body p-4"><h3 class="text-lg font-bold" style="color: ${color}"><i class="fa-solid fa-plug-circle-bolt"></i> ${ch.name}</h3><p class="text-sm opacity-70 mb-2">${ch.time_ago}</p><div class="divider my-1"></div><div class="mb-2"><span class="text-xs opacity-70">Leistung</span><p class="text-2xl font-bold" style="color: ${color}">${ch.power} W</p></div><div class="grid grid-cols-2 gap-2 mb-2"><div><span class="text-xs opacity-70">Spannung</span><p class="text-sm font-semibold">${ch.voltage} V</p></div><div><span class="text-xs opacity-70">Strom</span><p class="text-sm font-semibold">${ch.current} A</p></div></div><div class="mb-2"><span class="text-xs opacity-70">Ertrag Heute</span><p class="text-lg font-bold">${ch.yield_day_wh} Wh</p></div><div><span class="text-xs opacity-70">Gesamtertrag</span><p class="text-sm font-semibold opacity-80">${ch.yield_total_kwh} kWh</p></div></div></div>`;
             });
-
             container.innerHTML = html;
         }
 
-        // Update chart with current metric
         function updateChart() {
             if (!timeseriesData || Object.keys(timeseriesData).length === 0) {
                 document.getElementById('error-state').classList.remove('hidden');
-                document.getElementById('comparisonChart').classList.add('hidden');
                 return;
             }
-
             document.getElementById('error-state').classList.add('hidden');
-            document.getElementById('comparisonChart').classList.remove('hidden');
-
-            const metricLabels = {
-                power: 'Leistung (W)',
-                voltage: 'Spannung (V)',
-                current: 'Strom (A)',
-                irradiation: 'Einstrahlung'
-            };
-
+            const metricLabels = { power: 'Leistung (W)', voltage: 'Spannung (V)', current: 'Strom (A)', irradiation: 'Einstrahlung' };
             const traces = [];
             for (const [channel, data] of Object.entries(timeseriesData)) {
-                const channelNum = parseInt(channel);
-                const channelInfo = channelData.find(ch => ch.channel === channelNum);
-                const channelName = channelInfo ? channelInfo.name : `Channel ${channelNum}`;
-
+                const chNum = parseInt(channel);
+                const chInfo = channelData.find(ch => ch.channel === chNum);
                 traces.push({
-                    x: data.map(d => d.time),
-                    y: data.map(d => d[currentMetric]),
-                    type: 'scatter',
-                    mode: 'lines',
-                    name: `${channelName}`,
-                    line: {
-                        color: channelColors[channelNum] || 'rgb(100, 100, 100)',
-                        width: 2
-                    }
+                    x: data.map(d => d.time), y: data.map(d => d[currentMetric]),
+                    type: 'scatter', mode: 'lines', name: chInfo ? chInfo.name : `Channel ${chNum}`,
+                    line: { color: channelColors[chNum] || 'rgb(100, 100, 100)', width: 2 }
                 });
             }
-
             const colors = getChartColors();
             const layout = {
-                xaxis: {
-                    title: 'Zeit',
-                    type: 'date',
-                    showgrid: true,
-                    gridcolor: colors.gridColor,
-                    color: colors.textColor
-                },
-                yaxis: {
-                    title: metricLabels[currentMetric],
-                    rangemode: 'tozero',
-                    showgrid: true,
-                    gridcolor: colors.gridColor,
-                    color: colors.textColor
-                },
-                hovermode: 'x unified',
-                showlegend: true,
-                legend: {
-                    x: 0.5,
-                    y: 1.12,
-                    xanchor: 'center',
-                    yanchor: 'bottom',
-                    orientation: 'h',
-                    font: {
-                        color: colors.textColor
-                    }
-                },
-                margin: {
-                    l: 60,
-                    r: 30,
-                    t: 100,
-                    b: 50
-                },
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                font: {
-                    color: colors.textColor
-                }
+                xaxis: { title: 'Zeit', type: 'date', showgrid: true, gridcolor: colors.gridColor, color: colors.textColor },
+                yaxis: { title: metricLabels[currentMetric], showgrid: true, gridcolor: colors.gridColor, color: colors.textColor },
+                font: { color: colors.textColor },
+                legend: { font: { color: colors.textColor } },
+                plot_bgcolor: 'rgba(0,0,0,0)', paper_bgcolor: 'rgba(0,0,0,0)'
             };
-
             Plotly.react('comparisonChart', traces, layout);
         }
 
-        // Load DC channel data from API
         async function loadDCChannelData() {
             const loadingState = document.getElementById('loading-state');
             const errorState = document.getElementById('error-state');
-            const chartDiv = document.getElementById('comparisonChart');
-
             loadingState.classList.remove('hidden');
             errorState.classList.add('hidden');
-
             try {
                 const response = await fetch(`/api/dc-channels/${inverterId}/data?time_range=${currentTimeRange}`);
                 const result = await response.json();
-
                 if (result.success) {
                     channelData = result.channels;
                     timeseriesData = result.timeseries;
-
-                    // Render channel cards
                     renderChannelCards(channelData);
-
-                    // Update chart
                     updateChart();
-
-                    loadingState.classList.add('hidden');
                 } else {
                     document.getElementById('error-message').textContent = result.message || 'Keine Daten verfügbar';
                     errorState.classList.remove('hidden');
-                    loadingState.classList.add('hidden');
                 }
-            } catch (error) {
-                console.error('Failed to load DC channel data:', error);
-                document.getElementById('error-message').textContent = 'Fehler beim Laden der Daten';
-                errorState.classList.remove('hidden');
-                loadingState.classList.add('hidden');
-            }
+            } catch (error) { console.error('Failed to load DC channel data:', error); }
+            finally { loadingState.classList.add('hidden'); }
         }
 
-        // Change time range
-        function changeTimeRange(range) {
+        window.changeTimeRange = function(range) {
             currentTimeRange = range;
-
-            // Update active button
-            document.querySelectorAll('.time-range-btn').forEach(btn => {
-                if (btn.dataset.range === range) {
-                    btn.classList.add('btn-active');
-                } else {
-                    btn.classList.remove('btn-active');
-                }
-            });
-
-            // Reload data
+            document.querySelectorAll('.time-range-btn').forEach(btn => btn.classList.toggle('btn-active', btn.dataset.range === range));
             loadDCChannelData();
-
-            // Update URL without page reload
             const url = new URL(window.location);
             url.searchParams.set('time_range', range);
             window.history.pushState({}, '', url);
+        };
+
+        const selector = document.getElementById('metric-selector');
+        if (selector) {
+            selector.addEventListener('change', e => {
+                currentMetric = e.target.value;
+                updateChart();
+            });
         }
 
-        // Change metric
-        document.getElementById('metric-selector').addEventListener('change', function(e) {
-            currentMetric = e.target.value;
-            updateChart();
-        });
-
-        // Initialize page
-        function initializePage() {
+        window.initializeDCChannels = function() {
+            console.log('Initializing DC Channels');
             chartInitialized = false;
+            if (document.getElementById('comparisonChart')) Plotly.purge('comparisonChart');
             initChart();
             loadDCChannelData();
-        }
+            window.stopActiveInterval(); // No interval here, but safety first
+        };
 
-        // Expose functions to global scope
-        window.changeTimeRange = changeTimeRange;
-        window.loadDCChannelData = loadDCChannelData;
-
-        // Initialize on page load
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializePage);
-        } else {
-            initializePage();
-        }
-
-        // Re-initialize when content is swapped by HTMX
-        document.body.addEventListener('htmx:afterSwap', function(evt) {
-            if (evt.detail.target.querySelector('#comparisonChart')) {
-                chartInitialized = false;
-                initializePage();
-            }
-        });
-
-        // Update chart when theme changes
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
-                    if (chartInitialized) {
-                        chartInitialized = false;
-                        initializePage();
-                    }
-                }
-            });
-        });
-        observer.observe(document.documentElement, { attributes: true });
+        // Graphs will re-render automatically on navigation.
+        window.initializeDCChannels();
     })();
 </script>
 
