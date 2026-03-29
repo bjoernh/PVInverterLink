@@ -7,7 +7,6 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.orm import make_transient
 
-from solar_backend.db import User
 from tests.helpers import create_inverter_in_db
 
 
