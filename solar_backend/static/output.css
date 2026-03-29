@@ -2707,6 +2707,9 @@
       --alert-color: var(--color-warning);
     }
   }
+  .text-amber-500 {
+    color: var(--color-amber-500);
+  }
   .text-base-300 {
     color: var(--color-base-300);
   }
@@ -2733,9 +2736,6 @@
   }
   .text-neutral-content {
     color: var(--color-neutral-content);
-  }
-  .text-primary {
-    color: var(--color-primary);
   }
   .text-red-600 {
     color: var(--color-red-600);
