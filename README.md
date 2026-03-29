@@ -12,6 +12,12 @@
 
 Deye Hard Backend is a multi-tenant solar inverter monitoring and data collection system that provides real-time and historical power generation data. The system supports multiple inverter types through different integration methods while maintaining strict data isolation between users.
 
+![screenshot of webapp](./img/inverter.jpg)
+
+![screenshot of webapp](./img/strings.jpg)
+
+![screenshot of webapp](./img/energy.jpg)
+
 ### Key Features
 
 - **Multi-Tenant Architecture**: TimescaleDB with Row-Level Security (RLS) for automatic user data isolation
@@ -399,78 +405,6 @@ uv run pytest --cov=solar_backend
 
 **Note**: Test configuration is automatically loaded from `tests/test.env`. No manual environment setup required.
 
-### Test Coverage
-
-- ✅ Authentication & authorization
-- ✅ User registration & email verification
-- ✅ Inverter CRUD operations
-- ✅ OpenDTU measurements API
-- ✅ Time-series data queries
-- ✅ Multi-tenant data isolation
-- ✅ Rate limiting
-- ✅ Concurrent request handling
-
-## Project Structure
-
-```
-solar-backend/
-├── collector/                    # Rust collector (git submodule)
-│   ├── src/                     # Solarman V5 protocol implementation
-│   │   ├── protocol/            # Packet decoder, control codes
-│   │   ├── server/              # TCP server
-│   │   └── ...
-│   ├── Cargo.toml               # Rust dependencies
-│   ├── README.md                # Collector documentation
-│   └── DEPLOYMENT.md            # Deployment guide
-│
-├── solar_backend/               # Python backend
-│   ├── api/                     # API endpoint modules
-│   │   ├── measurements.py      # OpenDTU endpoint
-│   │   ├── inverter.py          # Inverter management
-│   │   ├── dashboard.py         # Dashboard data
-│   │   ├── signup.py            # User registration
-│   │   ├── login.py             # Authentication
-│   │   ├── account.py           # Account management
-│   │   └── start.py             # Homepage
-│   │
-│   ├── services/                # Business logic layer
-│   │   ├── inverter_service.py  # Inverter-related logic
-│   │   └── exceptions.py        # Custom service exceptions
-│   │
-│   ├── utils/                   # Utility modules
-│   │   ├── query_builder.py     # Advanced query construction
-│   │   ├── timeseries.py        # TimescaleDB operations
-│   │   ├── email.py             # Email sending
-│   │   ├── crypto.py            # Encryption utilities
-│   │   └── admin_auth.py        # Admin authentication
-│   │
-│   ├── templates/               # Jinja2 HTML templates
-│   │   ├── email/               # Email templates
-│   │   └── ...
-│   │
-│   ├── app.py                   # FastAPI application setup
-│   ├── db.py                    # SQLAlchemy models
-│   ├── config.py                # Pydantic settings
-│   ├── users.py                 # User management
-│   └── schemas.py               # Pydantic validation models
-│
-├── tests/                       # Pytest test suite
-│   ├── integration/             # Integration tests
-│   ├── unit/                    # Unit tests
-│   ├── conftest.py              # Test fixtures
-│   └── ...
-│
-├── alembic/                     # Database migrations
-│   └── versions/                # Migration scripts
-│
-├── docker-compose.yml           # Docker services configuration
-├── pyproject.toml               # Python dependencies (uv)
-├── Dockerfile                   # Backend container
-├── CLAUDE.md                    # Development guide for Claude Code
-├── SPEC.md                      # System specification
-└── README.md                    # This file
-```
-
 ## Development Workflow
 
 ### Adding New Features
@@ -682,9 +616,10 @@ We welcome contributions! Please follow these steps:
 3. Make your changes
 4. Write or update tests for your changes
 5. Ensure all tests pass: `uv run pytest`
-6. Commit your changes: `git commit -m "feat: add your feature"`
-7. Push to your fork: `git push origin feature/your-feature-name`
-8. Submit a pull request
+6. Run `uv run ruff check .` and `uv run ruff format --check .` for linting and formating
+7. Commit your changes: `git commit -m "feat: add your feature"`
+8. Push to your fork: `git push origin feature/your-feature-name`
+9. Submit a pull request
 
 ### Commit Message Convention
 
@@ -697,7 +632,7 @@ We welcome contributions! Please follow these steps:
 
 ## License
 
-TBD
+BSD-3-Clause
 
 ## Authors
 
