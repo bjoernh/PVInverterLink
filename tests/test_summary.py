@@ -42,9 +42,7 @@ def without_timeseries(mocker):
 
 
 @pytest.mark.asyncio
-async def test_summary_page_redirects_with_single_inverter(
-    authenticated_client: AsyncClient, test_inverter
-):
+async def test_summary_page_redirects_with_single_inverter(authenticated_client: AsyncClient, test_inverter):
     """Summary page should redirect to / when user has only one inverter."""
     response = await authenticated_client.get("/dashboard/summary", follow_redirects=False)
 
@@ -73,9 +71,7 @@ async def test_summary_page_requires_authentication(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_summary_page_time_range_parameter(
-    authenticated_client: AsyncClient, test_inverter, second_inverter
-):
+async def test_summary_page_time_range_parameter(authenticated_client: AsyncClient, test_inverter, second_inverter):
     """Summary page should accept and reflect valid time range parameter."""
     response = await authenticated_client.get("/dashboard/summary?time_range=7 days")
 
@@ -95,9 +91,7 @@ async def test_summary_page_invalid_time_range_defaults(
 
 
 @pytest.mark.asyncio
-async def test_summary_page_has_time_range_buttons(
-    authenticated_client: AsyncClient, test_inverter, second_inverter
-):
+async def test_summary_page_has_time_range_buttons(authenticated_client: AsyncClient, test_inverter, second_inverter):
     """Summary page should display time range selector buttons."""
     response = await authenticated_client.get("/dashboard/summary")
 
@@ -107,9 +101,7 @@ async def test_summary_page_has_time_range_buttons(
 
 
 @pytest.mark.asyncio
-async def test_summary_page_has_auto_refresh(
-    authenticated_client: AsyncClient, test_inverter, second_inverter
-):
+async def test_summary_page_has_auto_refresh(authenticated_client: AsyncClient, test_inverter, second_inverter):
     """Summary page should include auto-refresh functionality."""
     response = await authenticated_client.get("/dashboard/summary")
 
@@ -129,9 +121,7 @@ async def test_summary_data_api_requires_authentication(async_client: AsyncClien
 
 
 @pytest.mark.asyncio
-async def test_summary_data_api_no_inverters(
-    authenticated_client: AsyncClient, without_timeseries
-):
+async def test_summary_data_api_no_inverters(authenticated_client: AsyncClient, without_timeseries):
     """Summary data API should return success=False when user has no inverters."""
     response = await authenticated_client.get("/api/summary/data")
 
@@ -228,9 +218,7 @@ async def test_summary_energy_data_api_requires_authentication(async_client: Asy
 
 
 @pytest.mark.asyncio
-async def test_summary_energy_data_api_no_inverters(
-    authenticated_client: AsyncClient, without_timeseries
-):
+async def test_summary_energy_data_api_no_inverters(authenticated_client: AsyncClient, without_timeseries):
     """Summary energy data API should return success=False with no inverters."""
     response = await authenticated_client.get("/api/summary/energy-data")
 

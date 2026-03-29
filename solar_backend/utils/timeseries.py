@@ -4,7 +4,7 @@ Time-series data utilities for TimescaleDB.
 
 import contextlib
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from zoneinfo import ZoneInfo
 
 import structlog
@@ -17,7 +17,7 @@ from solar_backend.utils.query_builder import TimeSeriesQueryBuilder
 logger = structlog.get_logger()
 
 
-class TimeRange(str, Enum):
+class TimeRange(StrEnum):
     """Time range options with their corresponding bucket sizes."""
 
     ONE_HOUR = "1 hour"
@@ -56,7 +56,7 @@ class TimeRange(str, Enum):
         return cls.TWENTY_FOUR_HOURS
 
 
-class EnergyPeriod(str, Enum):
+class EnergyPeriod(StrEnum):
     """Energy production time period options."""
 
     DAY = "day"
