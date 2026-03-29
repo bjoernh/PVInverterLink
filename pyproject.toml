@@ -99,3 +99,8 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["solar_backend"]
+
+[dependency-groups]
+dev = [
+    "factory-boy>=3.3.3",
+]
