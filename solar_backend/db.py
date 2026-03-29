@@ -73,12 +73,12 @@ class DCChannelMeasurement(Base):
     )
     channel: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
     name: Mapped[str] = mapped_column(String(MAX_NAME_LENGTH), nullable=False)
-    power: Mapped[float] = mapped_column(Float, nullable=False)
-    voltage: Mapped[float] = mapped_column(Float, nullable=False)
-    current: Mapped[float] = mapped_column(Float, nullable=False)
-    yield_day_wh: Mapped[float] = mapped_column(Float, nullable=False)  # Daily yield in Wh
-    yield_total_kwh: Mapped[float] = mapped_column(Float, nullable=False)  # Total lifetime yield in kWh
-    irradiation: Mapped[float] = mapped_column(Float, nullable=False)
+    power: Mapped[int] = mapped_column(Integer, nullable=False)
+    voltage: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    current: Mapped[float | None] = mapped_column(Float, nullable=True)
+    yield_day_wh: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Daily yield in Wh
+    yield_total_kwh: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Total lifetime yield in kWh
+    irradiation: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Relationships (optional, for ORM convenience)
     user = relationship("User", lazy="noload")

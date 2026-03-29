@@ -25,6 +25,7 @@ from solar_backend.api import (
     measurements,
     signup,
     start,
+    summary,
     victron,
 )
 from solar_backend.config import settings
@@ -114,6 +115,7 @@ app.include_router(login.router)
 app.include_router(start.router)
 app.include_router(inverter.router)
 app.include_router(account.router)
+app.include_router(summary.router)
 app.include_router(dashboard.router)
 app.include_router(dc_channels.router)
 app.include_router(export.router)

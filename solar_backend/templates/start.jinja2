@@ -19,9 +19,19 @@
         <!-- Summary Section: Total aggregated values -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-6 mb-6">
             <!-- Total Current Power Card -->
-            <div class="card bg-base-100 shadow-xl card-normal">
+            <div class="card bg-base-100 shadow-xl card-normal{% if inverters|length > 1 %} hover:shadow-2xl transition-shadow cursor-pointer{% endif %}"
+                 {% if inverters|length > 1 %}
+                 hx-get="/dashboard/summary"
+                 hx-target="body"
+                 hx-push-url="true"
+                 {% endif %}>
                 <div class="card-body p-2 md:p-6">
-                    <h2 class="card-title">Übersicht</h2>
+                    <h2 class="card-title">
+                        Übersicht
+                        {% if inverters|length > 1 %}
+                        <span class="badge badge-primary badge-sm ml-1">Details →</span>
+                        {% endif %}
+                    </h2>
                     <div class="stats shadow stats-vertical overflow-hidden">
                         <div class="stat">
                             <div class="stat-figure text-primary">
