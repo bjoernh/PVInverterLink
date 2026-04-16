@@ -23,6 +23,14 @@ DB_TESTING_URI = "sqlite+aiosqlite://"
 sessionmanager.init(DB_TESTING_URI)
 htmx_init(templates=Jinja2Templates(directory=Path(os.getcwd()) / Path("solar_backend") / Path("templates")))
 
+# Set Jinja2 globals for single-user mode (matches app.py setup)
+from fastapi_htmx.htmx import templates_path as _htmx_templates
+
+from solar_backend.config import settings
+
+_htmx_templates.env.globals["single_user_mode"] = settings.SINGLE_USER_MODE
+_htmx_templates.env.globals["single_user_auth"] = settings.SINGLE_USER_AUTH if settings.SINGLE_USER_MODE else None
+
 
 @pytest.fixture(scope="session")
 def event_loop(request):

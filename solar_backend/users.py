@@ -9,10 +9,12 @@ from fastapi_users.authentication import (
 )
 from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi_users.exceptions import InvalidPasswordException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqladmin import ModelView
 
 from solar_backend.config import settings
-from solar_backend.db import User, get_user_db
+from solar_backend.db import User, get_async_session, get_user_db
 from solar_backend.schemas import UserCreate
 from solar_backend.utils.email import send_reset_passwort_mail, send_verify_mail
 
@@ -77,7 +79,19 @@ auth_backend_bearer = AuthenticationBackend(
 fastapi_users = FastAPIUsers[User, int](get_user_manager, [auth_backend_user])
 fastapi_users_bearer = FastAPIUsers[User, int](get_user_manager, [auth_backend_bearer])
 
-current_active_user = fastapi_users.current_user(active=True, optional=True)
+_cookie_current_user = fastapi_users.current_user(active=True, optional=True)
+
+
+async def current_active_user(
+    user_from_cookie: User | None = Depends(_cookie_current_user),
+    session: AsyncSession = Depends(get_async_session),
+) -> User | None:
+    """Return the current user. In single-user no-auth mode, auto-authenticate."""
+    if settings.SINGLE_USER_MODE and settings.SINGLE_USER_AUTH == "none":
+        return await session.scalar(select(User).where(User.email == settings.SINGLE_USER_EMAIL))
+    return user_from_cookie
+
+
 current_superuser = fastapi_users.current_user(active=True, superuser=True)
 
 current_active_user_bearer = fastapi_users_bearer.current_user(active=True)

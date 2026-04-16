@@ -24,7 +24,9 @@
           <li class="disabled"><a class="text-base-300">Wechselrichter (Email verifizieren)</a></li>
           {% endif %}
           <li><a href="/account" hx-push-url="true">Konto Verwalten</a></li>
+          {% if not single_user_mode or single_user_auth == "password" %}
           <li><a href="/logout" hx-push-url="true">Logout</a></li>
+          {% endif %}
         </ul>
       </div>
       {% endif %}

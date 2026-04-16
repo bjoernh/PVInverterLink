@@ -31,6 +31,7 @@ from solar_backend.api import (
 from solar_backend.config import settings
 from solar_backend.constants import UNAUTHORIZED_MESSAGE
 from solar_backend.db import DCChannelMeasurementAdmin, InverterAdmin, User, create_db_and_tables, sessionmanager
+from solar_backend.single_user import ensure_single_user
 from solar_backend.limiter import limiter
 from solar_backend.users import UserAdmin, auth_backend_bearer, current_active_user_bearer, fastapi_users_bearer
 from solar_backend.utils.admin_auth import authentication_backend
@@ -100,6 +101,12 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
 htmx_init(templates=Jinja2Templates(directory=Path(__file__).parent / "templates"))
 
+# Make single-user config available in all Jinja2 templates
+from fastapi_htmx.htmx import templates_path as _htmx_templates
+
+_htmx_templates.env.globals["single_user_mode"] = settings.SINGLE_USER_MODE
+_htmx_templates.env.globals["single_user_auth"] = settings.SINGLE_USER_AUTH if settings.SINGLE_USER_MODE else None
+
 sessionmanager.init(settings.DATABASE_URL)
 admin = Admin(app=app, authentication_backend=authentication_backend, engine=sessionmanager.engine)
 
@@ -137,4 +144,5 @@ async def authenticated_route(user: User = Depends(current_active_user_bearer)) 
 async def on_startup() -> None:
     # Not needed after setup Alembic
     await create_db_and_tables()
+    await ensure_single_user()
     logger.info("Application startup complete", log_level=settings.LOG_LEVEL)

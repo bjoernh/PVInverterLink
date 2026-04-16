@@ -9,6 +9,7 @@ from fastapi_csrf_protect import CsrfProtect
 from fastapi_htmx import htmx
 from fastapi_users import BaseUserManager, exceptions, models
 
+from solar_backend.config import settings
 from solar_backend.constants import SIGNUP_RATE_LIMIT
 from solar_backend.limiter import limiter
 from solar_backend.schemas import UserCreate
@@ -24,7 +25,9 @@ router = APIRouter()
 
 @router.get("/signup", response_class=HTMLResponse)
 @htmx("signup", "signup")
-async def root_page(request: Request) -> dict:
+async def root_page(request: Request):
+    if settings.SINGLE_USER_MODE:
+        return RedirectResponse("/", status_code=status.HTTP_302_FOUND)
     return {"user": None}
 
 
@@ -58,6 +61,11 @@ async def post_signup(
     user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
     csrf_protect: CsrfProtect = Depends(),
 ) -> HTMLResponse:
+    if settings.SINGLE_USER_MODE:
+        return HTMLResponse(
+            '<div class="alert alert-warning">Registrierung ist im Einzelnutzer-Modus deaktiviert</div>',
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
     try:
         user_create = UserCreate(
             first_name=first_name,

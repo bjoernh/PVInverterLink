@@ -49,8 +49,21 @@ class Settings(BaseSettings):
     DEBUG: bool = False  # Enable debug mode for verbose logging and other dev features
     AUTO_REFRESH_RATE: int = 120  # Auto-refresh interval in seconds for dashboard and other real-time views
 
+    # Single-user self-host mode
+    SINGLE_USER_MODE: bool = False  # Master switch for single-user mode
+    SINGLE_USER_AUTH: str = "password"  # "password" (login with password only) or "none" (auto-login)
+    SINGLE_USER_PASSWORD: str = "Solar1234"  # Default password (8+ chars, 1 digit, 1 uppercase)
+    SINGLE_USER_EMAIL: str = "admin@localhost"  # Email for the auto-created user (does not need to be real)
+    SINGLE_USER_API_KEY: str | None = None  # Collector API key; auto-generated if not set
+
 
 settings = Settings()
+
+if settings.SINGLE_USER_MODE:
+    if settings.SINGLE_USER_AUTH not in ("password", "none"):
+        raise ValueError("SINGLE_USER_AUTH must be 'password' or 'none'")
+    if len(settings.SINGLE_USER_PASSWORD) < 8:
+        raise ValueError("SINGLE_USER_PASSWORD must be at least 8 characters")
 
 fastmail = FastMail(settings.FASTMAIL) if settings.FASTMAIL else None
 

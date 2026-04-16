@@ -8,6 +8,7 @@ from fastapi_csrf_protect import CsrfProtect
 from fastapi_htmx import htmx
 from fastapi_users import BaseUserManager, exceptions, models
 
+from solar_backend.config import settings
 from solar_backend.constants import LOGIN_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT
 from solar_backend.db import User
 from solar_backend.limiter import limiter
@@ -20,20 +21,29 @@ router = APIRouter()
 
 @router.get("/login", response_class=HTMLResponse)
 @htmx("login", "login")
-async def get_login(request: Request, user: User = Depends(current_active_user)) -> dict:
+async def get_login(request: Request, user: User = Depends(current_active_user)):
+    if settings.SINGLE_USER_MODE and settings.SINGLE_USER_AUTH == "none":
+        return RedirectResponse("/", status_code=status.HTTP_302_FOUND)
     return {"user": user}
 
 
 @router.post("/login", response_class=HTMLResponse)
 @limiter.limit(LOGIN_RATE_LIMIT)
 async def post_login(
-    username: Annotated[str, Form()],
     password: Annotated[str, Form()],
     request: Request,
+    username: Annotated[str | None, Form()] = None,
     user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
     csrf_protect: CsrfProtect = Depends(),
 ):
-    user = await user_manager.authenticate(credentials=OAuth2PasswordRequestForm(username=username, password=password))
+    if settings.SINGLE_USER_MODE and settings.SINGLE_USER_AUTH == "none":
+        return RedirectResponse("/", status_code=status.HTTP_302_FOUND)
+
+    # In single-user password mode, username comes from config
+    effective_username = settings.SINGLE_USER_EMAIL if settings.SINGLE_USER_MODE else username
+    user = await user_manager.authenticate(
+        credentials=OAuth2PasswordRequestForm(username=effective_username, password=password)
+    )
 
     if user is None or not user.is_active:
         return HTMLResponse("""<div class="alert alert-error">
@@ -50,6 +60,8 @@ async def post_login(
 
 @router.get("/logout")
 async def get_logout(request: Request, user: User = Depends(current_active_user)):
+    if settings.SINGLE_USER_MODE and settings.SINGLE_USER_AUTH == "none":
+        return RedirectResponse("/", status_code=status.HTTP_302_FOUND)
     if user is None:
         return RedirectResponse("/login", status_code=status.HTTP_302_FOUND)
     response = await auth_backend_user.logout(get_jwt_strategy(), user, None)
@@ -63,6 +75,12 @@ async def post_request_reset_password(
     user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
     csrf_protect: CsrfProtect = Depends(),
 ) -> HTMLResponse:
+    if settings.SINGLE_USER_MODE:
+        return HTMLResponse(
+            """<div class="alert alert-info">
+                <span><i class="fa-solid fa-circle-info"></i> Passwort-Reset ist im Einzelnutzer-Modus nicht verfügbar. Ändern Sie SINGLE_USER_PASSWORD in der Konfiguration.</span>
+            </div>"""
+        )
     email = request.headers.get("HX-Prompt")
     user = await user_manager.get_by_email(email)
     await user_manager.forgot_password(user)
