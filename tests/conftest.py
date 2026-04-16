@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sys
 from pathlib import Path
 
 # IMPORTANT: Set ENV_FILE before any solar_backend imports
@@ -16,6 +17,7 @@ from fastapi_htmx import htmx_init
 from httpx import AsyncClient
 
 from solar_backend.app import app
+from solar_backend.config import settings
 from solar_backend.db import get_async_session, sessionmanager
 
 DB_TESTING_URI = "sqlite+aiosqlite://"
@@ -23,11 +25,10 @@ DB_TESTING_URI = "sqlite+aiosqlite://"
 sessionmanager.init(DB_TESTING_URI)
 htmx_init(templates=Jinja2Templates(directory=Path(os.getcwd()) / Path("solar_backend") / Path("templates")))
 
-# Set Jinja2 globals for single-user mode (matches app.py setup)
-from fastapi_htmx.htmx import templates_path as _htmx_templates
-
-from solar_backend.config import settings
-
+# Set Jinja2 globals for single-user mode (matches app.py setup).
+# templates_path is set by htmx_init() above; access via sys.modules to avoid
+# a module-level import after executable statements (ruff E402).
+_htmx_templates = sys.modules["fastapi_htmx.htmx"].templates_path
 _htmx_templates.env.globals["single_user_mode"] = settings.SINGLE_USER_MODE
 _htmx_templates.env.globals["single_user_auth"] = settings.SINGLE_USER_AUTH if settings.SINGLE_USER_MODE else None
 

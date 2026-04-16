@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 import structlog
@@ -31,8 +32,8 @@ from solar_backend.api import (
 from solar_backend.config import settings
 from solar_backend.constants import UNAUTHORIZED_MESSAGE
 from solar_backend.db import DCChannelMeasurementAdmin, InverterAdmin, User, create_db_and_tables, sessionmanager
-from solar_backend.single_user import ensure_single_user
 from solar_backend.limiter import limiter
+from solar_backend.single_user import ensure_single_user
 from solar_backend.users import UserAdmin, auth_backend_bearer, current_active_user_bearer, fastapi_users_bearer
 from solar_backend.utils.admin_auth import authentication_backend
 from solar_backend.utils.logging import configure_logging
@@ -101,9 +102,10 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
 htmx_init(templates=Jinja2Templates(directory=Path(__file__).parent / "templates"))
 
-# Make single-user config available in all Jinja2 templates
-from fastapi_htmx.htmx import templates_path as _htmx_templates
-
+# Make single-user config available in all Jinja2 templates.
+# templates_path is set by htmx_init() above; access via sys.modules to avoid
+# a module-level import after executable statements (ruff E402).
+_htmx_templates = sys.modules["fastapi_htmx.htmx"].templates_path
 _htmx_templates.env.globals["single_user_mode"] = settings.SINGLE_USER_MODE
 _htmx_templates.env.globals["single_user_auth"] = settings.SINGLE_USER_AUTH if settings.SINGLE_USER_MODE else None
 

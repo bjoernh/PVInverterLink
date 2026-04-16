@@ -9,9 +9,9 @@ from fastapi_users.authentication import (
 )
 from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi_users.exceptions import InvalidPasswordException
+from sqladmin import ModelView
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqladmin import ModelView
 
 from solar_backend.config import settings
 from solar_backend.db import User, get_async_session, get_user_db
