@@ -186,7 +186,7 @@ async def test_dashboard_has_auto_refresh(authenticated_client: AsyncClient, tes
 
     assert response.status_code == 200
     # Check for refresh functions in JavaScript
-    assert "startAutoRefresh" in response.text
+    assert "initializeInverterDashboard" in response.text
     assert "120 * 1000" in response.text  # 120 second interval (from config)
 
 
