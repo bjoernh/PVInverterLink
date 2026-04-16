@@ -8,6 +8,7 @@ from fastapi_htmx import htmx
 from fastapi_users import BaseUserManager, exceptions, models
 from sqlalchemy import select
 
+from solar_backend.config import settings
 from solar_backend.constants import DEFAULT_RATE_LIMIT, PASSWORD_RESET_RATE_LIMIT
 from solar_backend.db import Inverter, User, get_async_session
 from solar_backend.limiter import limiter
@@ -38,6 +39,11 @@ async def post_change_email(
     csrf_protect: CsrfProtect = Depends(),
 ):
     """Change user email and send verification."""
+    if settings.SINGLE_USER_MODE:
+        return HTMLResponse(
+            '<div class="alert alert-warning">E-Mail-Änderung ist im Einzelnutzer-Modus nicht verfügbar</div>',
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
     if user is None:
         return HTMLResponse(
             """<div class="alert alert-error">
@@ -155,6 +161,11 @@ async def post_delete_account(
     csrf_protect: CsrfProtect = Depends(),
 ):
     """Delete user account with full cleanup."""
+    if settings.SINGLE_USER_MODE:
+        return HTMLResponse(
+            '<div class="alert alert-warning">Konto-Löschung ist im Einzelnutzer-Modus nicht verfügbar</div>',
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
     if user is None:
         return HTMLResponse(
             """<div class="alert alert-error">

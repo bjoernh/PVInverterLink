@@ -39,7 +39,7 @@ ENV_FILE=... uv run alembic revision --autogenerate -m "desc"
 
 ## Architecture
 
-**Core**: `app.py` · `db.py` (models) · `users.py` (auth) · `config.py` · `schemas.py`
+**Core**: `app.py` · `db.py` (models) · `users.py` (auth) · `config.py` · `schemas.py` · `single_user.py` (single-user startup logic)
 
 **API** (`solar_backend/api/`): `signup` · `login` · `start` · `inverter` · `dashboard` · `measurements` · `account` · `healthcheck`
 
@@ -57,10 +57,12 @@ ENV_FILE=... uv run alembic revision --autogenerate -m "desc"
 - Cookie (`auth_backend_user`) → HTMX routes → `current_active_user`
 - Bearer (`auth_backend_bearer`) → API routes → `current_active_user_bearer` / `current_superuser_bearer`
 - Both JWT, 2-day lifetime
+- In `SINGLE_USER_MODE + SINGLE_USER_AUTH=none`, `current_active_user` auto-returns the single user (no cookie needed)
 
 ## Config
 Required: `DATABASE_URL`, `AUTH_SECRET`, `ENCRYPTION_KEY`, `BASE_URL`
 Optional: `FASTMAIL` (email), `COOKIE_SECURE` (True in prod), `STORE_DC_CHANNEL_DATA` (default True)
+Single-user: `SINGLE_USER_MODE` (bool), `SINGLE_USER_AUTH` ("password"|"none"), `SINGLE_USER_PASSWORD`, `SINGLE_USER_EMAIL`, `SINGLE_USER_API_KEY`
 
 ## TimescaleDB
 - 7-day time chunks, 4 user_id space partitions, 2-year retention

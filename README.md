@@ -20,6 +20,7 @@ Deye Hard Backend is a multi-tenant solar inverter monitoring and data collectio
 
 ### Key Features
 
+- **Self-Host Single-User Mode**: Simplified deployment for home use — no signup, auto-created user, optional passwordless access
 - **Multi-Tenant Architecture**: TimescaleDB with Row-Level Security (RLS) for automatic user data isolation
 - **Deye Inverter Support**: High-performance Rust collector using Solarman V5 protocol
 - **OpenDTU Integration**: HTTP API for Hoymiles microinverters via OpenDTU firmware
@@ -244,9 +245,51 @@ Create a `.env` file with the following settings:
 | `BASE_URL` | Public URL for email links | `http://localhost:8000` |
 | `COOKIE_SECURE` | Secure flag for cookies | `False` (dev), `True` (production) |
 
+### Single-User Self-Host Mode
+
+For home use with a single user, enable `SINGLE_USER_MODE` to skip signup, email verification, and multi-user management. The app auto-creates the user on first startup.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SINGLE_USER_MODE` | Enable single-user mode | `False` |
+| `SINGLE_USER_AUTH` | `"password"` (login form) or `"none"` (auto-login) | `"password"` |
+| `SINGLE_USER_PASSWORD` | Login password (8+ chars, 1 digit, 1 uppercase) | `"Solar1234"` |
+| `SINGLE_USER_EMAIL` | Internal email for the auto-created user | `"admin@localhost"` |
+| `SINGLE_USER_API_KEY` | Fixed API key for collectors; auto-generated if unset | `None` |
+
+**Minimal self-host `.env` (no-auth mode):**
+
+```bash
+DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/deyehard
+AUTH_SECRET=your-secret-min-32-chars
+ENCRYPTION_KEY=your-fernet-key-base64
+BASE_URL=http://localhost:8000
+
+SINGLE_USER_MODE=true
+SINGLE_USER_AUTH=none
+SINGLE_USER_API_KEY=ABCD-EFGH-IJKL-MNOP   # for your OpenDTU/collector
+```
+
+**With password login (recommended if accessible from network):**
+
+```bash
+SINGLE_USER_MODE=true
+SINGLE_USER_AUTH=password
+SINGLE_USER_PASSWORD=MyS0larPower!
+```
+
+**What changes in single-user mode:**
+- User is auto-created on startup (pre-verified, superuser)
+- The API key is logged at startup — configure your collector with it
+- Signup and account deletion are disabled
+- Login form shows only a password field (no email)
+- `SINGLE_USER_AUTH=none` skips login entirely (suitable for home LAN)
+
+**No database migrations needed** — the schema is identical; single-user mode just always uses the one pre-created account.
+
 ### Email Configuration (Optional)
 
-For user registration and password reset emails:
+For user registration and password reset emails (not needed in single-user mode):
 
 ```bash
 FASTMAIL__MAIL_USERNAME=user@example.com

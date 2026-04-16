@@ -4,19 +4,97 @@
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Prerequisites](#prerequisites)
-4. [Server Setup](#server-setup)
-5. [Testing Environment](#testing-environment)
-6. [Staging Environment](#staging-environment)
-7. [Production Environment](#production-environment)
-8. [Database Migration (Optional)](#database-migration-optional)
-9. [Monitoring Setup](#monitoring-setup)
-10. [SSL/TLS Configuration](#ssltls-configuration)
-11. [Backup Strategy](#backup-strategy)
-12. [Troubleshooting](#troubleshooting)
-13. [Maintenance](#maintenance)
+1. [Self-Host Single-User (Home Setup)](#self-host-single-user-home-setup)
+2. [Overview](#overview)
+3. [Architecture](#architecture)
+4. [Prerequisites](#prerequisites)
+5. [Server Setup](#server-setup)
+6. [Testing Environment](#testing-environment)
+7. [Staging Environment](#staging-environment)
+8. [Production Environment](#production-environment)
+9. [Database Migration (Optional)](#database-migration-optional)
+10. [Monitoring Setup](#monitoring-setup)
+11. [SSL/TLS Configuration](#ssltls-configuration)
+12. [Backup Strategy](#backup-strategy)
+13. [Troubleshooting](#troubleshooting)
+14. [Maintenance](#maintenance)
+
+---
+
+## Self-Host Single-User (Home Setup)
+
+For monitoring your own solar installation at home, use `SINGLE_USER_MODE`. This is the simplest possible deployment — no email server, no signup flow, no multi-user management.
+
+### Requirements
+
+- Docker and Docker Compose
+- A machine reachable from your OpenDTU / Victron device
+
+### Step 1: Create your `.env`
+
+```bash
+# Database
+DATABASE_URL=postgresql+asyncpg://solar:CHANGE_ME@db:5432/solar
+POSTGRES_PASSWORD=CHANGE_ME
+
+# Security (generate these — see commands below)
+AUTH_SECRET=GENERATE_32_CHAR_RANDOM_STRING
+ENCRYPTION_KEY=GENERATE_FERNET_KEY_BASE64
+
+# Application
+BASE_URL=http://YOUR_LOCAL_IP:8000
+COOKIE_SECURE=False
+
+# Single-user mode
+SINGLE_USER_MODE=true
+SINGLE_USER_AUTH=none            # no login required — or use "password"
+SINGLE_USER_PASSWORD=MyS0lar!    # only needed if SINGLE_USER_AUTH=password
+SINGLE_USER_API_KEY=ABCD-EFGH-IJKL-MNOP   # fixed key for your collector
+```
+
+Generate secrets:
+```bash
+# AUTH_SECRET
+openssl rand -hex 32
+
+# ENCRYPTION_KEY
+python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+### Step 2: Start services
+
+```bash
+docker compose up -d
+```
+
+The backend logs the API key on first startup:
+
+```
+{"event": "Single-user created", "email": "admin@localhost", "api_key": "ABCD-EFGH-IJKL-MNOP"}
+```
+
+### Step 3: Configure your collector
+
+**OpenDTU** (Settings → HTTP Push):
+```
+Target URL:   http://YOUR_LOCAL_IP:8000/api/opendtu/measurements
+Header name:  X-API-Key
+Header value: ABCD-EFGH-IJKL-MNOP
+```
+
+**Victron Venus OS**: Use the same API key with `POST /api/victron/measurements`.
+
+### Step 4: Register your inverter
+
+1. Open `http://YOUR_LOCAL_IP:8000` in a browser
+2. Go to **Wechselrichter** (inverters) → Add inverter with the serial number from your DTU
+3. Data will start appearing in the dashboard as soon as measurements arrive
+
+### Notes
+
+- No database migration needed — schema is identical to multi-user deployments
+- Password can be changed any time via **Konto Verwalten** → account page; the change persists across restarts (the `SINGLE_USER_PASSWORD` env var is only used on first creation)
+- To switch back to multi-user mode, remove `SINGLE_USER_MODE=true` from your env and restart
 
 ---
 
@@ -280,6 +358,8 @@ docker compose -f docker-compose.test.yml exec backend-test \
 ```
 
 ### Step 4: Create Admin User
+
+> **Note:** This step is only needed for multi-user deployments. In `SINGLE_USER_MODE`, the admin user is auto-created on startup — skip to Step 5.
 
 ```bash
 # Access backend container

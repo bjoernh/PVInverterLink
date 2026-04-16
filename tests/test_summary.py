@@ -106,7 +106,7 @@ async def test_summary_page_has_auto_refresh(authenticated_client: AsyncClient, 
     response = await authenticated_client.get("/dashboard/summary")
 
     assert response.status_code == 200
-    assert "startAutoRefresh" in response.text
+    assert "initializeSummaryDashboard" in response.text
 
 
 # --- /api/summary/data tests ---
